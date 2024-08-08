@@ -100,12 +100,12 @@ class CarInterface(CarInterfaceBase):
     ret.longitudinalTuning.kiBP = [5., 35.]
 
     if candidate in (CAMERA_ACC_CAR | SDGM_CAR | ASCM_INT):
-      ret.alphaLongitudinalAvailable = candidate not in (SDGM_CAR|ASCM_INT)
+      ret.alphaLongitudinalAvailable = candidate not in (SDGM_CAR|ASCM_INT) or 0x2FF in fingerprint[CanBus.POWERTRAIN]
       ret.networkLocation = NetworkLocation.fwdCamera
-      ret.radarUnavailable = True  # no radar
+      ret.radarUnavailable = 0x460 not in fingerprint[CanBus.OBSTACLE]
       ret.pcmCruise = True
       ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.HW_CAM.value
-      ret.minEnableSpeed = -1 if candidate in SDGM_CAR else 5 * CV.KPH_TO_MS
+      ret.minEnableSpeed = 5 * CV.KPH_TO_MS
       ret.minSteerSpeed = 10 * CV.KPH_TO_MS
       if candidate in ASCM_INT:
         ret.minSteerSpeed = 7 * CV.KPH_TO_MS
@@ -125,6 +125,11 @@ class CarInterface(CarInterfaceBase):
         ret.alphaLongitudinalAvailable = False
         ret.openpilotLongitudinalControl = False
         ret.minEnableSpeed = -1.  # engage speed is decided by PCM
+
+      if candidate in SDGM_CAR:
+          ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.HW_SDGM.value
+          if not ret.openpilotLongitudinalControl:
+            ret.minEnableSpeed = -1.  # engage speed is decided by pcm
 
     else:  # ASCM, OBD-II harness
       ret.openpilotLongitudinalControl = True
