@@ -373,12 +373,16 @@ misc_tuning_levels: list[tuple[str, str | bytes, int]] = [
   ("WheelControls", "", 2)
 ]
 
+
+def scale_threshold(v_ego):
+  return 0.0 if v_ego > 31.3 else np.interp(v_ego, [0, 17.9, 26.8, 35.8, 44.7], [0.63, 0.63, 0.65, 0.95, 0.95])
+
 class FrogPilotVariables:
   def __init__(self):
     self.frogpilot_toggles = get_frogpilot_toggles(block=False)
     self.tuning_levels = {key: lvl for key, _, lvl in frogpilot_default_params + misc_tuning_levels}
 
-    self.short_branch = get_build_metadata().channel
+    self.short_branch = "FrogPilot-Staging"
     self.development_branch = self.short_branch == "FrogPilot-Development"
     self.release_branch = self.short_branch == "FrogPilot"
     self.staging_branch = self.short_branch == "FrogPilot-Staging"
@@ -388,7 +392,7 @@ class FrogPilotVariables:
     self.frogpilot_toggles.frogs_go_moo = Path("/persist/frogsgomoo.py").is_file()
     self.frogpilot_toggles.block_user = self.development_branch and not self.frogpilot_toggles.frogs_go_moo
 
-    self.not_vetted = Path("/data/openpilot/not_vetted").is_file()
+    self.not_vetted = False
 
     self.frogpilot_toggles.use_konik_server = params.get_bool("UseKonikServer")
     self.frogpilot_toggles.use_konik_server |= self.not_vetted
