@@ -13,7 +13,7 @@ from openpilot.common.git import get_short_branch
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.locationd.calibrationd import MIN_SPEED_FILTER
 
-from openpilot.selfdrive.frogpilot.frogpilot_variables import params
+from openpilot.frogpilot.common.frogpilot_variables import params
 
 AlertSize = log.ControlsState.AlertSize
 AlertStatus = log.ControlsState.AlertStatus

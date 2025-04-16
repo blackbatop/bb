@@ -19,7 +19,7 @@
 #include "selfdrive/ui/qt/util.h"
 #include "system/hardware/hw.h"
 
-#include "selfdrive/frogpilot/ui/qt/widgets/frogpilot_controls.h"
+#include "frogpilot/ui/qt/widgets/frogpilot_controls.h"
 
 const int UI_BORDER_SIZE = 30;
 const int UI_HEADER_HEIGHT = 420;
@@ -245,6 +245,7 @@ typedef struct UIScene {
   float speed_jerk_difference;
   float speed_limit;
   float speed_limit_map;
+  float speed_limit_mapbox;
   float speed_limit_offset;
   float speed_limit_overridden_speed;
   float steer;

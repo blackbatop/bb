@@ -6,7 +6,7 @@
 #include "selfdrive/ui/qt/onroad/buttons.h"
 #include "selfdrive/ui/qt/widgets/cameraview.h"
 
-#include "selfdrive/frogpilot/screenrecorder/screenrecorder.h"
+#include "frogpilot/ui/screenrecorder/screenrecorder.h"
 
 class PedalIcons : public QWidget {
   Q_OBJECT
@@ -146,8 +146,6 @@ private:
   bool slcOverridden;
   bool speedLimitChanged;
   bool speedLimitSources;
-  bool stscControllingCurve;
-  bool stscEnabled;
   bool trafficMode;
   bool turnSignalAnimation;
   bool turnSignalLeft;
@@ -168,7 +166,6 @@ private:
   float slcSpeedLimitOffset;
   float speedConversion;
   float speedConversionMetrics;
-  float stscSpeed;
   float unconfirmedSpeedLimit;
   float upcomingSpeedLimit;
   float vtscSpeed;

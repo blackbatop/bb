@@ -15,7 +15,7 @@ from openpilot.common.swaglog import cloudlog
 
 from openpilot.common.simple_kalman import KF1D
 
-from openpilot.selfdrive.frogpilot.frogpilot_variables import get_frogpilot_toggles
+from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
 
 # Default lead acceleration decay set to 50% at 1s
 _LEAD_ACCEL_TAU = 1.5
@@ -102,7 +102,7 @@ class Track:
     }
 
   def potential_adjacent_lead(self, left: bool, standstill: bool, model_data: capnp._DynamicStructReader):
-    if standstill or self.vLeadK < 1:
+    if standstill or self.vLead < 1:
       return False
 
     if left:
@@ -113,7 +113,7 @@ class Track:
       return -self.yRel > right_lane
 
   def potential_far_lead(self, standstill: bool, model_data: capnp._DynamicStructReader):
-    if standstill or self.vLeadK < 1:
+    if standstill or self.vLead < 1:
       return False
 
     left_lane = interp(self.dRel, model_data.laneLines[1].x, model_data.laneLines[1].y)
