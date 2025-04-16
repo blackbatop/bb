@@ -92,6 +92,7 @@ _services: dict[str, tuple] = {
   "customReservedRawData2": (True, 0.),
 
   # FrogPilot
+  "frogpilotCarParams": (True, 0.02, 1),
   "frogpilotCarState": (True, 100., 10),
   "frogpilotDeviceState": (True, 2., 1),
   "frogpilotNavigation": (True, 1., 10),

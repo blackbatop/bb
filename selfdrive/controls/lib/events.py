@@ -13,7 +13,7 @@ from openpilot.common.git import get_short_branch
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.locationd.calibrationd import MIN_SPEED_FILTER
 
-from openpilot.selfdrive.frogpilot.frogpilot_variables import params
+from openpilot.frogpilot.common.frogpilot_variables import params
 
 AlertSize = log.ControlsState.AlertSize
 AlertStatus = log.ControlsState.AlertStatus
@@ -353,6 +353,7 @@ def holiday_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, 
     "world_frog_day": "Happy World Frog Day! 🐸",
     "april_fools": "Happy April Fool's Day! 🤡",
     "easter_week": "Happy Easter! 🐰",
+    "may_the_fourth": "May the 4th be with you! 🚀",
     "cinco_de_mayo": "¡Feliz Cinco de Mayo! 🌮",
     "fourth_of_july": "Happy Fourth of July! 🎆",
     "halloween_week": "Happy Halloween! 🎃",

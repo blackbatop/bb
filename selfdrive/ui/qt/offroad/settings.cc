@@ -15,7 +15,7 @@
 #include "selfdrive/ui/qt/widgets/scrollview.h"
 #include "selfdrive/ui/qt/widgets/ssh_keys.h"
 
-#include "selfdrive/frogpilot/ui/qt/offroad/frogpilot_settings.h"
+#include "frogpilot/ui/qt/offroad/frogpilot_settings.h"
 
 TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
   // param, title, desc, icon
@@ -213,7 +213,7 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
   addItem(new LabelControl(tr("Serial"), params.get("HardwareSerial").c_str()));
 
   pair_device = new ButtonControl(tr("Pair Device"), tr("PAIR"),
-                                  tr("Pair your device with comma connect (connect.comma.ai) and claim your comma prime offer."));
+                                  useKonikServer() ? tr("Pair your device with Konik connect (stable.konik.ai).") : tr("Pair your device with comma connect (connect.comma.ai) and claim your comma prime offer."));
   connect(pair_device, &ButtonControl::clicked, [=]() {
     PairingPopup popup(this);
     popup.exec();
@@ -233,8 +233,6 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
     if (ConfirmationDialog::confirm(tr("Are you sure you want to reset calibration?"), tr("Reset"), this)) {
       params.remove("CalibrationParams");
       params.remove("LiveTorqueParameters");
-      params_cache.remove("CalibrationParams");
-      params_cache.remove("LiveTorqueParameters");
     }
   });
   addItem(resetCalibBtn);
@@ -494,32 +492,32 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
 
         if (!tuningLevelConfirmed) {
           int frogpilotHours = paramsTracking.getInt("FrogPilotMinutes") / 60;
-          int openpilotHours = params.getInt("openpilotMinutes") / 60;
+          int openpilotHours = params.getInt("KonikMinutes") / 60 + params.getInt("openpilotMinutes") / 60;
 
           if (frogpilotHours < 1 && openpilotHours < 100) {
-            if (ConfirmationDialog::alert(tr("Welcome to FrogPilot! Since you're new to FrogPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the 'Tuning Level' button!"), this, true)) {
+            if (ConfirmationDialog::alert(tr("Welcome to FrogPilot! Since you're new to FrogPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
               params.putBool("TuningLevelConfirmed", true);
               params.putInt("TuningLevel", 0);
             }
           } else if (frogpilotHours < 50 && openpilotHours < 100) {
-            if (ConfirmationDialog::alert(tr("Since you're fairly new to FrogPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the 'Tuning Level' button!"), this, true)) {
+            if (ConfirmationDialog::alert(tr("Since you're fairly new to FrogPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
               params.putBool("TuningLevelConfirmed", true);
               params.putInt("TuningLevel", 0);
             }
           } else if (frogpilotHours < 100) {
             if (openpilotHours >= 100) {
-              if (ConfirmationDialog::alert(tr("Since you're experienced with openpilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the 'Tuning Level' button!"), this, true)) {
+              if (ConfirmationDialog::alert(tr("Since you're experienced with openpilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
                 params.putBool("TuningLevelConfirmed", true);
                 params.putInt("TuningLevel", 1);
               }
             } else {
-              if (ConfirmationDialog::alert(tr("Since you're experienced with FrogPilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the 'Tuning Level' button!"), this, true)) {
+              if (ConfirmationDialog::alert(tr("Since you're experienced with FrogPilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
                 params.putBool("TuningLevelConfirmed", true);
                 params.putInt("TuningLevel", 1);
               }
             }
           } else if (frogpilotHours >= 100) {
-            if (ConfirmationDialog::alert(tr("Since you're very experienced with FrogPilot, the \"Advanced\" toggle preset has been applied, but you can change this at any time via the 'Tuning Level' button!"), this, true)) {
+            if (ConfirmationDialog::alert(tr("Since you're very experienced with FrogPilot, the \"Advanced\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
               params.putBool("TuningLevelConfirmed", true);
               params.putInt("TuningLevel", 2);
             }
