@@ -391,7 +391,7 @@ class FrogPilotVariables:
     self.vetting_branch = self.short_branch == "FrogPilot-Vetting"
 
     self.frogpilot_toggles.frogs_go_moo = Path("/persist/frogsgomoo.py").is_file()
-    self.frogpilot_toggles.block_user = self.development_branch and not self.frogpilot_toggles.frogs_go_moo
+    self.frogpilot_toggles.block_user = False
 
     self.frogpilot_toggles.use_konik_server = params.get_bool("UseKonikServer")
     self.frogpilot_toggles.use_konik_server |= Path("/data/openpilot/not_vetted").is_file()

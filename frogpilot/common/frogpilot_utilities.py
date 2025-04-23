@@ -174,7 +174,7 @@ def restart_processes(sm):
 
   if not any(ps.ignitionLine or ps.ignitionCan for ps in sm["pandaStates"] if ps.pandaType != log.PandaState.PandaType.unknown):
     for name in ["mapd", "ui"]:
-      get_managed_processes()[name].stop(block=True, retry=True, sig=signal.SIGKILL)
+      get_managed_processes()[name].stop(block=False, retry=False, sig=signal.SIGKILL)
 
 def run_cmd(cmd, success_message, fail_message, report=True):
   try:
