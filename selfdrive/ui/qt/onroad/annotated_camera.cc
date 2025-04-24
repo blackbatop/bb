@@ -42,6 +42,8 @@ AnnotatedCameraWidget::AnnotatedCameraWidget(VisionStreamType type, QWidget* par
 
   dm_img = loadPixmap("../assets/img_driver_face.png", {img_size + 5, img_size + 5});
 
+  regen_img = loadPixmap("../assets/img_regen_paddle.png", {img_size + 5, img_size + 5});
+
   // Initialize FrogPilot widgets
   initializeFrogPilotWidgets();
 }
@@ -652,6 +654,23 @@ void AnnotatedCameraWidget::drawLaneLines(QPainter &painter, const UIState *s, f
   painter.restore();
 }
 
+void AnnotatedCameraWidget::drawRegenPaddle(QPainter &painter, const UIState *s) {
+
+  const UIScene &scene = s->scene;
+
+  painter.save();
+  // base icon
+
+  int offset = UI_BORDER_SIZE + btn_size / 2;
+  regenPadddleIconPostion.setX(dmIconPosition.x());
+  regenPadddleIconPostion.setY(dmIconPosition.y() - (btn_size + offset));
+  float opacity = scene.regen_paddle ? 0.85 : 0.25;
+  drawIcon(painter, regenPadddleIconPostion, regen_img, blackColor(70), opacity);
+
+  painter.restore();
+
+}
+
 void AnnotatedCameraWidget::drawDriverState(QPainter &painter, const UIState *s) {
   const UIScene &scene = s->scene;
 
@@ -882,6 +901,13 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
     update_dmonitoring(s, sm["driverStateV2"].getDriverStateV2(), dm_fade_state, rightHandDM);
     drawDriverState(painter, s);
   }
+
+  //regen paddle icon
+  if (!hideBottomIcons && (sm.rcv_frame("carControl") > s->scene.started_frame) && regenIconVisible) {
+    update_regen_paddle_icon(s);
+    drawRegenPaddle(painter, s);
+}
+
 
   drawHud(painter);
 
