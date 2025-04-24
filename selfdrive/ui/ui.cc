@@ -183,12 +183,6 @@ void update_model(UIState *s,
   update_line_data(s, plan_position, scene.model_ui ? path_width : 0, path_offset_z, &scene.track_edge_vertices, max_idx, false);
 }
 
-void update_regen_paddle_icon(UIState *s) {
-  UIScene &scene = s->scene;
-  scene.regen_paddle = (*s->sm)["frogpilotCarState"].getFrogpilotCarState().getRegenPaddle();
-}
-
-
 void update_dmonitoring(UIState *s, const cereal::DriverStateV2::Reader &driverstate, float dm_fade_state, bool is_rhd) {
   UIScene &scene = s->scene;
   const auto driver_orient = is_rhd ? driverstate.getRightDriverData().getFaceOrientation() : driverstate.getLeftDriverData().getFaceOrientation();
@@ -276,9 +270,6 @@ static void update_state(UIState *s) {
   if (sm.updated("carControl")) {
     auto carControl = sm["carControl"].getCarControl();
     scene.steer = carControl.getActuators().getSteer();
-  }
-  if (sm.updated("frogpilotCarState")) {
-    update_regen_paddle_icon(s);
   }
   if (sm.updated("carParams")) {
     scene.longitudinal_control = sm["carParams"].getCarParams().getOpenpilotLongitudinalControl();

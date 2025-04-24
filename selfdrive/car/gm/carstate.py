@@ -97,7 +97,6 @@ class CarState(CarStateBase):
     if self.CP.transmissionType == TransmissionType.direct:
       ret.regenBraking = pt_cp.vl["EBCMRegenPaddle"]["RegenPaddle"] != 0
       self.single_pedal_mode = ret.gearShifter == GearShifter.low or pt_cp.vl["EVDriveMode"]["SinglePedalModeActive"] == 1 or (ret.regenBraking and GearShifter.manumatic)
-      ret.regenPaddle = pt_cp.vl["EBCMRegenPaddle"]["RegenPaddle"] != 0
 
     if self.CP.enableGasInterceptor:
       ret.gas = (pt_cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS"] + pt_cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS2"]) / 2.
@@ -184,7 +183,6 @@ class CarState(CarStateBase):
     self.pcm_acc_status = pt_cp.vl["AcceleratorPedal2"]["CruiseState"]
 
     fp_ret.sportGear = pt_cp.vl["SportMode"]["SportMode"] == 1
-    fp_ret.regenPaddle = ret.regenPaddle
 
     return ret, fp_ret
 
