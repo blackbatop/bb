@@ -56,6 +56,10 @@ class CarState(CarStateBase):
     self.loopback_lka_steering_cmd_updated = len(loopback_cp.vl_all["ASCMLKASteeringCmd"]["RollingCounter"]) > 0
     if self.loopback_lka_steering_cmd_updated:
       self.loopback_lka_steering_cmd_ts_nanos = loopback_cp.ts_nanos["ASCMLKASteeringCmd"]["RollingCounter"]
+
+    # Track timestamps for OEM PRNDL2 and Regen Paddle messages (used to sync spoofing timing)
+    self.prndl2_ts_nanos = pt_cp.ts_nanos["ECMPRDNL2"]["PRNDL2"]
+    self.regen_paddle_ts_nanos = pt_cp.ts_nanos["EBCMRegenPaddle"]["RegenPaddle"]
     if self.CP.networkLocation == NetworkLocation.fwdCamera and not self.CP.flags & GMFlags.NO_CAMERA.value:
       self.pt_lka_steering_cmd_counter = pt_cp.vl["ASCMLKASteeringCmd"]["RollingCounter"]
       self.cam_lka_steering_cmd_counter = cam_cp.vl["ASCMLKASteeringCmd"]["RollingCounter"]
@@ -224,13 +228,13 @@ class CarState(CarStateBase):
 
     if CP.carFingerprint in SDGM_CAR:
       messages += [
-        ("ECMPRDNL2", 25),
+        ("ECMPRDNL2", 40),
         ("AcceleratorPedal2", 40),
         ("ECMEngineStatus", 80),
       ]
     else:
       messages += [
-        ("ECMPRDNL2", 25),
+        ("ECMPRDNL2", 40),
         ("AcceleratorPedal2", 33),
         ("ECMEngineStatus", 100),
         ("BCMTurnSignals", 1),
@@ -252,7 +256,7 @@ class CarState(CarStateBase):
 
     if CP.transmissionType == TransmissionType.direct:
       messages += [
-        ("EBCMRegenPaddle", 25),
+        ("EBCMRegenPaddle", 40),
         ("EVDriveMode", 0),
       ]
 
