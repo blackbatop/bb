@@ -63,8 +63,8 @@ class CarController(CarControllerBase):
     self.aego = 0.0
 
   def calc_pedal_command(self, accel: float, long_active: bool, car_velocity) -> Tuple[float, bool]:
-    if not long_active:
-      return 0., False
+    # if not long_active:
+      # return 0., False
 
     # Regen paddle hysteresis (200ms = 20 frames)
     if not hasattr(self, 'regen_paddle_timer'):
@@ -97,10 +97,6 @@ class CarController(CarControllerBase):
     else:
       pedal_gas = clip((pedaloffset + accel * 0.6), 0.0, 1.0)
 
-    zero = 0.15625  # 40 / 256
-    if accel > 0.:
-      # Scales the accel from 0–1 to 0.156–1
-      pedal_gas = clip(((1 - zero) * pedal_gas + zero), 0., 1.)
 
     pedal_gas = min(pedal_gas, 1.0)
 
