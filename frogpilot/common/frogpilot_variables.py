@@ -383,7 +383,7 @@ class FrogPilotVariables:
     self.frogpilot_toggles = get_frogpilot_toggles(block=False)
     self.tuning_levels = {key: lvl for key, _, lvl in frogpilot_default_params + misc_tuning_levels}
 
-    self.short_branch = get_build_metadata().channel
+    self.short_branch = "FrogPilot-Staging"
     self.development_branch = self.short_branch == "FrogPilot-Development"
     self.release_branch = self.short_branch == "FrogPilot"
     self.staging_branch = self.short_branch == "FrogPilot-Staging"
