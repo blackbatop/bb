@@ -53,7 +53,6 @@ private:
   QVBoxLayout *main_layout;
   ExperimentalButton *experimental_btn;
   QPixmap dm_img;
-  QPixmap regen_img;
   float speed;
   QString speedUnit;
   float setSpeed;
@@ -61,7 +60,6 @@ private:
   bool is_cruise_set = false;
   bool is_metric = false;
   bool dmActive = false;
-  bool regenIconVisible = true;
   bool hideBottomIcons = false;
   bool rightHandDM = false;
   float dm_fade_state = 1.0;
@@ -111,7 +109,6 @@ private:
 
   QPoint cemIconPosition;
   QPoint dmIconPosition;
-  QPoint regenPadddleIconPostion;
   QPoint lateralIconPosition;
 
   QRect leadTextRect;
@@ -203,7 +200,6 @@ protected:
   void drawLead(QPainter &painter, const cereal::RadarState::LeadData::Reader &lead_data, const QPointF &vd, float v_ego, const QColor &lead_marker_color, bool adjacent = false);
   void drawHud(QPainter &p);
   void drawDriverState(QPainter &painter, const UIState *s);
-  void drawRegenPaddle(QPainter &painter, const UIState *s);
   void paintEvent(QPaintEvent *event) override;
   inline QColor redColor(int alpha = 255) { return QColor(201, 34, 49, alpha); }
   inline QColor whiteColor(int alpha = 255) { return QColor(255, 255, 255, alpha); }
