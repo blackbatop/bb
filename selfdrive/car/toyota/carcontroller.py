@@ -16,7 +16,7 @@ from openpilot.selfdrive.controls.lib.drive_helpers import CRUISE_LONG_PRESS
 from openpilot.selfdrive.controls.lib.pid import PIDController
 from opendbc.can.packer import CANPacker
 
-from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_acceleration import get_max_allowed_accel
+from openpilot.frogpilot.controls.lib.frogpilot_acceleration import get_max_allowed_accel
 
 LongCtrlState = car.CarControl.Actuators.LongControlState
 SteerControlType = car.CarParams.SteerControlType

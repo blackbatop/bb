@@ -6,7 +6,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlanner
 import cereal.messaging as messaging
 
-from openpilot.selfdrive.frogpilot.frogpilot_variables import get_frogpilot_toggles
+from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
 
 def publish_ui_plan(sm, pm, longitudinal_planner):
   ui_send = messaging.new_message('uiPlan')

@@ -28,8 +28,8 @@ ExperimentalButton::ExperimentalButton(QWidget *parent) : experimental_mode(fals
   QObject::connect(this, &QPushButton::clicked, this, &ExperimentalButton::changeMode);
 
   // FrogPilot variables
-  wheel_gif_path = "../frogpilot/assets/active_theme/steering_wheel/wheel.gif";
-  wheel_png_path = "../frogpilot/assets/active_theme/steering_wheel/wheel.png";
+  wheel_gif_path = "../../frogpilot/assets/active_theme/steering_wheel/wheel.gif";
+  wheel_png_path = "../../frogpilot/assets/active_theme/steering_wheel/wheel.png";
 
   gif_label = new QLabel(this);
   gif_label->setScaledContents(true);
@@ -249,17 +249,17 @@ void DistanceButton::updateIcon() {
   profile_data_png.clear();
 
   static const QVector<QString> file_names = {
-    "../frogpilot/assets/active_theme/distance_icons/traffic",
-    "../frogpilot/assets/active_theme/distance_icons/aggressive",
-    "../frogpilot/assets/active_theme/distance_icons/standard",
-    "../frogpilot/assets/active_theme/distance_icons/relaxed"
+    "../../frogpilot/assets/active_theme/distance_icons/traffic",
+    "../../frogpilot/assets/active_theme/distance_icons/aggressive",
+    "../../frogpilot/assets/active_theme/distance_icons/standard",
+    "../../frogpilot/assets/active_theme/distance_icons/relaxed"
   };
 
   for (int i = 0; i < file_names.size(); ++i) {
     const QString &file_name = file_names[i];
     QString gif_file = file_name + ".gif";
     QString png_file = file_name + ".png";
-    QString fallback_file = QString("../frogpilot/assets/stock_theme/distance_icons/%1.png").arg(QFileInfo(file_name).baseName().toLower());
+    QString fallback_file = QString("../../frogpilot/assets/stock_theme/distance_icons/%1.png").arg(QFileInfo(file_name).baseName().toLower());
 
     if (QFile::exists(gif_file)) {
       QMovie *movie = new QMovie(gif_file);

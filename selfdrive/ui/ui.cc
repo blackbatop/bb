@@ -300,8 +300,8 @@ static void update_state(UIState *s) {
     scene.always_on_lateral_enabled = !scene.enabled && frogpilotCarState.getAlwaysOnLateralEnabled();
     scene.brake_lights_on = frogpilotCarState.getBrakeLights();
     scene.dashboard_speed_limit = frogpilotCarState.getDashboardSpeedLimit();
-    scene.lateral_paused = frogpilotCarState.getForceCoast() || frogpilotCarState.getPauseLateral();
-    scene.longitudinal_paused = frogpilotCarState.getPauseLongitudinal();
+    scene.lateral_paused = frogpilotCarState.getPauseLateral();
+    scene.longitudinal_paused = frogpilotCarState.getForceCoast() || frogpilotCarState.getPauseLongitudinal();
     scene.traffic_mode_active = frogpilotCarState.getTrafficMode();
   }
   if (sm.updated("frogpilotNavigation")) {
@@ -322,12 +322,13 @@ static void update_state(UIState *s) {
     scene.speed_limit = frogpilotPlan.getSlcSpeedLimit();
     scene.speed_limit_changed = frogpilotPlan.getSpeedLimitChanged();
     scene.speed_limit_map = frogpilotPlan.getSlcMapSpeedLimit();
+    scene.speed_limit_mapbox = frogpilotPlan.getSlcMapboxSpeedLimit();
     scene.speed_limit_offset = frogpilotPlan.getSlcSpeedLimitOffset();
     scene.speed_limit_overridden = frogpilotPlan.getSlcOverridden();
     scene.speed_limit_overridden_speed = frogpilotPlan.getSlcOverriddenSpeed();
     scene.speed_limit_source = QString::fromUtf8(frogpilotPlan.getSlcSpeedLimitSource().cStr());
     scene.unconfirmed_speed_limit = frogpilotPlan.getUnconfirmedSlcSpeedLimit();
-    scene.upcoming_speed_limit = frogpilotPlan.getUpcomingSLCSpeedLimit();
+    scene.upcoming_speed_limit = frogpilotPlan.getSlcNextSpeedLimit();
     scene.vtsc_controlling_curve = frogpilotPlan.getVtscControllingCurve();
     scene.vtsc_speed = frogpilotPlan.getVtscSpeed();
     if (frogpilotPlan.getTogglesUpdated() && sm.frame % UI_FREQ == 0) {

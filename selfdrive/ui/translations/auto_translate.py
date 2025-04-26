@@ -11,7 +11,7 @@ from typing import cast
 TRANSLATIONS_DIR = pathlib.Path(__file__).resolve().parent
 TRANSLATIONS_LANGUAGES = TRANSLATIONS_DIR / "languages.json"
 
-OPENAI_MODEL = "gpt-4o"
+OPENAI_MODEL = "gpt-4.1"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_PROMPT = "You are a professional translator from English to {language} (ISO 639 language code). " + \
                 "The following sentence or word is in the GUI of a software called openpilot, translate it accordingly."

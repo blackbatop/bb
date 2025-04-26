@@ -39,13 +39,13 @@ Sidebar::Sidebar(QWidget *parent) : QFrame(parent), onroad(false), flag_pressed(
   home_label = new QLabel(this);
   settings_label = new QLabel(this);
 
-  flagPngPath = "../frogpilot/assets/active_theme/icons/button_flag.png";
-  homeGifPath = "../frogpilot/assets/active_theme/icons/button_home.gif";
-  homePngPath = "../frogpilot/assets/active_theme/icons/button_home.png";
-  settingsGifPath = "../frogpilot/assets/active_theme/icons/button_settings.gif";
-  settingsPngPath = "../frogpilot/assets/active_theme/icons/button_settings.png";
+  flagPngPath = "../../frogpilot/assets/active_theme/icons/button_flag.png";
+  homeGifPath = "../../frogpilot/assets/active_theme/icons/button_home.gif";
+  homePngPath = "../../frogpilot/assets/active_theme/icons/button_home.png";
+  settingsGifPath = "../../frogpilot/assets/active_theme/icons/button_settings.gif";
+  settingsPngPath = "../../frogpilot/assets/active_theme/icons/button_settings.png";
 
-  randomEventGifPath = "../frogpilot/assets/random_events/icons/button_home.gif";
+  randomEventGifPath = "../../frogpilot/assets/random_events/icons/button_home.gif";
 
   QObject::connect(uiState(), &UIState::themeUpdated, this, &Sidebar::updateIcons);
 }

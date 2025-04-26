@@ -211,7 +211,7 @@ class LongitudinalPlanner:
     else:
       accel_coast = ACCEL_MAX
 
-    v_ego = sm['carState'].vEgo
+    v_ego = max(sm['carState'].vEgo, sm['carState'].vEgoCluster)
     v_cruise = sm['frogpilotPlan'].vCruise
     v_cruise_initialized = sm['controlsState'].vCruise != V_CRUISE_UNSET
 
