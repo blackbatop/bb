@@ -121,18 +121,17 @@ class CarController(CarControllerBase):
       self.regen_paddle_pressed
     )
 
-    # True 40Hz regen paddle sending with minimum interval checking
-    send_prndl_frame = (self.frame % 5) in (1, 3)
-    frames_since_last_steer = self.frame - getattr(self, "last_steer_frame", -100)
+    # Send regen paddle and PRNDL2 commands at ~40Hz using alternating 2/3 frame interval
+    frames_since_last = self.frame - getattr(self, "last_trigger_frame_40hz", -3)
+    target_wait = 3 if getattr(self, "wait_long_40hz", False) else 2
 
     press_regen_paddle = None
-    if regen_active and send_prndl_frame:
-      self.last_prndl2_frame = self.frame
+    if regen_active and frames_since_last >= target_wait:
+      self.last_trigger_frame_40hz = self.frame
+      self.wait_long_40hz = not getattr(self, "wait_long_40hz", False)
       press_regen_paddle = True
     elif not regen_active and getattr(self, "last_regen_active", False):
       press_regen_paddle = False
-    else:
-      press_regen_paddle = None
 
     if press_regen_paddle is not None:
       can_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, press_regen_paddle))
