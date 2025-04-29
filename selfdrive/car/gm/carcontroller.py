@@ -126,7 +126,7 @@ class CarController(CarControllerBase):
     frames_since_last_steer = self.frame - getattr(self, "last_steer_frame", -100)
 
     press_regen_paddle = None
-    if regen_active and send_prndl_frame and frames_since_last_steer >= 2:
+    if regen_active and send_prndl_frame:
       self.last_prndl2_frame = self.frame
       press_regen_paddle = True
     elif not regen_active and getattr(self, "last_regen_active", False):
