@@ -20,7 +20,6 @@ from cereal import log
 from openpilot.common.realtime import DT_DMON, DT_HW
 from openpilot.selfdrive.car.toyota.carcontroller import LOCK_CMD
 from openpilot.system.hardware import HARDWARE
-from openpilot.system.manager.process_config import managed_processes
 from panda import Panda
 
 from openpilot.frogpilot.common.frogpilot_variables import EARTH_RADIUS, KONIK_PATH, MAPD_PATH, MAPS_PATH, params, params_memory
@@ -39,6 +38,10 @@ locks = {
   "update_maps": threading.Lock(),
   "update_openpilot": threading.Lock(),
 }
+
+def get_managed_processes():
+    from openpilot.system.manager.process_config import managed_processes
+    return managed_processes
 
 def run_thread_with_lock(name, target, args=(), report=True):
   if not running_threads.get(name, threading.Thread()).is_alive():
@@ -171,7 +174,7 @@ def restart_processes(sm):
 
   if not any(ps.ignitionLine or ps.ignitionCan for ps in sm["pandaStates"] if ps.pandaType != log.PandaState.PandaType.unknown):
     for name in ["mapd", "ui"]:
-      managed_processes[name].stop(block=True, retry=True, sig=signal.SIGKILL)
+      get_managed_processes()[name].stop(block=True, retry=True, sig=signal.SIGKILL)
 
 def run_cmd(cmd, success_message, fail_message, report=True):
   try:
