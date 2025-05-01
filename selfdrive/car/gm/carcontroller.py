@@ -121,8 +121,8 @@ class CarController(CarControllerBase):
       self.regen_paddle_pressed
     )
 
-    # Send regen paddle and PRNDL2 commands at ~66Hz, avoid steer conflict frame slot
-    send_prndl_frame = (self.frame % 3) != 1  # 66Hz, avoids known steer frames
+    # Send regen paddle and PRNDL2 commands at consistent 50Hz (every other frame)
+    send_prndl_frame = (self.frame % 2) == 0
 
     press_regen_paddle = None
     if regen_active and send_prndl_frame:
