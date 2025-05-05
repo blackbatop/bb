@@ -117,8 +117,7 @@ class CarController(CarControllerBase):
 
     # Only apply PRNDL2 and regen paddle spoofing for cars in CC_REGEN_PADDLE_CAR and when gas interceptor is enabled
     if self.CP.carFingerprint in CC_REGEN_PADDLE_CAR and self.CP.enableGasInterceptor:
-      steer_phase = self.last_steer_frame % 3
-      send_prndl_frame = (self.frame % 3) != steer_phase
+      send_prndl_frame = self.frame != self.last_steer_frame
 
       press_regen_paddle = self.regen_paddle_pressed
       if send_prndl_frame and CC.longActive:
