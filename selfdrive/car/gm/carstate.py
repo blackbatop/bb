@@ -39,14 +39,9 @@ class CarState(CarStateBase):
 
     self.prev_cruise_buttons = self.cruise_buttons
     self.prev_distance_button = self.distance_button
-    if self.CP.carFingerprint not in SDGM_CAR:
-      self.cruise_buttons = pt_cp.vl["ASCMSteeringButton"]["ACCButtons"]
-      self.distance_button = pt_cp.vl["ASCMSteeringButton"]["DistanceButton"]
-      self.buttons_counter = pt_cp.vl["ASCMSteeringButton"]["RollingCounter"]
-    else:
-      self.cruise_buttons = cam_cp.vl["ASCMSteeringButton"]["ACCButtons"]
-      self.distance_button = cam_cp.vl["ASCMSteeringButton"]["DistanceButton"]
-      self.buttons_counter = cam_cp.vl["ASCMSteeringButton"]["RollingCounter"]
+    self.cruise_buttons = pt_cp.vl["ASCMSteeringButton"]["ACCButtons"]
+    self.distance_button = pt_cp.vl["ASCMSteeringButton"]["DistanceButton"]
+    self.buttons_counter = pt_cp.vl["ASCMSteeringButton"]["RollingCounter"]
     self.pscm_status = copy.copy(pt_cp.vl["PSCMStatus"])
     # This is to avoid a fault where you engage while still moving backwards after shifting to D.
     # An Equinox has been seen with an unsupported status (3), so only check if either wheel is in reverse (2)
@@ -80,8 +75,7 @@ class CarState(CarStateBase):
       ret.brake = pt_cp.vl["EBCMBrakePedalPosition"]["BrakePedalPosition"] / 0xd0
     else:
       ret.brake = pt_cp.vl["ECMAcceleratorPos"]["BrakePedalPos"]
-    if self.CP.networkLocation == NetworkLocation.fwdCamera:
-      ret.brakePressed = pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0
+    if self.CP.networkLocation == NetworkLocation.fwdCamera and not self.CP.flags & GMFlags.FORCE_BRAKE_C9.value:      ret.brakePressed = pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0
     else:
       # Some Volt 2016-17 have loose brake pedal push rod retainers which causes the ECM to believe
       # that the brake is being intermittently pressed without user interaction.
@@ -96,7 +90,7 @@ class CarState(CarStateBase):
 
     if self.CP.enableGasInterceptor:
       ret.gas = (pt_cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS"] + pt_cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS2"]) / 2.
-      threshold = 12 if self.CP.carFingerprint in CAMERA_ACC_CAR else 4 # Panda 515 threshold = 10.88. Set lower to avoid panda blocking messages and GasInterceptor faulting.
+      threshold = 10 if self.CP.carFingerprint in (CAMERA_ACC_CAR | SDGM_CAR) else 4 # Panda 515 threshold = 10.88. Set lower to avoid panda blocking messages and GasInterceptor faulting.
       ret.gasPressed = ret.gas > threshold
     else:
       ret.gas = pt_cp.vl["AcceleratorPedal2"]["AcceleratorPedal2"] / 254.
@@ -169,7 +163,6 @@ class CarState(CarStateBase):
         ret.leftBlindspot = cam_cp.vl["BCMBlindSpotMonitor"]["LeftBSM"] == 1
         ret.rightBlindspot = cam_cp.vl["BCMBlindSpotMonitor"]["RightBSM"] == 1
 
-    # FrogPilot CarState functions
     self.lkas_previously_enabled = self.lkas_enabled
     if self.CP.carFingerprint in SDGM_CAR:
       self.lkas_enabled = cam_cp.vl["ASCMSteeringButton"]["LKAButton"]
