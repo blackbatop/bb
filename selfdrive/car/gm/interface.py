@@ -152,7 +152,7 @@ class CarInterface(CarInterfaceBase):
       except AttributeError:
         disable_long = params.get_bool("DisableOpenpilotLongitudinal")
 
-      ret.openpilotLongitudinalControl = not disable_long
+      ret.openpilotLongitudinalControl = True
       ret.networkLocation = NetworkLocation.gateway
       ret.radarUnavailable = RADAR_HEADER_MSG not in fingerprint[CanBus.OBSTACLE] and not docs
       ret.pcmCruise = False  # stock non-adaptive cruise control is kept off
@@ -278,7 +278,7 @@ class CarInterface(CarInterfaceBase):
         disable_long = frogpilot_toggles.disable_openpilot_long
       except AttributeError:
         disable_long = params.get_bool("DisableOpenpilotLongitudinal")
-      ret.openpilotLongitudinalControl = not disable_long
+      ret.openpilotLongitudinalControl = True
       ret.stoppingControl = True
       ret.autoResumeSng = True
 
@@ -306,7 +306,7 @@ class CarInterface(CarInterfaceBase):
         disable_long = frogpilot_toggles.disable_openpilot_long
       except AttributeError:
         disable_long = params.get_bool("DisableOpenpilotLongitudinal")
-      ret.openpilotLongitudinalControl = not disable_long
+      ret.openpilotLongitudinalControl = True
       ret.pcmCruise = False
 
       if not ret.enableGasInterceptor and candidate in CC_ONLY_CAR: #redneck tuning
