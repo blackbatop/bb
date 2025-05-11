@@ -137,8 +137,17 @@ class CarInterface(CarInterfaceBase):
           ret.safetyConfigs[0].safetyParam |= Panda.FLAG_FORCE_BRAKE_C9
           ret.flags |= GMFlags.FORCE_BRAKE_C9.value
 
+      # CAM_LONG flag only if camera-capable and conditional_experimental_mode enabled
+      if candidate in CAMERA_ACC_CAR and getattr(frogpilot_toggles, "conditional_experimental_mode", False):
+        ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
+
     else:  # ASCM, OBD-II harness
-      ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
+      try:
+        disable_long = frogpilot_toggles.disable_openpilot_long
+      except AttributeError:
+        disable_long = params.get_bool("DisableOpenpilotLongitudinal")
+
+      ret.openpilotLongitudinalControl = not disable_long
       ret.networkLocation = NetworkLocation.gateway
       ret.radarUnavailable = RADAR_HEADER_MSG not in fingerprint[CanBus.OBSTACLE] and not docs
       ret.pcmCruise = False  # stock non-adaptive cruise control is kept off
@@ -290,7 +299,12 @@ class CarInterface(CarInterfaceBase):
       ret.radarUnavailable = True
       ret.experimentalLongitudinalAvailable = False
       ret.minEnableSpeed = 24 * CV.MPH_TO_MS
-      ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
+      try:
+        disable_long = frogpilot_toggles.disable_openpilot_long
+      except AttributeError:
+        disable_long = params.get_bool("DisableOpenpilotLongitudinal")
+
+      ret.openpilotLongitudinalControl = not disable_long
       ret.pcmCruise = False
 
       ret.stoppingDecelRate = 11.18  # == 25 mph/s (.04 rate)
