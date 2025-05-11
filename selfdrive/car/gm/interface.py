@@ -203,6 +203,13 @@ class CarInterface(CarInterfaceBase):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
       ret.lateralTuning.torque.kp = 0.6
 
+      try:
+        disable_long = frogpilot_toggles.disable_openpilot_long
+      except AttributeError:
+        disable_long = params.get_bool("DisableOpenpilotLongitudinal")
+
+      ret.openpilotLongitudinalControl = not disable_long
+
       if ret.enableGasInterceptor:
         # ACC Bolts use pedal for full longitudinal control, not just sng
         ret.flags |= GMFlags.PEDAL_LONG.value
