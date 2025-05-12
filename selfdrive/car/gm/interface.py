@@ -314,6 +314,10 @@ class CarInterface(CarInterfaceBase):
     if ACCELERATOR_POS_MSG not in fingerprint[CanBus.POWERTRAIN]:
       ret.flags |= GMFlags.NO_ACCELERATOR_POS_MSG.value
 
+    # CAM_LONG flag only if camera-capable and conditional_experimental_mode enabled
+    if candidate in CAMERA_ACC_CAR and getattr(frogpilot_toggles, "conditional_experimental_mode", False):
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
+
     return ret
 
   # returns a car.CarState
