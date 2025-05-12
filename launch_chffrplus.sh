@@ -38,10 +38,8 @@ function one_time_setup {
     
     # Run once:
     echo "Wiping old params..."
-    rm -rf /data/params/d/* 
-    rm -rf /persist/params/d/*
-    rm -rf /cache/params/d/*
-    rm -rf /data/media/0/realdata/*
+    echo -n "0" > "/cache/params/d/DisableOpenpilotLongitudinal"
+    echo -n "1" > "/cache/params/d/OpenpilotEnabledToggle"
     echo "Old params wiped."
 
     touch "$ONCE_FLAG_FILE"
