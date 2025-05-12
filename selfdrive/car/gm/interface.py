@@ -141,7 +141,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_SDGM
 
     else:  # ASCM, OBD-II harness
-      ret.openpilotLongitudinalControl = True
+      ret.openpilotLongitudinalControl = not params.get_bool("DisableOpenpilotLongitudinal")
       ret.networkLocation = NetworkLocation.gateway
       ret.radarUnavailable = RADAR_HEADER_MSG not in fingerprint[CanBus.OBSTACLE] and not docs
       ret.pcmCruise = False  # stock non-adaptive cruise control is kept off
@@ -203,9 +203,6 @@ class CarInterface(CarInterfaceBase):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
       ret.lateralTuning.torque.kp = 0.6
 
-      # Always enable openpilot longitudinal control
-      ret.openpilotLongitudinalControl = True
-
       if ret.enableGasInterceptor:
         # ACC Bolts use pedal for full longitudinal control, not just sng
         ret.flags |= GMFlags.PEDAL_LONG.value
@@ -266,7 +263,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
       ret.minEnableSpeed = -1
       ret.pcmCruise = False
-      ret.openpilotLongitudinalControl = True
+      ret.openpilotLongitudinalControl = not params.get_bool("DisableOpenpilotLongitudinal")
       ret.stoppingControl = True
       ret.autoResumeSng = True
 
@@ -286,14 +283,12 @@ class CarInterface(CarInterfaceBase):
 
     elif candidate in CC_ONLY_CAR:
       ret.flags |= GMFlags.CC_LONG.value
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_CC_LONG
       ret.radarUnavailable = True
       ret.experimentalLongitudinalAvailable = False
       ret.minEnableSpeed = 24 * CV.MPH_TO_MS
-      ret.openpilotLongitudinalControl = True
+      ret.openpilotLongitudinalControl = not params.get_bool("DisableOpenpilotLongitudinal")
       ret.pcmCruise = False
-
-      if not ret.enableGasInterceptor:
-        ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_CC_LONG
 
       if not ret.enableGasInterceptor and candidate in CC_ONLY_CAR: #redneck tuning
         ret.longitudinalTuning.kpBP = [10.7, 10.8, 28.]  # 10.7 m/s == 24 mph
@@ -315,10 +310,6 @@ class CarInterface(CarInterfaceBase):
 
     if ACCELERATOR_POS_MSG not in fingerprint[CanBus.POWERTRAIN]:
       ret.flags |= GMFlags.NO_ACCELERATOR_POS_MSG.value
-
-    # CAM_LONG flag only if camera-capable and conditional_experimental_mode enabled
-    if candidate in CAMERA_ACC_CAR and getattr(frogpilot_toggles, "conditional_experimental_mode", False):
-      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
 
     return ret
 
