@@ -143,12 +143,21 @@ def manager_thread() -> None:
     ignore.append("pandad")
   ignore += [x for x in os.getenv("BLOCK", "").split(",") if len(x) > 0]
 
-  sm = messaging.SubMaster(['deviceState', 'carParams', 'frogpilotPlan'], poll='deviceState')
+  sm = messaging.SubMaster(['deviceState', 'carParams', 'frogpilotPlan'])
   pm = messaging.PubMaster(['managerState'])
-
+  
   write_onroad_params(False, params)
-  ensure_running(managed_processes.values(), False, params=params, CP=sm['carParams'], not_run=ignore, classic_model=False, tinygrad_model=False, frogpilot_toggles=get_frogpilot_toggles())
+  # Wait until fingerprint is ready before launching any processes
+  while not sm.updated['carParams'] or getattr(sm['carParams'], "safetyModel", 24) == 24:
+    sm.update(100)
+    cloudlog.info("Waiting for valid fingerprint before launching any processes")
 
+  # Launch everything after a real fingerprint is confirmed
+  frogpilot_toggles = get_frogpilot_toggles()
+  classic_model = frogpilot_toggles.classic_model
+  tinygrad_model = frogpilot_toggles.tinygrad_model
+  ensure_running(managed_processes.values(), False, params=params, CP=sm['carParams'], not_run=ignore, classic_model=classic_model, tinygrad_model=tinygrad_model, frogpilot_toggles=frogpilot_toggles)
+  
   started_prev = False
 
   # FrogPilot variables
@@ -181,6 +190,9 @@ def manager_thread() -> None:
 
     started_prev = started
 
+    if started and not started_prev and getattr(sm['carParams'], "safetyModel", 24) == 24:
+      cloudlog.warning("Waiting for real fingerprint before starting onroad processes")
+      continue
     ensure_running(managed_processes.values(), started, params=params, CP=sm['carParams'], not_run=ignore, classic_model=classic_model, tinygrad_model=tinygrad_model, frogpilot_toggles=frogpilot_toggles)
 
     running = ' '.join("{}{}\u001b[0m".format("\u001b[32m" if p.proc.is_alive() else "\u001b[31m", p.name)
