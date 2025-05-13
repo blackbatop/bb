@@ -94,19 +94,11 @@ class CarInterface(CarInterfaceBase):
   def _get_params(ret, candidate, fingerprint, car_fw, experimental_long, docs, frogpilot_toggles):
     ret.carName = "gm"
     ret.safetyConfigs = [get_safety_config(car.CarParams.SafetyModel.gm)]
-    # Moved gas interceptor detection block here, immediately after setting safetyConfigs
-    ret.enableGasInterceptor = PEDAL_MSG in fingerprint[0]
-    if ret.enableGasInterceptor:
-      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_GAS_INTERCEPTOR
-      ret.networkLocation = NetworkLocation.fwdCamera
-      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
-      ret.minEnableSpeed = -1
-      ret.pcmCruise = False
-      ret.openpilotLongitudinalControl = not Params().get_bool("DisableOpenpilotLongitudinal", block=True)
-      ret.stoppingControl = True
-      ret.autoResumeSng = True
     ret.autoResumeSng = False
     ret.enableBsm = 0x142 in fingerprint[CanBus.POWERTRAIN]
+    if PEDAL_MSG in fingerprint[0]:
+      ret.enableGasInterceptor = True
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_GAS_INTERCEPTOR
 
     if candidate in EV_CAR:
       ret.transmissionType = TransmissionType.direct
@@ -268,6 +260,14 @@ class CarInterface(CarInterfaceBase):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
     if ret.enableGasInterceptor:
+      ret.networkLocation = NetworkLocation.fwdCamera
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
+      ret.minEnableSpeed = -1
+      ret.pcmCruise = False
+      ret.openpilotLongitudinalControl = not Params().get_bool("DisableOpenpilotLongitudinal", block=True)
+      ret.stoppingControl = True
+      ret.autoResumeSng = True
+
       if candidate in CC_ONLY_CAR: #pedal interceptor tuning
         ret.flags |= GMFlags.PEDAL_LONG.value
         ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_PEDAL_LONG
