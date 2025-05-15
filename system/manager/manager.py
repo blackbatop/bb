@@ -177,11 +177,10 @@ def manager_thread() -> None:
       params_memory.clear_all(ParamKeyType.CLEAR_ON_OFFROAD_TRANSITION)
 
     # update onroad params, which drives pandad's safety setter thread
-    if started and not started_prev:
-      cloudlog.warning("Delaying onroad process start for GM")
-      time.sleep(2)
-      write_onroad_params(started, params)
-    elif not started and started_prev:
+    if started != started_prev:
+      if started:
+        cloudlog.warning("Delaying onroad process start for GM")
+        time.sleep(2)
       write_onroad_params(started, params)
 
     started_prev = started
