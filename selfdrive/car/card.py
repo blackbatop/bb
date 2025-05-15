@@ -108,14 +108,16 @@ class Car:
 
     # Write CarParams for controls and radard, but only if fingerprinting is valid
     CP_reader = self.CP.as_reader()
-    if CP_reader.carName != "mock" and CP_reader.safetyModel != car.CarParams.SafetyModel.elm327:
+
+    if CP_reader.has_field("carName") and CP_reader.has_field("safetyModel") and \
+       CP_reader.carName != "mock" and CP_reader.safetyModel != car.CarParams.SafetyModel.elm327:
       cp_bytes = self.CP.to_bytes()
       self.params.put("CarParams", cp_bytes)
       self.params.put_nonblocking("CarParamsCache", cp_bytes)
       self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
       cloudlog.warning("✅ Writing valid CarParams to persistent storage")
     else:
-      cloudlog.warning(f"⛔ Skipping CarParams write — invalid fingerprint or safety model: {CP_reader.carName}, {CP_reader.safetyModel}")
+      cloudlog.warning(f"⛔ Skipping CarParams write — missing or invalid fingerprint. carName: {getattr(CP_reader, 'carName', 'N/A')}, safetyModel: {getattr(CP_reader, 'safetyModel', 'N/A')}")
 
     update_frogpilot_toggles()
 
