@@ -106,11 +106,15 @@ class Car:
 
     self.params.put("FrogPilotCarParamsPersistent", FPCP.to_bytes())
 
-    # Write CarParams for controls and radard
-    cp_bytes = self.CP.to_bytes()
-    self.params.put("CarParams", cp_bytes)
-    self.params.put_nonblocking("CarParamsCache", cp_bytes)
-    self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
+    # Write CarParams for controls and radard, but only if fingerprinting is valid
+    if self.CP.carName != "mock" and self.CP.safetyModel != car.CarParams.SafetyModel.elm327:
+      cp_bytes = self.CP.to_bytes()
+      self.params.put("CarParams", cp_bytes)
+      self.params.put_nonblocking("CarParamsCache", cp_bytes)
+      self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
+      cloudlog.warning("✅ Writing valid CarParams to persistent storage")
+    else:
+      cloudlog.warning(f"⛔ Skipping CarParams write — invalid fingerprint or safety model: {self.CP.carName}, {self.CP.safetyModel}")
 
     update_frogpilot_toggles()
 
