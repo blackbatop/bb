@@ -57,7 +57,11 @@ class Car:
         self.CI, self.CP, FPCP = get_car(self.can_sock, self.pm.sock['sendcan'], experimental_long_allowed, self.params, num_pandas, get_frogpilot_toggles())
         CP_reader = self.CP.as_reader()
         if getattr(CP_reader, "carName", "mock") != "mock" and getattr(CP_reader, "safetyModel", 3) != car.CarParams.SafetyModel.elm327:
-          cloudlog.warning("✅ Found valid CarParams after retry")
+          cp_bytes = self.CP.to_bytes()
+          self.params.put("CarParams", cp_bytes)
+          self.params.put_nonblocking("CarParamsCache", cp_bytes)
+          self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
+          cloudlog.warning("✅ CarParams written after valid fingerprint")
           break
         cloudlog.warning(f"🕒 Waiting for valid CarParams from get_car()... carName={getattr(CP_reader, 'carName', 'N/A')}, safetyModel={getattr(CP_reader, 'safetyModel', 'N/A')}")
         time.sleep(0.1)
@@ -117,17 +121,6 @@ class Car:
       self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.DISABLE_DISENGAGE_ON_GAS
 
     self.params.put("FrogPilotCarParamsPersistent", FPCP.to_bytes())
-
-    # Write CarParams for controls and radard, but only if fingerprinting is valid
-    CP_reader = self.CP.as_reader()
-    if getattr(CP_reader, "carName", "mock") != "mock" and getattr(CP_reader, "safetyModel", 3) != car.CarParams.SafetyModel.elm327:
-      cp_bytes = self.CP.to_bytes()
-      self.params.put("CarParams", cp_bytes)
-      self.params.put_nonblocking("CarParamsCache", cp_bytes)
-      self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
-      cloudlog.warning("✅ Writing valid CarParams to persistent storage")
-    else:
-      cloudlog.warning(f"⛔ Skipping CarParams write — invalid fingerprint. carName={getattr(CP_reader, 'carName', 'N/A')}, safetyModel={getattr(CP_reader, 'safetyModel', 'N/A')}")
 
     update_frogpilot_toggles()
 
