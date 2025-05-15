@@ -50,23 +50,7 @@ class Car:
 
       num_pandas = len(messaging.recv_one_retry(self.sm.sock['pandaStates']).pandaStates)
       experimental_long_allowed = self.params.get_bool("ExperimentalLongitudinalEnabled")
-
-      self.CI, self.CP, FPCP = None, None, None
-
-      for _ in range(100):  # Retry for ~10 seconds
-        self.CI, self.CP, FPCP = get_car(self.can_sock, self.pm.sock['sendcan'], experimental_long_allowed, self.params, num_pandas, get_frogpilot_toggles())
-        CP_reader = self.CP.as_reader()
-        if getattr(CP_reader, "carName", "mock") != "mock" and getattr(CP_reader, "safetyModel", 3) != car.CarParams.SafetyModel.elm327:
-          cp_bytes = self.CP.to_bytes()
-          self.params.put("CarParams", cp_bytes)
-          self.params.put_nonblocking("CarParamsCache", cp_bytes)
-          self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
-          cloudlog.warning("✅ CarParams written after valid fingerprint")
-          break
-        cloudlog.warning(f"🕒 Waiting for valid CarParams from get_car()... carName={getattr(CP_reader, 'carName', 'N/A')}, safetyModel={getattr(CP_reader, 'safetyModel', 'N/A')}")
-        time.sleep(0.1)
-      else:
-        cloudlog.warning("⛔ Timeout waiting for valid CarParams. Proceeding anyway.")
+      self.CI, self.CP, FPCP = get_car(self.can_sock, self.pm.sock['sendcan'], experimental_long_allowed, self.params, num_pandas, get_frogpilot_toggles())
     else:
       self.CI, self.CP = CI, CI.CP
 
@@ -121,6 +105,12 @@ class Car:
       self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.DISABLE_DISENGAGE_ON_GAS
 
     self.params.put("FrogPilotCarParamsPersistent", FPCP.to_bytes())
+
+    # Write CarParams for controls and radard
+    cp_bytes = self.CP.to_bytes()
+    self.params.put("CarParams", cp_bytes)
+    self.params.put_nonblocking("CarParamsCache", cp_bytes)
+    self.params.put_nonblocking("CarParamsPersistent", cp_bytes)
 
     update_frogpilot_toggles()
 

@@ -12,8 +12,7 @@ from openpilot.selfdrive.car.gm.values import CAR, CruiseButtons, CarControllerP
 from openpilot.selfdrive.car.interfaces import CarInterfaceBase, TorqueFromLateralAccelCallbackType, FRICTION_THRESHOLD, LatControlInputs, NanoFFModel
 from openpilot.selfdrive.controls.lib.drive_helpers import get_friction
 
-from openpilot.common.params import Params
-params = Params()
+from openpilot.frogpilot.common.frogpilot_variables import params
 
 ButtonType = car.CarState.ButtonEvent.Type
 FrogPilotButtonType = custom.FrogPilotCarState.ButtonEvent.Type
@@ -142,7 +141,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_SDGM
 
     else:  # ASCM, OBD-II harness
-      ret.openpilotLongitudinalControl = not Params().get_bool("DisableOpenpilotLongitudinal", block=True)
+      ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
       ret.networkLocation = NetworkLocation.gateway
       ret.radarUnavailable = RADAR_HEADER_MSG not in fingerprint[CanBus.OBSTACLE] and not docs
       ret.pcmCruise = False  # stock non-adaptive cruise control is kept off
@@ -264,7 +263,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
       ret.minEnableSpeed = -1
       ret.pcmCruise = False
-      ret.openpilotLongitudinalControl = not Params().get_bool("DisableOpenpilotLongitudinal", block=True)
+      ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
       ret.stoppingControl = True
       ret.autoResumeSng = True
 
@@ -288,7 +287,7 @@ class CarInterface(CarInterfaceBase):
       ret.radarUnavailable = True
       ret.experimentalLongitudinalAvailable = False
       ret.minEnableSpeed = 24 * CV.MPH_TO_MS
-      ret.openpilotLongitudinalControl = not Params().get_bool("DisableOpenpilotLongitudinal", block=True)
+      ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
       ret.pcmCruise = False
 
       if not ret.enableGasInterceptor and candidate in CC_ONLY_CAR: #redneck tuning
