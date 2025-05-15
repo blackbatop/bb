@@ -111,6 +111,16 @@ class Controls:
                                   ignore_alive=ignore, ignore_avg_freq=ignore+['radarState', 'testJoystick'], ignore_valid=['testJoystick', ],
                                   frequency=int(1/DT_CTRL))
 
+    # Wait for Panda to switch out of ELM safety model before proceeding (only for GM)
+    if self.CP.carName == "gm":
+      cloudlog.warning("Waiting for Panda to switch out of ELM safety model...")
+      while True:
+        self.sm.update(100)
+        if all(p.safetyModel == SafetyModel.gm for p in self.sm['pandaStates']):
+          cloudlog.warning("Detected GM safety model on Panda. Continuing initialization.")
+          break
+        time.sleep(0.1)
+
     self.joystick_mode = self.params.get_bool("JoystickDebugMode")
 
     # read params
