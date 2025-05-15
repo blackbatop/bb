@@ -4,7 +4,6 @@ import os
 import signal
 import sys
 import traceback
-import time
 
 from cereal import log
 import cereal.messaging as messaging
@@ -178,9 +177,6 @@ def manager_thread() -> None:
 
     # update onroad params, which drives pandad's safety setter thread
     if started != started_prev:
-      if started:
-        cloudlog.warning("Delaying onroad process start for GM")
-        time.sleep(2)
       write_onroad_params(started, params)
 
     started_prev = started
