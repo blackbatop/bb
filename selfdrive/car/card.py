@@ -106,8 +106,14 @@ class Car:
 
     self.params.put("FrogPilotCarParamsPersistent", FPCP.to_bytes())
 
-    # Write CarParams for controls and radard, but only if fingerprinting is valid
+    # Wait until a valid fingerprint before writing CarParams
     CP_reader = self.CP.as_reader()
+    while getattr(CP_reader, "carName", "mock") == "mock" or getattr(CP_reader, "safetyModel", 3) == car.CarParams.SafetyModel.elm327:
+      cloudlog.warning(f"🕒 Waiting for valid CarParams... carName={getattr(CP_reader, 'carName', 'N/A')}, safetyModel={getattr(CP_reader, 'safetyModel', 'N/A')}")
+      time.sleep(0.1)
+      CP_reader = self.CP.as_reader()
+
+    # Write CarParams for controls and radard, but only if fingerprinting is valid
     if getattr(CP_reader, "carName", "mock") != "mock" and getattr(CP_reader, "safetyModel", 3) != car.CarParams.SafetyModel.elm327:
       cp_bytes = self.CP.to_bytes()
       self.params.put("CarParams", cp_bytes)
