@@ -160,10 +160,11 @@ class CarController(CarControllerBase):
       self.off_spoof_frames = 3
     # while frames remain, send off spoof if not colliding with steer
     if getattr(self, "off_spoof_frames", 0) > 0:
-      if self.frame != self.last_steer_frame:
-        can_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
-        can_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
-      self.off_spoof_frames -= 1
+        if self.frame != self.last_steer_frame:
+            can_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+            can_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+            # decrement only when sent
+            self.off_spoof_frames -= 1
 
     # Update regen_active state
     self.last_regen_active = regen_active
