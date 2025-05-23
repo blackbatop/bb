@@ -295,7 +295,7 @@ class CarController(CarControllerBase):
 
           # Send dashboard UI commands (ACC status)
           send_fcw = hud_alert == VisualAlert.fcw
-          if self.frame % 10 == 0:
+          if self.frame % 10 == 5:
             can_sends.append(gmcan.create_acc_dashboard_command(self.packer_pt, CanBus.POWERTRAIN, CC.enabled,
                                                               hud_v_cruise * CV.MS_TO_KPH, hud_control, send_fcw))
       else:
@@ -303,7 +303,7 @@ class CarController(CarControllerBase):
         accel += self.accel_g
 
       # Radar needs to know current speed and yaw rate (50hz),
-      # and that ADAS is alive (10hz)
+      # and that ADAS is alive (5hz, previously 10hz)
       if not self.CP.radarUnavailable:
         tt = self.frame * DT_CTRL
         time_and_headlights_step = 20
@@ -311,14 +311,10 @@ class CarController(CarControllerBase):
           idx = (self.frame // time_and_headlights_step) % 4
           can_sends.append(gmcan.create_adas_time_status(CanBus.OBSTACLE, int((tt - self.start_time) * 60), idx))
           can_sends.append(gmcan.create_adas_headlights_status(self.packer_obj, CanBus.OBSTACLE))
-
-        speed_and_accelerometer_step = 4
-        if self.frame % speed_and_accelerometer_step == 0:
-          idx = (self.frame // speed_and_accelerometer_step) % 4
           can_sends.append(gmcan.create_adas_steering_status(CanBus.OBSTACLE, idx))
           can_sends.append(gmcan.create_adas_accelerometer_speed_status(CanBus.OBSTACLE, CS.out.vEgo, idx))
 
-      if self.CP.networkLocation == NetworkLocation.gateway and self.frame % self.params.ADAS_KEEPALIVE_STEP == 0:
+      if self.CP.networkLocation == NetworkLocation.gateway and self.frame % (self.params.ADAS_KEEPALIVE_STEP * 2) == 0:
         can_sends += gmcan.create_adas_keepalive(CanBus.POWERTRAIN)
 
       # TODO: integrate this with the code block below?
