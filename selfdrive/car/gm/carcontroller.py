@@ -130,9 +130,6 @@ class CarController(CarControllerBase):
     if regen_active and not hasattr(self, "last_spoof_frame"):
       self.last_spoof_frame = self.frame
 
-    # Steer-frame tracking is handled in the steer-sending block below:
-    #   we update prev_steer_frame and last_steer_frame after sending steering.
-
     # Send midpoint spoof (halfway between last two steer frames)
     send_spoof = False
     if regen_active and hasattr(self, "prev_steer_frame"):
@@ -154,17 +151,31 @@ class CarController(CarControllerBase):
       can_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
       self.last_spoof_frame = self.frame
 
-    # Send off commands for three consecutive frames on regen release
+    # Dynamic off-frame scheduling to avoid steer collision
+    # On regen release, schedule two safe off slots between steer frames
     if not regen_active and getattr(self, "last_regen_active", False):
-      # schedule three off-frames
-      self.off_spoof_frames = 3
-    # while frames remain, send off spoof if not colliding with steer
-    if getattr(self, "off_spoof_frames", 0) > 0:
-        if self.frame != self.last_steer_frame:
-            can_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
-            can_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
-            # decrement only when sent
-            self.off_spoof_frames -= 1
+      # Calculate steer interval
+      if hasattr(self, "prev_steer_frame"):
+        steer_interval = self.last_steer_frame - self.prev_steer_frame
+        half_interval = max(1, steer_interval // 2)
+        # Schedule two off-send frames: midpoint and just before next steer
+        midpoint = self.prev_steer_frame + half_interval
+        second = self.last_steer_frame + half_interval
+        self.off_schedule = [midpoint, second]
+        self.off_sent = [False, False]
+
+    # Execute scheduled off sends
+    if hasattr(self, "off_schedule"):
+      for i, target in enumerate(self.off_schedule):
+        if not self.off_sent[i] and self.frame == target and self.frame != self.last_steer_frame:
+          # send off commands
+          can_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          can_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          self.off_sent[i] = True
+      # Once both off sends done, clean up schedule
+      if all(self.off_sent):
+        del self.off_schedule
+        del self.off_sent
 
     # Update regen_active state
     self.last_regen_active = regen_active
