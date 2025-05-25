@@ -66,16 +66,18 @@ class CarController(CarControllerBase):
     if not long_active:
       return 0., False
 
-    # Regen paddle hysteresis (200ms = 20 frames)
+    # Regen paddle hysteresis (frame-based): hold 30 frames, with decrement dead-zone
     if not hasattr(self, 'regen_paddle_timer'):
-      self.regen_paddle_timer = 0
+      self.regen_paddle_timer = 0  # frames
 
-    if self.aego < -0.7 and accel <= 0.0:
+    # Regen paddle hysteresis (frame‑based): count frames when decelerating hard, decrement only when truly released
+    if self.aego < -0.7:
       self.regen_paddle_timer += 1
-    else:
+    elif self.aego > -0.3:
       self.regen_paddle_timer = max(self.regen_paddle_timer - 1, 0)
+    # else: hold timer between -0.7 and -0.3
 
-    self.regen_paddle_pressed = self.regen_paddle_timer >= 20
+    self.regen_paddle_pressed = self.regen_paddle_timer >= 30  # 30 frames
 
     press_regen_paddle = self.regen_paddle_pressed
 
@@ -96,7 +98,6 @@ class CarController(CarControllerBase):
       pedal_gas = clip((pedaloffset + (accel / gain) * 0.6), 0.0, 1.0)
     else:
       pedal_gas = clip((pedaloffset + accel * 0.6), 0.0, 1.0)
-
 
     return pedal_gas, press_regen_paddle
 
@@ -139,10 +140,14 @@ class CarController(CarControllerBase):
       if self.frame == midpoint_frame:
         send_spoof = True
 
-    # Overflow spoof: ensure no gap >25 ms without spoof
+    # Overflow spoof: ensure no gap >20 ms without spoof (2 frames)
     if regen_active and hasattr(self, "last_spoof_frame"):
-      time_since_spoof = (self.frame - self.last_spoof_frame) * DT_CTRL
-      if time_since_spoof >= 0.025 and self.frame != self.last_steer_frame:
+      if (self.frame - self.last_spoof_frame) >= 2 and self.frame != self.last_steer_frame:
+        send_spoof = True
+
+    # Overflow spoof: ensure no gap >30 ms without spoof (3 frames)
+    if regen_active and hasattr(self, "last_spoof_frame"):
+      if (self.frame - self.last_spoof_frame) >= 3 and self.frame != self.last_steer_frame:
         send_spoof = True
 
     # Execute spoof sends
@@ -153,7 +158,8 @@ class CarController(CarControllerBase):
 
     # Dynamic off-frame scheduling to avoid steer collision
     # On regen release, schedule two safe off slots between steer frames
-    if not regen_active and getattr(self, "last_regen_active", False):
+    # Schedule off-frames only once per regen_active→False edge
+    if not regen_active and getattr(self, "last_regen_active", False) and not hasattr(self, "off_schedule"):
       # Calculate steer interval
       if hasattr(self, "prev_steer_frame"):
         steer_interval = self.last_steer_frame - self.prev_steer_frame
