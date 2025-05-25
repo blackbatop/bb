@@ -105,6 +105,8 @@ class CarController(CarControllerBase):
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     self.CS = CS
     self.aego = CS.out.aEgo
+    # Track last regen paddle pressed state for off-schedule trigger
+    last_paddle_pressed = getattr(self, "last_regen_paddle_pressed", False)
     actuators = CC.actuators
     accel = brake_accel = actuators.accel
     hud_control = CC.hudControl
@@ -156,10 +158,8 @@ class CarController(CarControllerBase):
       can_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
       self.last_spoof_frame = self.frame
 
-    # Dynamic off-frame scheduling to avoid steer collision
-    # On regen release, schedule two safe off slots between steer frames
-    # Schedule off-frames only once per regen_active→False edge
-    if not regen_active and getattr(self, "last_regen_active", False) and not hasattr(self, "off_schedule"):
+    # Schedule off-frames once when paddle-pressed flag clears
+    if last_paddle_pressed and not self.regen_paddle_pressed and not hasattr(self, "off_schedule"):
       # Calculate steer interval
       if hasattr(self, "prev_steer_frame"):
         steer_interval = self.last_steer_frame - self.prev_steer_frame
@@ -183,8 +183,9 @@ class CarController(CarControllerBase):
         del self.off_schedule
         del self.off_sent
 
-    # Update regen_active state
+    # Update regen_active state and last_regen_paddle_pressed for next loop
     self.last_regen_active = regen_active
+    self.last_regen_paddle_pressed = self.regen_paddle_pressed
 
 
     # Steering (Active: 50Hz, inactive: 10Hz)
