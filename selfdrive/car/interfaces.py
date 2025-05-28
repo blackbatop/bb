@@ -242,10 +242,6 @@ class CarInterfaceBase(ABC):
     self.use_nnff_lite = not self.use_nnff and frogpilot_toggles.nnff_lite
 
     self.always_on_lateral_allowed = False
-    self.belowSteerSpeed_shown = False
-    self.disable_belowSteerSpeed = False
-    self.disable_resumeRequired = False
-    self.resumeRequired_shown = False
 
   def get_ff_nn(self, x):
     return self.lat_torque_nn_model.evaluate(x)

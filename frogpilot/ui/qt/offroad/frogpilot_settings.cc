@@ -221,7 +221,7 @@ void FrogPilotSettingsWindow::updateVariables() {
     hasOpenpilotLongitudinal = hasLongitudinalControl(CP);
     hasPCMCruise = CP.getPcmCruise();
     hasRadar = !CP.getRadarUnavailable();
-    hasSNG = CP.getMinEnableSpeed() <= 0;
+    hasSNG = CP.getAutoResumeSng();
     isBolt = carFingerprint == "CHEVROLET_BOLT_CC" || carFingerprint == "CHEVROLET_BOLT_EUV";
     isGM = carMake == "gm";
     isHKG = carMake == "hyundai";
