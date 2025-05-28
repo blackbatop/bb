@@ -1,16 +1,13 @@
 #!/usr/bin/bash
 
-
 if [ -z "$BASEDIR" ]; then
   BASEDIR="/data/openpilot"
 fi
 
-# One-time setup flag (reset on each overlay install)
-ONCE_FLAG_FILE="/data/openpilot/.one_time_setup_done"
-
 source "$BASEDIR/launch_env.sh"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+ONCE_FLAG_FILE="/data/openpilot/.setup_done"
 
 function agnos_init {
   # TODO: move this to agnos
@@ -43,6 +40,8 @@ function one_time_setup {
     echo "Wiping old params..."
     rm /data/params/d/DongleId
     rm /data/params/d/StockDongleId
+    rm /cache/params/d/DongleId
+    rm /cache/params/d/StockDongleId
     echo "Old params wiped."
 
     touch "$ONCE_FLAG_FILE"
@@ -98,6 +97,9 @@ function launch {
     agnos_init
   fi
 
+  # Perform one-time setup tasks
+  one_time_setup
+
   # write tmux scrollback to a file
   tmux capture-pane -pq -S-1000 > /tmp/launch_log
 
@@ -111,7 +113,5 @@ function launch {
   # if broken, keep on screen error
   while true; do sleep 1; done
 }
-
-one_time_setup
 
 launch
