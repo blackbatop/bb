@@ -243,10 +243,9 @@ class CarInterfaceBase(ABC):
 
     self.always_on_lateral_allowed = False
     self.belowSteerSpeed_shown = False
+    self.disable_belowSteerSpeed = False
+    self.disable_resumeRequired = False
     self.resumeRequired_shown = False
-    self.steerTempUnavailableSilent_shown = False
-
-    self.event_names_to_clear = []
 
   def get_ff_nn(self, x):
     return self.lat_torque_nn_model.evaluate(x)
@@ -456,30 +455,6 @@ class CarInterfaceBase(ABC):
     fp_ret.distancePressed = bool(self.CS.distance_button or params_memory.get_bool("OnroadDistanceButtonPressed"))
     fp_ret.ecoGear |= ret.gearShifter == GearShifter.eco
     fp_ret.sportGear |= ret.gearShifter == GearShifter.sport
-
-    # Clear already played events
-    event_names = [event.name for event in ret.events]
-
-    if EventName.belowSteerSpeed in event_names:
-      self.belowSteerSpeed_shown = True
-
-    if EventName.resumeRequired in event_names:
-      self.resumeRequired_shown = True
-
-    if EventName.steerTempUnavailableSilent in event_names:
-      self.steerTempUnavailableSilent_shown = True
-
-    if self.belowSteerSpeed_shown and ret.vEgo >= self.CP.minSteerSpeed:
-      self.event_names_to_clear.append(EventName.belowSteerSpeed)
-
-    if self.resumeRequired_shown and not ret.cruiseState.standstill and not self.CP.autoResumeSng:
-      self.event_names_to_clear.append(EventName.resumeRequired)
-
-    if self.steerTempUnavailableSilent_shown and not ret.steerFaultTemporary:
-      self.event_names_to_clear.append(EventName.steerTempUnavailableSilent)
-
-    if self.event_names_to_clear:
-      ret.events = [event for event in ret.events if event.name not in self.event_names_to_clear]
 
     # copy back for next iteration
     if self.CS is not None:
