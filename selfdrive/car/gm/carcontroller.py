@@ -198,6 +198,29 @@ class CarController(CarControllerBase):
           self.spoof_accum -= 0.8
     # === End Spoof scheduling ===
 
+    # === Off-pulse scheduling on regen release ===
+    if not raw_regen_active and self.last_regen_active:
+      # schedule two off-slots at 1/3 and 2/3 of the last steer interval
+      if self.prev_steer_ts_ns and self.last_steer_ts_ns:
+        intv = self.last_steer_ts_ns - self.prev_steer_ts_ns
+        self.off_schedule_ns = [
+          self.prev_steer_ts_ns + intv // 3,
+          self.prev_steer_ts_ns + (2 * intv) // 3
+        ]
+        self.off_sent = [False, False]
+
+    if hasattr(self, "off_schedule_ns"):
+      for i, t_ns in enumerate(self.off_schedule_ns):
+        if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+          paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          self.off_sent[i] = True
+      # clean up once both off pulses are sent
+      if hasattr(self, "off_sent") and all(self.off_sent):
+        del self.off_schedule_ns
+        del self.off_sent
+    # === End off-pulse scheduling ===
+
     # Steering (Active: 50Hz, inactive: 10Hz)
     steer_step = self.params.STEER_STEP if CC.latActive else self.params.INACTIVE_STEER_STEP
 
