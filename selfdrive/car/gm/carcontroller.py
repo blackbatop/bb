@@ -61,6 +61,13 @@ class CarController(CarControllerBase):
     self.regen_paddle_pressed = False
     self.aego = 0.0
 
+    # Smoothing state for paddle blending
+    self.prev_regen_paddle_pressed = False
+    self.regen_paddle_pressed_changed = False
+    self.regen_paddle_pressed_changed_counter = 0
+    self.prev_pedal_gas = 0.0
+    self.prev_pedal_gas_on_gap_filling = 0.0
+
 
     # Midpoint + overflow spoof accumulator and flags
     self.spoof_accum = 0.0
@@ -83,8 +90,17 @@ class CarController(CarControllerBase):
       self.regen_paddle_timer = max(self.regen_paddle_timer - 1, 0)
     # else: hold timer between -0.7 and -0.3
 
+    # Base paddle press hysteresis
     self.regen_paddle_pressed = self.regen_paddle_timer >= 30  # 30 frames
     press_regen_paddle = self.regen_paddle_pressed
+
+    # Detect press/release edges for smoothing
+    self.regen_paddle_pressed_changed = (self.regen_paddle_pressed != self.prev_regen_paddle_pressed)
+    self.prev_regen_paddle_pressed = self.regen_paddle_pressed
+    if self.regen_paddle_pressed_changed:
+      # start 200-frame blend
+      self.prev_pedal_gas_on_gap_filling = self.prev_pedal_gas
+      self.regen_paddle_pressed_changed_counter = 200
 
     # Regen gain ratios from bin-averaged 60–0 deceleration sweep; Calculates stronger decel from paddle
     speed_mps = [0.559, 1.678, 2.797, 3.916, 5.035, 6.154, 7.273, 8.392, 9.511, 10.63,
@@ -98,7 +114,21 @@ class CarController(CarControllerBase):
     gain = interp(car_velocity, speed_mps, regen_gain_ratio)
     pedaloffset = interp(car_velocity, [0., 3, 6, 30], [0.10, 0.175, 0.240, 0.240])
 
-    pedal_gas = clip((pedaloffset + (accel / gain) * 0.6), 0.0, 1.0) if press_regen_paddle else clip((pedaloffset + accel * 0.6), 0.0, 1.0)
+    # Compute raw pedal gas
+    raw_pedal_gas = clip((pedaloffset + (accel / gain) * 0.6), 0.0, 1.0) if press_regen_paddle else clip((pedaloffset + accel * 0.6), 0.0, 1.0)
+
+    # Smooth pedal gas over blend window
+    if self.regen_paddle_pressed_changed_counter > 0:
+      ratio = interp(self.regen_paddle_pressed_changed_counter, [200, 0], [0.0, 1.0])
+      pedal_gas = raw_pedal_gas * ratio + self.prev_pedal_gas_on_gap_filling * (1.0 - ratio)
+      self.prev_pedal_gas_on_gap_filling = pedal_gas
+      self.regen_paddle_pressed_changed_counter -= 1
+    else:
+      pedal_gas = raw_pedal_gas
+      self.prev_pedal_gas = pedal_gas
+    # Safety cap on initial takeoff: limit pedal_gas based on vehicle speed
+    pedal_gas_max = interp(car_velocity, [0.0, 5, 30], [0.22, 0.3275, 0.3725])
+    pedal_gas = clip(pedal_gas, 0.0, pedal_gas_max)
     return pedal_gas, press_regen_paddle
 
 
@@ -117,24 +147,25 @@ class CarController(CarControllerBase):
     can_sends = []
     paddle_sends = []
 
-    regen_active = (
+    raw_regen_active = (
       self.CP.carFingerprint in CC_REGEN_PADDLE_CAR and
       self.CP.openpilotLongitudinalControl and
       CC.longActive and
       self.CP.enableGasInterceptor and
-      self.regen_paddle_pressed
+      self.regen_paddle_timer >= 30  # raw hysteresis-only
     )
+    regen_active = raw_regen_active
 
     # === Spoof scheduling: midpoint + overflow (~40Hz) ===
     # Rising-edge reset on regen start
-    if regen_active and not self.last_regen_active:
+    if raw_regen_active and not self.last_regen_active:
       self.prev_steer_ts_ns = self.last_steer_ts_ns
       self.last_spoof_ts_ns = 0
       self.spoof_accum = 0.0
       self.spoof_mid_sent = False
       self.spoof_over_sent = False
 
-    if regen_active:
+    if raw_regen_active:
       # Interval between last two bus-0 steer sends
       interval_ns = self.last_steer_ts_ns - self.prev_steer_ts_ns
 
