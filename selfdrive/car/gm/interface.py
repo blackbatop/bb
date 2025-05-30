@@ -141,7 +141,6 @@ class CarInterface(CarInterfaceBase):
 
     else:  # ASCM, OBD-II harness
       ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
-      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_ASCM_LONG
       ret.networkLocation = NetworkLocation.gateway
       ret.radarUnavailable = RADAR_HEADER_MSG not in fingerprint[CanBus.OBSTACLE] and not docs
       ret.pcmCruise = False  # stock non-adaptive cruise control is kept off
