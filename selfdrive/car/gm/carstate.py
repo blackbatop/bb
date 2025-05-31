@@ -96,7 +96,7 @@ class CarState(CarStateBase):
         ret.gearShifter == GearShifter.low
         or pt_cp.vl["EVDriveMode"]["SinglePedalModeActive"] == 1
         or (ret.regenBraking and GearShifter.manumatic)
-        or self.CP.carFingerprint in ["CHEVROLET_BOLT_EUV", "CHEVROLET_BOLT_EV"]
+        or self.CP.carFingerprint in ["CHEVROLET_BOLT_EUV", "CHEVROLET_BOLT_CC"] 
       )
 
     if self.CP.enableGasInterceptor:
