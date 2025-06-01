@@ -44,7 +44,7 @@ VISION_METADATA_PATH = Path(__file__).parent / 'models/driving_vision_metadata.p
 POLICY_METADATA_PATH = Path(__file__).parent / 'models/driving_policy_metadata.pkl'
 
 LAT_SMOOTH_SECONDS = 0.2
-LONG_SMOOTH_SECONDS = 0.2
+LONG_SMOOTH_SECONDS = 0.1
 MIN_LAT_CONTROL_SPEED = 0.3
 
 
