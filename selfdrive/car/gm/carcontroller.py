@@ -62,9 +62,12 @@ class CarController(CarControllerBase):
     self.regen_paddle_pressed = False
     self.aego = 0.0
     self.regen_paddle_timer = 0
-    self.can_regen_active = False
-    self.sending_regen_on = False
 
+    # Smoothing state for paddle blending
+    self.prev_regen_paddle_pressed = False
+    self.regen_paddle_pressed_changed = False
+    self.regen_paddle_pressed_changed_counter = 0
+    self.prev_pedal_gas = 0.0
 
 
     # Midpoint + overflow spoof accumulator and flags
@@ -73,57 +76,59 @@ class CarController(CarControllerBase):
     self.spoof_over_sent = False
     self.last_interval_ns = 0
 
-  def calc_pedal_command(self, accel: float, long_active: bool, car_velocity, send_now: bool) -> Tuple[float, bool]:
+  def calc_pedal_command(self, accel: float, long_active: bool, car_velocity) -> Tuple[float, bool]:
     if not long_active:
-      return 0.0, False
+      return 0., False
 
-    # 1. Hysteresis on aEgo (30 frames)
+    # Regen paddle hysteresis (frame-based): hold 30 frames, with decrement dead-zone
+    if not hasattr(self, 'regen_paddle_timer'):
+      self.regen_paddle_timer = 0  # frames
+
+    # Regen paddle hysteresis (frame‑based): count frames when decelerating hard, decrement only when truly released
     if self.aego < -0.7:
       self.regen_paddle_timer += 1
     elif self.aego > -0.3:
       self.regen_paddle_timer = max(self.regen_paddle_timer - 1, 0)
+    # else: hold timer between -0.7 and -0.3
 
-    self.regen_paddle_pressed = (self.regen_paddle_timer >= 30)
-    wants_regen = self.regen_paddle_pressed
+    # Base paddle press hysteresis
+    self.regen_paddle_pressed = self.regen_paddle_timer >= 30  # 30 frames
+    press_regen_paddle = self.regen_paddle_pressed
 
-    # 2. Compute both regen‐gain and normal throttle curves
+    # Detect press/release edges for smoothing
+    self.regen_paddle_pressed_changed = (self.regen_paddle_pressed != self.prev_regen_paddle_pressed)
+    self.prev_regen_paddle_pressed = self.regen_paddle_pressed
+
+    # Regen gain ratios from bin-averaged 60–0 deceleration sweep; Calculates stronger decel from paddle
     speed_mps = [0.559, 1.678, 2.797, 3.916, 5.035, 6.154, 7.273, 8.392, 9.511, 10.63,
                  11.749, 12.868, 13.987, 15.106, 16.225, 17.344, 18.463, 19.582, 20.701, 21.820,
                  22.939, 24.058, 25.177, 26.296]
     regen_gain_ratio = [1.01, 1.01, 1.02, 1.05, 1.08, 1.345979, 1.369975,
-                        1.376302, 1.388052, 1.370367, 1.388498, 1.386030, 1.405950, 1.387555,
-                        1.390392, 1.394946, 1.414915, 1.428535, 1.439611, 1.440106, 1.441438,
-                        1.439395, 1.446909, 1.445738]
+                         1.376302, 1.388052, 1.370367, 1.388498, 1.386030, 1.405950, 1.387555,
+                         1.390392, 1.394946, 1.414915, 1.428535, 1.439611, 1.440106, 1.441438,
+                         1.439395, 1.446909, 1.445738]
 
     gain = interp(car_velocity, speed_mps, regen_gain_ratio)
-    pedaloff = interp(car_velocity, [0., 3, 6, 30], [0.10, 0.175, 0.240, 0.240])
+    pedaloffset = interp(car_velocity, [0., 3, 6, 30], [0.10, 0.175, 0.240, 0.240])
 
-    raw_regen_gas = clip(pedaloff + (accel / gain) * 0.6, 0.0, 1.0)
-    raw_normal_gas = clip(pedaloff + accel * 0.6, 0.0, 1.0)
+    # Compute raw pedal gas
+    raw_pedal_gas = clip((pedaloffset + (accel / gain) * 0.6), 0.0, 1.0) if press_regen_paddle else clip((pedaloffset + accel * 0.6), 0.0, 1.0)
 
-    # 3. Switch curves exactly when send_now is True
-    if send_now:
-      raw_pedal_gas = raw_regen_gas
-    else:
-      raw_pedal_gas = raw_normal_gas
-
-    # 4. Cap by speed-based maximum
+    # --- Immediate application of raw pedal gas, no blending ---
+    pedal_gas = raw_pedal_gas
+    # Safety cap on initial takeoff: limit pedal_gas based on vehicle speed
     pedal_gas_max = interp(car_velocity, [0.0, 5, 30], [0.22, 0.3275, 0.3725])
-    pedal_gas = clip(raw_pedal_gas, 0.0, pedal_gas_max)
-
-    return pedal_gas, wants_regen
+    pedal_gas = clip(pedal_gas, 0.0, pedal_gas_max)
+    self.prev_pedal_gas = pedal_gas
+    return pedal_gas, press_regen_paddle
 
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     self.CS = CS
-    # self.sent_spoof_on = False
     self.aego = CS.out.aEgo
-    # Reset “sending_regen_on” for this iteration
-    self.sending_regen_on = False
-    # Track whether any regen-ON messages are ready to send this frame
-    paddle_on_scheduled = False
     actuators = CC.actuators
     accel = brake_accel = actuators.accel
+    press_regen_paddle = False
     hud_control = CC.hudControl
     hud_alert = hud_control.visualAlert
     hud_v_cruise = hud_control.setSpeed
@@ -169,11 +174,8 @@ class CarController(CarControllerBase):
       if not self.spoof_mid_sent and interval_ns > 0:
         midpoint_ns = self.prev_steer_ts_ns + interval_ns // 2
         if now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          # Indicate we intend to send a regen-ON if guard passes
-          paddle_on_scheduled = True
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          self.can_regen_active = True
           self.last_spoof_ts_ns = now_nanos
           self.spoof_mid_sent = True
 
@@ -181,11 +183,8 @@ class CarController(CarControllerBase):
       if self.spoof_accum >= 0.7 and not self.spoof_over_sent and interval_ns > 0:
         slot2_ns = self.prev_steer_ts_ns + (interval_ns * 2) // 3
         if now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          # Indicate we intend to send a regen-ON if guard passes
-          paddle_on_scheduled = True
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          self.can_regen_active = True
           self.last_spoof_ts_ns = now_nanos
           self.spoof_over_sent = True
           self.spoof_accum -= 0.7
@@ -210,7 +209,6 @@ class CarController(CarControllerBase):
           self.off_sent[i] = True
       # clean up once both off pulses are sent
       if hasattr(self, "off_sent") and all(self.off_sent):
-        self.can_regen_active = False
         del self.off_schedule_ns
         del self.off_sent
     # === End off-pulse scheduling ===
@@ -251,17 +249,15 @@ class CarController(CarControllerBase):
       idx = self.lka_steering_cmd_counter % 4
       can_sends.append(gmcan.create_steering_control(self.packer_pt, CanBus.POWERTRAIN, apply_steer, idx, CC.latActive))
 
-    # Update regen_active state for next loop
+    # Update regen_active state and last_regen_paddle_pressed for next loop
     self.last_regen_active = regen_active
+    self.last_regen_paddle_pressed = self.regen_paddle_pressed
 
     # Merge paddle spoof CAN frames, time-guarded only
     if paddle_sends:
       # wait at least 5 ms after the last bus0 steer send
       if now_nanos - self.last_steer_ts_ns >= 5_000_000:
         can_sends.extend(paddle_sends)
-        # Only flip the throttle curve if we actually sent ON messages
-        if paddle_on_scheduled:
-          self.sending_regen_on = True
 
     if self.CP.openpilotLongitudinalControl:
       # Gas/regen, brakes, and UI commands - all at 25Hz
@@ -306,20 +302,13 @@ class CarController(CarControllerBase):
             self.apply_gas = self.params.INACTIVE_REGEN
           if self.CP.carFingerprint in CC_ONLY_CAR:
             # gas interceptor only used for full long control on cars without ACC
-            raw_gas, wants_regen = self.calc_pedal_command(
-              actuators.accel, CC.longActive, CS.out.vEgo, send_now=self.sending_regen_on
-            )
-            # Immediately set apply_gas to the raw value (instant flip)
-            self.apply_gas = raw_gas
-            if wants_regen and self.can_regen_active:
-              interceptor_gas_cmd = raw_gas
-            else:
-              interceptor_gas_cmd = 0
+            interceptor_gas_cmd, press_regen_paddle = self.calc_pedal_command(actuators.accel, CC.longActive, CS.out.vEgo)
 
         if self.CP.enableGasInterceptor and self.apply_gas > self.params.INACTIVE_REGEN and CS.out.cruiseState.standstill:
           # "Tap" the accelerator pedal to re-engage ACC
           interceptor_gas_cmd = self.params.SNG_INTERCEPTOR_GAS
           self.apply_brake = 0
+          press_regen_paddle = False
           self.apply_gas = self.params.INACTIVE_REGEN
 
         idx = (self.frame // 4) % 4
