@@ -83,7 +83,7 @@ class CarController(CarControllerBase):
     elif self.aego > -0.3:
       self.regen_paddle_timer = max(self.regen_paddle_timer - 1, 0)
 
-    self.regen_paddle_pressed = (self.regen_paddle_timer >= 20)
+    self.regen_paddle_pressed = (self.regen_paddle_timer >= 30)
     wants_regen = self.regen_paddle_pressed
 
     # 2. Compute both regen‐gain and normal throttle curves
@@ -139,7 +139,7 @@ class CarController(CarControllerBase):
       self.CP.openpilotLongitudinalControl and
       CC.longActive and
       self.CP.enableGasInterceptor and
-      self.regen_paddle_timer >= 20  # raw hysteresis-only
+      self.regen_paddle_timer >= 30  # raw hysteresis-only
     )
     regen_active = raw_regen_active
 
