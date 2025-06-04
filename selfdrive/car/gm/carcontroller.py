@@ -92,7 +92,7 @@ class CarController(CarControllerBase):
     # else: hold timer between -0.7 and -0.3
 
     # Base paddle press hysteresis
-    self.regen_paddle_pressed = self.regen_paddle_timer >= 30  # 30 frames
+    self.regen_paddle_pressed = self.regen_paddle_timer >= 20  # 30 frames
     press_regen_paddle = self.regen_paddle_pressed
 
     # Detect press/release edges for smoothing
@@ -144,7 +144,7 @@ class CarController(CarControllerBase):
       self.CP.openpilotLongitudinalControl and
       CC.longActive and
       self.CP.enableGasInterceptor and
-      self.regen_paddle_timer >= 30  # raw hysteresis-only
+      self.regen_paddle_timer >= 20  # raw hysteresis-only
     )
     regen_active = raw_regen_active
 
