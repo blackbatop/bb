@@ -202,7 +202,7 @@ class Controls:
 
     self.has_menu = self.CP.carName == "gm" and not (self.CP.flags & GMFlags.NO_CAMERA.value or self.CP.carFingerprint in CC_ONLY_CAR)
 
-    self.event_names_to_clear = []
+    self.event_names_to_clear = set()
 
   def set_initial_state(self):
     if REPLAY:
@@ -447,13 +447,13 @@ class Controls:
       self.steerTempUnavailableSilent_shown = True
 
     if self.belowSteerSpeed_shown and CS.vEgo >= self.CP.minSteerSpeed:
-      self.event_names_to_clear.append(EventName.belowSteerSpeed)
+      self.event_names_to_clear.add(EventName.belowSteerSpeed)
 
     if self.resumeRequired_shown and not CS.cruiseState.standstill and not self.CP.autoResumeSng:
-      self.event_names_to_clear.append(EventName.resumeRequired)
+      self.event_names_to_clear.add(EventName.resumeRequired)
 
     if self.steerTempUnavailableSilent_shown and not CS.steerFaultTemporary:
-      self.event_names_to_clear.append(EventName.steerTempUnavailableSilent)
+      self.event_names_to_clear.add(EventName.steerTempUnavailableSilent)
 
     if self.event_names_to_clear:
       self.events.events = [event for event in self.events.events if event not in self.event_names_to_clear]
