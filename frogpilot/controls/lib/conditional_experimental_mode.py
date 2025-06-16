@@ -2,7 +2,7 @@
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 
-from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, THRESHOLD, params_memory, scale_threshold
+from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, THRESHOLD, params_memory
 
 class ConditionalExperimentalMode:
   def __init__(self, FrogPilotPlanner):
@@ -53,7 +53,7 @@ class ConditionalExperimentalMode:
       self.status_value = 8
       return True
 
-    if frogpilot_toggles.conditional_lead and self.slow_lead_detected and v_ego <= 29.1:
+    if frogpilot_toggles.conditional_lead and self.slow_lead_detected:
       self.status_value = 9 if self.frogpilot_planner.lead_one.vLead < 1 else 10
       return True
 
@@ -69,7 +69,7 @@ class ConditionalExperimentalMode:
 
   def update_conditions(self, v_ego, sm, frogpilot_toggles):
     self.curve_detection(v_ego, frogpilot_toggles)
-    self.slow_lead(frogpilot_toggles, v_ego)
+    self.slow_lead(frogpilot_toggles)
     self.stop_sign_and_light(v_ego, sm, frogpilot_toggles.conditional_model_stop_time)
 
   def curve_detection(self, v_ego, frogpilot_toggles):
@@ -78,15 +78,13 @@ class ConditionalExperimentalMode:
     self.curvature_filter.update(self.frogpilot_planner.road_curvature_detected or curve_active)
     self.curve_detected = self.curvature_filter.x >= THRESHOLD and v_ego > CRUISING_SPEED
 
-  def slow_lead(self, frogpilot_toggles, v_ego):
-    v_lead = self.frogpilot_planner.lead_one.vLead
+  def slow_lead(self, frogpilot_toggles):
     if self.frogpilot_planner.tracking_lead:
       slower_lead = frogpilot_toggles.conditional_slower_lead and self.frogpilot_planner.frogpilot_following.slower_lead
-      stopped_lead = frogpilot_toggles.conditional_stopped_lead and v_lead < 1
-      lead_threshold = scale_threshold(v_ego)
+      stopped_lead = frogpilot_toggles.conditional_stopped_lead and self.frogpilot_planner.lead_one.vLead < 1
 
       self.slow_lead_filter.update(slower_lead or stopped_lead)
-      self.slow_lead_detected = self.slow_lead_filter.x >= lead_threshold
+      self.slow_lead_detected = self.slow_lead_filter.x >= THRESHOLD
     else:
       self.slow_lead_filter.x = 0
       self.slow_lead_detected = False
