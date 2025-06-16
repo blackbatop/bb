@@ -268,11 +268,11 @@ frogpilot_default_params: list[tuple[str, str | bytes, int]] = [
   ("RecordFront", "0", 0),
   ("RefuseVolume", "101", 2),
   ("RelaxedFollow", "1.75", 2),
-  ("RelaxedJerkAcceleration", "100", 3),
+  ("RelaxedJerkAcceleration", "50", 3),
   ("RelaxedJerkDanger", "100", 3),
-  ("RelaxedJerkDeceleration", "100", 3),
-  ("RelaxedJerkSpeed", "100", 3),
-  ("RelaxedJerkSpeedDecrease", "100", 3),
+  ("RelaxedJerkDeceleration", "50", 3),
+  ("RelaxedJerkSpeed", "50", 3),
+  ("RelaxedJerkSpeedDecrease", "50", 3),
   ("RelaxedPersonalityProfile", "1", 2),
   ("ReverseCruise", "0", 1),
   ("RoadEdgesWidth", "2", 2),
@@ -324,11 +324,11 @@ frogpilot_default_params: list[tuple[str, str | bytes, int]] = [
   ("StartupMessageBottom", "Human-tested, frog-approved 🐸", 0),
   ("StartupMessageTop", "Hop in and buckle up!", 0),
   ("StandardFollow", "1.45", 2),
-  ("StandardJerkAcceleration", "100", 3),
+  ("StandardJerkAcceleration", "50", 3),
   ("StandardJerkDanger", "100", 3),
-  ("StandardJerkDeceleration", "100", 3),
-  ("StandardJerkSpeed", "100", 3),
-  ("StandardJerkSpeedDecrease", "100", 3),
+  ("StandardJerkDeceleration", "50", 3),
+  ("StandardJerkSpeed", "50", 3),
+  ("StandardJerkSpeedDecrease", "50", 3),
   ("StandardPersonalityProfile", "1", 2),
   ("StandbyMode", "0", 2),
   ("StaticPedalsOnUI", "0", 2),
@@ -377,6 +377,9 @@ misc_tuning_levels: list[tuple[str, str | bytes, int]] = [
   ("SLCPriority", "", 2),
   ("WheelControls", "", 2)
 ]
+
+def scale_threshold(v_ego):
+  return 0.0 if v_ego > 31.3 else np.interp(v_ego, [0, 17.9, 26.8, 35.8, 44.7], [0.63, 0.63, 0.65, 0.95, 0.95])
 
 class FrogPilotVariables:
   def __init__(self):
