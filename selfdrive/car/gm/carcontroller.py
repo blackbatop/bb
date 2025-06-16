@@ -1,4 +1,5 @@
 from typing import Tuple
+import math
 from cereal import car
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import FirstOrderFilter
@@ -22,7 +23,7 @@ TransmissionType = car.CarParams.TransmissionType
 # Camera cancels up to 0.1s after brake is pressed, ECM allows 0.5s
 CAMERA_CANCEL_DELAY_FRAMES = 10
 # Enforce a minimum interval between steering messages to avoid a fault
-MIN_STEER_MSG_INTERVAL_MS = 15
+MIN_STEER_MSG_INTERVAL_MS = 10
 # Constants for pitch compensation
 PITCH_DEADZONE = 0.01  # [radians] 0.01 ≈ 1% grade
 BRAKE_PITCH_FACTOR_BP = [5., 10.]  # [m/s] smoothly revert to planned accel at low speeds
@@ -51,6 +52,14 @@ class CarController(CarControllerBase):
 
     self.params = CarControllerParams(self.CP)
     self.params_ = Params()
+
+    self.mass = CP.mass
+    self.tireRadius = 0.075 * CP.wheelbase + 0.1453
+    self.frontalArea = 1.05 * CP.wheelbase + 0.0679
+    self.coeffDrag = 0.30
+    self.airDensity = 1.225
+
+
 
     self.packer_pt = CANPacker(DBC[self.CP.carFingerprint]['pt'])
     self.packer_obj = CANPacker(DBC[self.CP.carFingerprint]['radar'])
@@ -105,7 +114,7 @@ class CarController(CarControllerBase):
 
     # --- Immediate application of raw pedal gas, no blending ---
     pedal_gas = raw_pedal_gas
-    # Safety cap: ramp from 22% at 0 m/s to 37.25% at 10 mph (4.47 m/s), then allow full throttle
+    # Safety cap: ramp from 22% at 0 m/s to 37.25% at 10 mph (4.47 m/s), then allow full throttleAdd commentMore actions
     pedal_gas_max = interp(car_velocity, [0.0, 4.47, 4.48], [0.22, 0.3725, 1.0])
     pedal_gas = clip(pedal_gas, 0.0, pedal_gas_max)
     return pedal_gas, press_regen_paddle
@@ -158,29 +167,24 @@ class CarController(CarControllerBase):
       # Accumulate extra spoofs needed above 33Hz base to reach 40Hz
       self.spoof_accum += (40.0/33.0 - 1.0)
 
+      # Midpoint spoof: one per interval
       if not self.spoof_mid_sent and interval_ns > 0:
         midpoint_ns = self.prev_steer_ts_ns + interval_ns // 2
-        if (CS.loopback_lka_steering_cmd_ts_nanos != 0 and
-            now_nanos - CS.loopback_lka_steering_cmd_ts_nanos < 10_000_000 and
-            now_nanos >= midpoint_ns and
-            now_nanos - self.last_steer_ts_ns >= 26_000_000):
+        if now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
           self.last_spoof_ts_ns = now_nanos
           self.spoof_mid_sent = True
 
       # Overflow spoof: insert extra when accumulator allows
-      if self.spoof_accum >= 0.5 and not self.spoof_over_sent and interval_ns > 0:
+      if self.spoof_accum >= 0.7 and not self.spoof_over_sent and interval_ns > 0:
         slot2_ns = self.prev_steer_ts_ns + (interval_ns * 2) // 3
-        if (CS.loopback_lka_steering_cmd_ts_nanos != 0 and
-            now_nanos - CS.loopback_lka_steering_cmd_ts_nanos < 10_000_000 and
-            now_nanos >= slot2_ns and
-            now_nanos - self.last_steer_ts_ns >= 28_000_000):
+        if now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
           self.last_spoof_ts_ns = now_nanos
           self.spoof_over_sent = True
-          self.spoof_accum -= 0.5
+          self.spoof_accum -= 0.7
     # === End Spoof scheduling ===
 
     # === Off-pulse scheduling on regen release ===
@@ -196,7 +200,7 @@ class CarController(CarControllerBase):
 
     if hasattr(self, "off_schedule_ns"):
       for i, t_ns in enumerate(self.off_schedule_ns):
-        if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= 18_000_000:
+        if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
           self.off_sent[i] = True
@@ -248,8 +252,8 @@ class CarController(CarControllerBase):
 
     # Merge paddle spoof CAN frames, time-guarded only
     if paddle_sends:
-      # wait at least 15 ms after the last bus0 steer send
-      if now_nanos - self.last_steer_ts_ns >= 15_000_000:
+      # wait at least 5 ms after the last bus0 steer send
+      if now_nanos - self.last_steer_ts_ns >= 5_000_000:
         can_sends.extend(paddle_sends)
 
     if self.CP.openpilotLongitudinalControl:
@@ -257,17 +261,19 @@ class CarController(CarControllerBase):
       if self.frame % 4 == 0:
         stopping = actuators.longControlState == LongCtrlState.stopping
 
-        # Pitch compensated acceleration;
-        # TODO: include future pitch (sm['modelDataV2'].orientation.y) to account for long actuator delay
-        if frogpilot_toggles.long_pitch and len(CC.orientationNED) > 1:
-          self.pitch.update(CC.orientationNED[1])
-          self.accel_g = ACCELERATION_DUE_TO_GRAVITY * apply_deadzone(self.pitch.x, PITCH_DEADZONE) # driving uphill is positive pitch
-          accel += self.accel_g
-          brake_accel = actuators.accel + self.accel_g * interp(CS.out.vEgo, BRAKE_PITCH_FACTOR_BP, BRAKE_PITCH_FACTOR_V)
-
         at_full_stop = CC.longActive and CS.out.standstill
         near_stop = CC.longActive and (CS.out.vEgo < self.params.NEAR_STOP_BRAKE_PHASE)
         interceptor_gas_cmd = 0
+        # --- Regen scaling for ACC-only cars ---
+        # For ACC-only cars, simulate maximum paddle hold regen
+        if not self.CP.enableGasInterceptor and self.CP.carFingerprint in CC_REGEN_PADDLE_CAR:
+          # use regen table gain to compute effective accel
+          _, press_regen_paddle = self.calc_pedal_command(actuators.accel, True, CS.out.vEgo)
+          # if simulated paddle pressed, treat as stronger regen
+          use_regen = press_regen_paddle
+        else:
+          use_regen = False
+        # --- End regen scaling insert ---
         if not CC.longActive:
           # ASCM sends max regen when not enabled
           self.apply_gas = self.params.INACTIVE_REGEN
@@ -276,19 +282,38 @@ class CarController(CarControllerBase):
           self.apply_gas = self.params.INACTIVE_REGEN
           self.apply_brake = int(min(-100 * self.CP.stopAccel, self.params.MAX_BRAKE))
         else:
-          # Normal operation
-          if self.CP.carFingerprint in EV_CAR:
-            if frogpilot_toggles.sport_plus:
-              self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP_PLUS, self.params.GAS_LOOKUP_V_PLUS)))
-            else:
-              self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
-            self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+          if len(CC.orientationNED) == 3 and CS.out.vEgo > self.CP.vEgoStopping:
+            accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY
           else:
-            if frogpilot_toggles.sport_plus:
-              self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP_PLUS, self.params.GAS_LOOKUP_V_PLUS)))
-            else:
-              self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
-            self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+            accel_due_to_pitch = 0.0
+
+          if frogpilot_toggles.sport_plus:
+            gas_max = self.params.MAX_GAS_PLUS
+            accel_max = self.params.ACCEL_MAX_PLUS
+          else:
+            gas_max = self.params.MAX_GAS
+            accel_max = self.params.ACCEL_MAX
+          
+          accel = clip(actuators.accel + accel_due_to_pitch, self.params.ACCEL_MIN, accel_max)
+          torque = self.tireRadius * ((self.mass*accel) + (0.5*self.coeffDrag*self.frontalArea*self.airDensity*CS.out.vEgo**2))
+          
+          scaled_torque = torque + self.params.ZERO_GAS
+          # --- Regen torque scaling for ACC-only cars ---
+          # apply full paddle regen curve when simulated regen is active
+          if use_regen:
+            min_regen = self.params.GAS_LOOKUP_V[0]  # max regen from lookup
+          else:
+            min_regen = self.params.MAX_ACC_REGEN
+          apply_gas_torque = clip(scaled_torque, min_regen, gas_max)
+          # --- End regen torque scaling ---
+          apply_gas_torque = clip(scaled_torque, self.params.MAX_ACC_REGEN, gas_max)
+          BRAKE_SWITCH = int(round(interp(CS.out.vEgo, self.params.BRAKE_SWITCH_LOOKUP_BP, self.params.BRAKE_SWITCH_LOOKUP_V)))
+          brake_accel = min((scaled_torque - BRAKE_SWITCH)/(self.tireRadius*self.mass), 0)
+          self.apply_gas = int(round(apply_gas_torque))
+          self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+          if self.apply_brake > 0:
+            self.apply_gas = self.params.INACTIVE_REGEN
+
           # Don't allow any gas above inactive regen while stopping
           # FIXME: brakes aren't applied immediately when enabling at a stop
           if stopping:
