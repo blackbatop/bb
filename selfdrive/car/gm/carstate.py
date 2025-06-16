@@ -75,10 +75,7 @@ class CarState(CarStateBase):
     # sample rear wheel speeds, standstill=True if ECM allows engagement with brake
     ret.standstill = ret.wheelSpeeds.rl <= STANDSTILL_THRESHOLD and ret.wheelSpeeds.rr <= STANDSTILL_THRESHOLD
 
-    if pt_cp.vl["ECMPRDNL2"]["ManualMode"] == 1:
-      ret.gearShifter = self.parse_gear_shifter("T")
-    else:
-      ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(pt_cp.vl["ECMPRDNL2"]["PRNDL2"], None))
+    ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(pt_cp.vl["ECMPRDNL2"]["PRNDL2"], None))
 
     if self.CP.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value:
       ret.brake = pt_cp.vl["EBCMBrakePedalPosition"]["BrakePedalPosition"] / 0xd0
