@@ -1,4 +1,5 @@
 from typing import Tuple
+import time
 from openpilot.common.swaglog import cloudlog
 from cereal import car
 from openpilot.common.conversions import Conversions as CV
@@ -69,6 +70,8 @@ class CarController(CarControllerBase):
     self.spoof_mid_sent = False
     self.spoof_over_sent = False
     self.last_interval_ns = 0
+    # For paddle spoof interval logging
+    self.last_paddle_send_time = None
 
   def calc_pedal_command(self, accel: float, long_active: bool, car_velocity) -> Tuple[float, bool]:
     if not long_active:
@@ -193,6 +196,12 @@ class CarController(CarControllerBase):
       if not self.spoof_mid_sent and interval_ns > 0:
         midpoint_ns = self.prev_steer_ts_ns + interval_ns // 2
         if now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= mid_guard_ns:
+          now_monotonic = time.monotonic()
+          if self.last_paddle_send_time is not None:
+            interval_ms = (now_monotonic - self.last_paddle_send_time) * 1000
+            cloudlog.error("PADDLE: type=midpoint interval=%.2fms mid_guard=%.2fms ofl_guard=%.2fms spoof_accum=%.3f",
+                           interval_ms, mid_guard_ns * 1e-6, ofl_guard_ns * 1e-6, self.spoof_accum)
+          self.last_paddle_send_time = now_monotonic
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
           self.last_spoof_ts_ns = now_nanos
@@ -202,6 +211,12 @@ class CarController(CarControllerBase):
       if self.spoof_accum >= overflow_thresh and not self.spoof_over_sent and interval_ns > 0:
         slot2_ns = self.prev_steer_ts_ns + (interval_ns * 2) // 3
         if now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= ofl_guard_ns:
+          now_monotonic = time.monotonic()
+          if self.last_paddle_send_time is not None:
+            interval_ms = (now_monotonic - self.last_paddle_send_time) * 1000
+            cloudlog.error("PADDLE: type=overflow interval=%.2fms mid_guard=%.2fms ofl_guard=%.2fms spoof_accum=%.3f",
+                           interval_ms, mid_guard_ns * 1e-6, ofl_guard_ns * 1e-6, self.spoof_accum)
+          self.last_paddle_send_time = now_monotonic
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
           self.last_spoof_ts_ns = now_nanos
@@ -223,6 +238,12 @@ class CarController(CarControllerBase):
     if hasattr(self, "off_schedule_ns"):
       for i, t_ns in enumerate(self.off_schedule_ns):
         if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= mid_guard_ns:
+          now_monotonic = time.monotonic()
+          if self.last_paddle_send_time is not None:
+            interval_ms = (now_monotonic - self.last_paddle_send_time) * 1000
+            cloudlog.error("PADDLE: type=off interval=%.2fms mid_guard=%.2fms ofl_guard=%.2fms spoof_accum=%.3f",
+                           interval_ms, mid_guard_ns * 1e-6, ofl_guard_ns * 1e-6, self.spoof_accum)
+          self.last_paddle_send_time = now_monotonic
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
           self.off_sent[i] = True
