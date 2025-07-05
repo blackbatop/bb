@@ -291,6 +291,7 @@ class CarInterface(CarInterfaceBase):
       ret.minEnableSpeed = 24 * CV.MPH_TO_MS
       ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
       ret.pcmCruise = False
+      experimental_long = False
 
       if not ret.enableGasInterceptor and candidate in CC_ONLY_CAR: #redneck tuning
         ret.longitudinalTuning.kpBP = [10.7, 10.8, 28.]  # 10.7 m/s == 24 mph
