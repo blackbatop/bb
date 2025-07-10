@@ -17,6 +17,9 @@ else:
 
 from casadi import SX, vertcat
 
+import math
+
+
 MODEL_NAME = 'long'
 LONG_MPC_DIR = os.path.dirname(os.path.abspath(__file__))
 EXPORT_DIR = os.path.join(LONG_MPC_DIR, "c_generated_code")
@@ -43,12 +46,7 @@ LEAD_DANGER_FACTOR = 0.75
 LIMIT_COST = 1e6
 ACADOS_SOLVER_TYPE = 'SQP_RTI'
 # Default lead acceleration decay set to 50% at 1s
-
 LEAD_ACCEL_TAU = 1.5
-
-# Compensation for vision-only lead distance overestimation (e.g., tall vehicles)
-VISION_DISTANCE_FACTOR = 0.92  # Tunable; reduces vision-only dRel for safer following
-VISION_DISTANCE_XSTD_THRESHOLD = 5.0  # Optional: threshold for xStd confidence
 
 
 # Fewer timestamps don't hurt performance and lead to
@@ -60,7 +58,11 @@ T_IDXS_LST = [index_function(idx, max_val=MAX_T, max_idx=N) for idx in range(N+1
 T_IDXS = np.array(T_IDXS_LST)
 FCW_IDXS = T_IDXS < 5.0
 T_DIFFS = np.diff(T_IDXS, prepend=[0.])
+# Tinygrad model change from commaai/openpilot pull request #35567
 COMFORT_BRAKE = 2.5
+ACCELERATION_DUE_TO_GRAVITY = 9.81  # m/s^2
+# Multiplier for gravity effect, tune as needed
+BRAKE_K = 3.0  # Multiplier for gravity effect, tune as needed
 # Tinygrad model change from commaai/openpilot pull request #35567
 STOP_DISTANCE = 4.0
 
@@ -108,16 +110,18 @@ def get_T_FOLLOW(aggressive_follow=1.25, standard_follow=1.45, relaxed_follow=1.
     else:
       raise NotImplementedError("Longitudinal personality not supported")
 
-def get_stopped_equivalence_factor(v_lead):
-  return (v_lead**2) / (2 * COMFORT_BRAKE)
+def get_stopped_equivalence_factor(v_lead, pitch=0.0):
+  effective_brake = COMFORT_BRAKE + BRAKE_K * ACCELERATION_DUE_TO_GRAVITY * math.sin(pitch)
+  return (v_lead**2) / (2 * effective_brake)
 
-def get_safe_obstacle_distance(v_ego, t_follow):
-  return (v_ego**2) / (2 * COMFORT_BRAKE) + t_follow * v_ego + STOP_DISTANCE
+def get_safe_obstacle_distance(v_ego, t_follow, pitch=0.0):
+  effective_brake = COMFORT_BRAKE + BRAKE_K * ACCELERATION_DUE_TO_GRAVITY * math.sin(pitch)
+  return (v_ego**2) / (2 * effective_brake) + t_follow * v_ego + STOP_DISTANCE
 
-def desired_follow_distance(v_ego, v_lead, t_follow=None):
+def desired_follow_distance(v_ego, v_lead, t_follow=None, pitch=0.0):
   if t_follow is None:
     t_follow = get_T_FOLLOW()
-  return get_safe_obstacle_distance(v_ego, t_follow) - get_stopped_equivalence_factor(v_lead)
+  return get_safe_obstacle_distance(v_ego, t_follow, pitch=pitch) - get_stopped_equivalence_factor(v_lead, pitch=pitch)
 
 
 def gen_long_model():
@@ -156,7 +160,7 @@ def gen_long_model():
   return model
 
 
-def gen_long_ocp():
+def gen_long_ocp(pitch=0.0):
   ocp = AcadosOcp()
   ocp.model = gen_long_model()
 
@@ -187,7 +191,7 @@ def gen_long_ocp():
   ocp.cost.yref = np.zeros((COST_DIM, ))
   ocp.cost.yref_e = np.zeros((COST_E_DIM, ))
 
-  desired_dist_comfort = get_safe_obstacle_distance(v_ego, lead_t_follow)
+  desired_dist_comfort = get_safe_obstacle_distance(v_ego, lead_t_follow, pitch=pitch)
 
   # The main cost in normal operation is how close you are to the "desired" distance
   # from an obstacle at every timestep. This obstacle can be a lead car
@@ -339,10 +343,6 @@ class LongitudinalMpc:
       v_lead = lead.vLead
       a_lead = lead.aLeadK
       a_lead_tau = lead.aLeadTau
-      # If this is a vision-only lead or low-confidence lead, shrink the distance slightly
-      # Only do this if the lead does NOT have radar (radar=False), or high xStd (if present)
-      if (not getattr(lead, "radar", False)) or (hasattr(lead, "xStd") and lead.xStd[0] > VISION_DISTANCE_XSTD_THRESHOLD):
-        x_lead *= VISION_DISTANCE_FACTOR
     else:
       # Fake a fast lead car, so mpc can keep running in the same mode
       x_lead = 50.0
@@ -365,18 +365,23 @@ class LongitudinalMpc:
     self.cruise_min_a = min_a
     self.max_a = max_a
 
-  def update(self, lead_one, lead_two, v_cruise, x, v, a, j, t_follow, trafficMode, personality=log.LongitudinalPersonality.standard):
+  def update(self, lead_one, lead_two, v_cruise, x, v, a, j, t_follow, trafficMode, personality=log.LongitudinalPersonality.standard, pitch=0.0):
     v_ego = self.x0[1]
     self.status = lead_one.status or lead_two.status
 
     lead_xv_0 = self.process_lead(lead_one)
     lead_xv_1 = self.process_lead(lead_two)
 
+    # Only apply pitch (grade) compensation if a real lead is present; fabricated leads get pitch=0.0
+    pitch_lead0 = pitch if lead_one.status else 0.0
+    pitch_lead1 = pitch if lead_two.status else 0.0
+
+    # Only apply pitch (grade) compensation for lead obstacles, never for cruise.
     # To estimate a safe distance from a moving lead, we calculate how much stopping
     # distance that lead needs as a minimum. We can add that to the current distance
     # and then treat that as a stopped car/obstacle at this new distance.
-    lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
-    lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
+    lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1], pitch=pitch_lead0)
+    lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1], pitch=pitch_lead1)
 
     self.params[:,0] = ACCEL_MIN
     # negative accel constraint causes problems because negative speed is not allowed
@@ -394,7 +399,8 @@ class LongitudinalMpc:
       v_cruise_clipped = np.clip(v_cruise * np.ones(N+1),
                                  v_lower,
                                  v_upper)
-      cruise_obstacle = np.cumsum(T_DIFFS * v_cruise_clipped) + get_safe_obstacle_distance(v_cruise_clipped, t_follow)
+      # Only apply pitch (grade) compensation for lead obstacles, never for cruise.
+      cruise_obstacle = np.cumsum(T_DIFFS * v_cruise_clipped) + get_safe_obstacle_distance(v_cruise_clipped, t_follow, pitch=0.0)  # No pitch compensation for cruise obstacle
       x_obstacles = np.column_stack([lead_0_obstacle, lead_1_obstacle, cruise_obstacle])
       self.source = SOURCES[np.argmin(x_obstacles[0])]
 
@@ -440,9 +446,9 @@ class LongitudinalMpc:
     # Check if it got within lead comfort range
     # TODO This should be done cleaner
     if self.mode == 'blended':
-      if any((lead_0_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow))- self.x_sol[:,0] < 0.0):
+      if any((lead_0_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow, pitch=pitch_lead0))- self.x_sol[:,0] < 0.0):
         self.source = 'lead0'
-      if any((lead_1_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow))- self.x_sol[:,0] < 0.0) and \
+      if any((lead_1_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow, pitch=pitch_lead1))- self.x_sol[:,0] < 0.0) and \
          (lead_1_obstacle[0] - lead_0_obstacle[0]):
         self.source = 'lead1'
 
@@ -490,6 +496,6 @@ class LongitudinalMpc:
 
 
 if __name__ == "__main__":
-  ocp = gen_long_ocp()
+  ocp = gen_long_ocp(pitch=0.0)  # Use 0.0 here for compatibility; pass live pitch if desired
   AcadosOcpSolver.generate(ocp, json_file=JSON_FILE)
   # AcadosOcpSolver.build(ocp.code_export_directory, with_cython=True)
