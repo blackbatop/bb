@@ -109,8 +109,7 @@ class LongitudinalPlanner:
 
   @property
   def mlsim(self) -> bool:
-    # Treat v8 and v10 generations as ML-SIM
-    return self.generation in ("v8", "v10")
+    return self.generation == "v8"
 
   def get_mpc_mode(self) -> str:
       """
@@ -160,21 +159,10 @@ class LongitudinalPlanner:
     if not self.mlsim:
       self.mpc.mode = self.mode
 
-    if hasattr(sm['carControl'], 'orientationNED') and len(sm['carControl'].orientationNED) == 3:
+    if len(sm['carControl'].orientationNED) == 3:
       accel_coast = get_coast_accel(sm['carControl'].orientationNED[1])
     else:
       accel_coast = ACCEL_MAX
-
-    self.lead_one = sm['radarState'].leadOne
-    self.lead_two = sm['radarState'].leadTwo
-
-    # Only set pitch from orientationNED[1] if a real lead is present and long_pitch is enabled
-    pitch = 0.0  # default
-    lead_present = self.lead_one.status or self.lead_two.status
-    if lead_present and frogpilot_toggles.long_pitch:
-      if hasattr(sm['carControl'], 'orientationNED') and len(sm['carControl'].orientationNED) > 1:
-        pitch = sm['carControl'].orientationNED[1]  # Positive = uphill, negative = downhill (check hardware convention)
-    pitch_for_mpc = pitch
 
     v_ego = max(sm['carState'].vEgo, sm['carState'].vEgoCluster)
     v_cruise = sm['frogpilotPlan'].vCruise
@@ -223,6 +211,8 @@ class LongitudinalPlanner:
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
     accel_limits_turns[1] = max(accel_limits_turns[1], self.a_desired - 0.05)
 
+    self.lead_one = sm['radarState'].leadOne
+    self.lead_two = sm['radarState'].leadTwo
 
     self.mpc.set_weights(sm['frogpilotPlan'].accelerationJerk, sm['frogpilotPlan'].dangerJerk, sm['frogpilotPlan'].speedJerk, prev_accel_constraint,
                          personality=sm['controlsState'].personality)
@@ -233,7 +223,7 @@ class LongitudinalPlanner:
     if not self.mlsim:
       self.mpc.mode = dec_mpc_mode
     self.mpc.update(self.lead_one, self.lead_two, v_cruise, x, v, a, j, sm['frogpilotPlan'].tFollow,
-                    sm['frogpilotCarState'].trafficModeEnabled, personality=sm['controlsState'].personality, pitch=pitch_for_mpc)
+                    sm['frogpilotCarState'].trafficModeEnabled, personality=sm['controlsState'].personality)
 
     self.a_desired_trajectory_full = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)
