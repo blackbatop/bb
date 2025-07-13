@@ -172,7 +172,7 @@ class LongitudinalPlanner:
     lead_present = self.lead_one.status or self.lead_two.status
     if lead_present and frogpilot_toggles.long_pitch:
       if hasattr(sm['carControl'], 'orientationNED') and len(sm['carControl'].orientationNED) > 1:
-        pitch = -sm['carControl'].orientationNED[1]
+        pitch = sm['carControl'].orientationNED[1]  # Positive = uphill, negative = downhill (check hardware convention)
     pitch_for_mpc = pitch
 
     v_ego = max(sm['carState'].vEgo, sm['carState'].vEgoCluster)

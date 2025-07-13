@@ -69,7 +69,7 @@ class FrogPilotFollowing:
       self.update_follow_values(self.frogpilot_planner.lead_one.dRel, v_ego, self.frogpilot_planner.lead_one.vLead, frogpilot_toggles)
       pitch = 0.0
       if frogpilot_toggles.long_pitch and hasattr(sm['carControl'], 'orientationNED') and len(sm['carControl'].orientationNED) > 1:
-        pitch = -sm['carControl'].orientationNED[1]
+        pitch = sm['carControl'].orientationNED[1]
       self.desired_follow_distance = int(desired_follow_distance(
           v_ego, self.frogpilot_planner.lead_one.vLead, self.t_follow, pitch=pitch))
     else:
@@ -79,9 +79,10 @@ class FrogPilotFollowing:
     # Offset by FrogAi for FrogPilot for a more natural approach to a faster lead
     if frogpilot_toggles.human_following and v_lead > v_ego:
       distance_factor = max(lead_distance - (v_ego * self.t_follow), 1)
-      acceleration_offset = float(np.clip(STOP_DISTANCE - v_ego, 1, distance_factor))
-      self.acceleration_jerk /= acceleration_offset
-      self.speed_jerk /= acceleration_offset
+      standstill_offset = max(STOP_DISTANCE - v_ego, 1)
+      acceleration_offset = float(np.clip((v_lead - v_ego) * standstill_offset - COMFORT_BRAKE, 1, distance_factor))
+      self.acceleration_jerk /= standstill_offset
+      self.speed_jerk /= standstill_offset
       self.t_follow /= acceleration_offset
 
     # Offset by FrogAi for FrogPilot for a more natural approach to a slower lead
