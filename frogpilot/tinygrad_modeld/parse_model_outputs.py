@@ -106,12 +106,15 @@ class Parser:
     if 'lane_lines' in outs:
       self.parse_mdn('lane_lines', outs, in_N=0, out_N=0,
                      out_shape=(ModelConstants.NUM_LANE_LINES, ModelConstants.IDX_N, ModelConstants.LANE_LINES_WIDTH))
+    if 'road_edges' in outs:
       self.parse_mdn('road_edges', outs, in_N=0, out_N=0,
                      out_shape=(ModelConstants.NUM_ROAD_EDGES, ModelConstants.IDX_N, ModelConstants.LANE_LINES_WIDTH))
-      if 'sim_pose' in outs:
-        self.parse_mdn('sim_pose', outs, in_N=0, out_N=0, out_shape=(ModelConstants.POSE_WIDTH,))
-      for k in ['lead_prob', 'lane_lines_prob']:
-        self.parse_binary_crossentropy(k, outs)
+    if 'sim_pose' in outs:
+      self.parse_mdn('sim_pose', outs, in_N=0, out_N=0, out_shape=(ModelConstants.POSE_WIDTH,))
+    if 'lane_lines_prob' in outs:
+      self.parse_binary_crossentropy('lane_lines_prob', outs)
+    if 'lead_prob' in outs:
+      self.parse_binary_crossentropy('lead_prob', outs)
 
   def parse_vision_outputs(self, outs: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     self.parse_mdn('pose', outs, in_N=0, out_N=0, out_shape=(ModelConstants.POSE_WIDTH,))
