@@ -1,4 +1,5 @@
 from typing import Tuple
+import time
 from cereal import car
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import FirstOrderFilter
@@ -164,18 +165,22 @@ class CarController(CarControllerBase):
       # Midpoint spoof: one per interval
       if not self.spoof_mid_sent and interval_ns > 0:
         midpoint_ns = self.prev_steer_ts_ns + interval_ns // 2
-        if now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if CS.out.vEgo > 2.68 and now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
+          time.sleep(0.0002)  # 200 microseconds
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
+          time.sleep(0.0002)  # 200 microseconds
           self.last_spoof_ts_ns = now_nanos
           self.spoof_mid_sent = True
 
       # Overflow spoof: insert extra when accumulator allows
       if self.spoof_accum >= 0.7 and not self.spoof_over_sent and interval_ns > 0:
         slot2_ns = self.prev_steer_ts_ns + (interval_ns * 2) // 3
-        if now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if CS.out.vEgo > 2.68 and now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
+          time.sleep(0.0002)  # 200 microseconds
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
+          time.sleep(0.0002)  # 200 microseconds
           self.last_spoof_ts_ns = now_nanos
           self.spoof_over_sent = True
           self.spoof_accum -= 0.7
@@ -196,7 +201,9 @@ class CarController(CarControllerBase):
       for i, t_ns in enumerate(self.off_schedule_ns):
         if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          time.sleep(0.0002)  # 200 microseconds
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          time.sleep(0.0002)  # 200 microseconds
           self.off_sent[i] = True
       # clean up once both off pulses are sent
       if hasattr(self, "off_sent") and all(self.off_sent):
