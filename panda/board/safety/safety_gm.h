@@ -206,6 +206,12 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
     }
     generic_rx_checks(stock_ecu_detected);
   }
+  // Cruise check for Gen2 Bolt (ASCMActiveCruiseControlStatus on bus 2)
+  int addr = GET_ADDR(to_push);
+  if ((addr == 0x370) && (GET_BUS(to_push) == 2U)) {
+    bool cruise_engaged = (GET_BYTE(to_push, 2) >> 7) != 0U;  // ACCCmdActive
+    cruise_engaged_prev = cruise_engaged;
+  }
 }
 
 static bool gm_tx_hook(const CANPacket_t *to_send) {
