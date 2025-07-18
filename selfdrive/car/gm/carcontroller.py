@@ -173,9 +173,9 @@ class CarController(CarControllerBase):
                        self.regen_paddle_timer)
         if CS.out.vEgo > 2.68 and now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          time.sleep(0.0005)  # 500 microseconds
+          time.sleep(0.001)  # 1 millisecond
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          time.sleep(0.0005)  # 500 microseconds
+          time.sleep(0.001)  # 1 millisecond
           self.last_spoof_ts_ns = now_nanos
           self.spoof_mid_sent = True
 
@@ -190,9 +190,9 @@ class CarController(CarControllerBase):
                        self.regen_paddle_timer)
         if CS.out.vEgo > 2.68 and now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          time.sleep(0.0005)  # 500 microseconds
+          time.sleep(0.001)  # 1 millisecond
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          time.sleep(0.0005)  # 500 microseconds
+          time.sleep(0.001)  # 1 millisecond
           self.last_spoof_ts_ns = now_nanos
           self.spoof_over_sent = True
           self.spoof_accum -= 0.7
@@ -218,9 +218,9 @@ class CarController(CarControllerBase):
                          (now_nanos - t_ns) * 1e-6,
                          self.regen_paddle_timer)
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
-          time.sleep(0.0005)  # 500 microseconds
+          time.sleep(0.001)  # 1 millisecond
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
-          time.sleep(0.0005)  # 500 microseconds
+          time.sleep(0.001)  # 1 millisecond
           self.off_sent[i] = True
       # clean up once both off pulses are sent
       if hasattr(self, "off_sent") and all(self.off_sent):
