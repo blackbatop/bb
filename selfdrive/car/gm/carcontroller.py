@@ -171,7 +171,7 @@ class CarController(CarControllerBase):
                        (now_nanos - self.prev_steer_ts_ns) * 1e-6,
                        self.spoof_accum,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if CS.out.vEgo > 2.68 and now_nanos >= (midpoint_ns - 500_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           time.sleep(0.0005)  # 500 microseconds
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
@@ -188,7 +188,7 @@ class CarController(CarControllerBase):
                        self.spoof_accum,
                        0.7,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if CS.out.vEgo > 2.68 and now_nanos >= (slot2_ns - 500_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
           time.sleep(0.0005)  # 500 microseconds
           paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
@@ -211,7 +211,7 @@ class CarController(CarControllerBase):
 
     if hasattr(self, "off_schedule_ns"):
       for i, t_ns in enumerate(self.off_schedule_ns):
-        if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if not self.off_sent[i] and now_nanos >= (t_ns - 500_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           cloudlog.error("PADDLE OFF %d: Δafter=%.1fms Δto_slot=%.1fms timer=%d",
                          i,
                          (now_nanos - self.last_steer_ts_ns) * 1e-6,
