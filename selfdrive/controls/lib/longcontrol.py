@@ -164,7 +164,11 @@ class LongControl:
       if self.transitioning and self.prev_mode == 'acc' and self.current_mode == 'blended':
         if raw_output_accel < 0 and raw_output_accel < self.last_output_accel:
           progress = min(1.0, self.mode_transition_timer / self.mode_transition_duration)
-          blend_factor = 1.0 - (1.0 - progress) * (1.0 - abs(raw_output_accel / CarControllerParams.ACCEL_MIN))
+          # Soften transition at low urgency, but keep sharp for high decel
+          # 20% smoother for chill decel (lower exponent)
+          urgency = abs(raw_output_accel / CarControllerParams.ACCEL_MIN)
+          urgency_smooth = min(1.0, urgency ** 0.4)  # 20% smoother for chill decel
+          blend_factor = 1.0 - (1.0 - progress) * (1.0 - urgency_smooth)
           output_accel = self.last_output_accel + (raw_output_accel - self.last_output_accel) * blend_factor
         else:
           output_accel = raw_output_accel 
