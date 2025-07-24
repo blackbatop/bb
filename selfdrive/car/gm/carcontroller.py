@@ -44,6 +44,7 @@ class CarController(CarControllerBase):
     self.last_regen_active = False
     self.prev_steer_ts_ns = 0
     self.last_spoof_ts_ns = 0
+    self.last_paddle_ts_ns = 0
     self.last_button_frame = 0
     self.cancel_counter = 0
     self.pedal_steady = 0.
@@ -171,9 +172,12 @@ class CarController(CarControllerBase):
                        (now_nanos - self.prev_steer_ts_ns) * 1e-6,
                        self.spoof_accum,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= midpoint_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
+        if CS.out.vEgo > 2.68 and now_nanos >= (midpoint_ns - 200_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+          # Non-blocking 200 µs spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= 200_000:
+            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
+            paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
+            self.last_paddle_ts_ns = now_nanos
           self.last_spoof_ts_ns = now_nanos
           self.spoof_mid_sent = True
 
@@ -186,9 +190,12 @@ class CarController(CarControllerBase):
                        self.spoof_accum,
                        0.7,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= slot2_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
-          paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
+        if CS.out.vEgo > 2.68 and now_nanos >= (slot2_ns - 200_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+          # Non-blocking 200 µs spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= 200_000:
+            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
+            paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
+            self.last_paddle_ts_ns = now_nanos
           self.last_spoof_ts_ns = now_nanos
           self.spoof_over_sent = True
           self.spoof_accum -= 0.7
@@ -207,14 +214,17 @@ class CarController(CarControllerBase):
 
     if hasattr(self, "off_schedule_ns"):
       for i, t_ns in enumerate(self.off_schedule_ns):
-        if not self.off_sent[i] and now_nanos >= t_ns and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if not self.off_sent[i] and now_nanos >= (t_ns - 200_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           cloudlog.error("PADDLE OFF %d: Δafter=%.1fms Δto_slot=%.1fms timer=%d",
                          i,
                          (now_nanos - self.last_steer_ts_ns) * 1e-6,
                          (now_nanos - t_ns) * 1e-6,
                          self.regen_paddle_timer)
-          paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
-          paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+          # Non-blocking 200 µs spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= 200_000:
+            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+            paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+            self.last_paddle_ts_ns = now_nanos
           self.off_sent[i] = True
       # clean up once both off pulses are sent
       if hasattr(self, "off_sent") and all(self.off_sent):
