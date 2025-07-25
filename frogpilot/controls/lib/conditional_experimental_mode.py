@@ -53,7 +53,7 @@ class ConditionalExperimentalMode:
       self.status_value = 8
       return True
 
-    if frogpilot_toggles.conditional_lead and self.slow_lead_detected and v_ego <= 29.1:
+    if frogpilot_toggles.conditional_lead and self.slow_lead_detected and v_ego <= 35.31:
       self.status_value = 9 if self.frogpilot_planner.lead_one.vLead < 1 else 10
       return True
 
