@@ -78,7 +78,7 @@ class CarController(CarControllerBase):
     if not long_active:
       return 0., False
 
-    # Regen paddle hysteresis (frame-based): hold 30 frames, with decrement dead-zone
+    # Regen paddle hysteresis (frame-based): hold 10 frames, with decrement dead-zone
     if not hasattr(self, 'regen_paddle_timer'):
       self.regen_paddle_timer = 0  # frames
 
@@ -90,7 +90,7 @@ class CarController(CarControllerBase):
     # else: hold timer between -0.7 and -0.3
 
     # Base paddle press hysteresis
-    self.regen_paddle_pressed = self.regen_paddle_timer >= 20  # 30 frames
+    self.regen_paddle_pressed = self.regen_paddle_timer >= 10  # 10 frames
     press_regen_paddle = self.regen_paddle_pressed
 
 
@@ -139,7 +139,7 @@ class CarController(CarControllerBase):
       self.CP.openpilotLongitudinalControl and
       CC.longActive and
       self.CP.enableGasInterceptor and
-      self.regen_paddle_timer >= 20  # raw hysteresis-only
+      self.regen_paddle_timer >= 10  # raw hysteresis-only (10 frames)
     )
     regen_active = raw_regen_active
 
