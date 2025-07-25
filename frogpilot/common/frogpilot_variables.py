@@ -379,7 +379,7 @@ misc_tuning_levels: list[tuple[str, str | bytes, int]] = [
 ]
 
 def scale_threshold(v_ego):                # mph    0    40    60    80   100       0    40    60   80   100
-  return 0.0 if v_ego > 33.5 else np.interp(v_ego, [0, 17.9, 26.8, 35.8, 44.7], [0.61, 0.63, 0.65, 0.8, 0.95])
+  return 0.0 if v_ego > 35.31 else np.interp(v_ego, [0, 17.9, 26.8, 35.8, 44.7], [0.61, 0.63, 0.65, 0.8, 0.95])
 
 class FrogPilotVariables:
   def __init__(self):
