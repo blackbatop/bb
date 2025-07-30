@@ -24,7 +24,7 @@ TransmissionType = car.CarParams.TransmissionType
 # Camera cancels up to 0.1s after brake is pressed, ECM allows 0.5s
 CAMERA_CANCEL_DELAY_FRAMES = 10
 # Enforce a minimum interval between steering messages to avoid a fault
-MIN_STEER_MSG_INTERVAL_MS = 10
+MIN_STEER_MSG_INTERVAL_MS = 1
 # Constants for pitch compensation
 PITCH_DEADZONE = 0.01  # [radians] 0.01 ≈ 1% grade
 BRAKE_PITCH_FACTOR_BP = [5., 10.]  # [m/s] smoothly revert to planned accel at low speeds
@@ -173,9 +173,9 @@ class CarController(CarControllerBase):
                        (now_nanos - self.prev_steer_ts_ns) * 1e-6,
                        self.spoof_accum,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= (midpoint_ns - 200_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          # Non-blocking 200 µs spacing for paddle frames
-          if now_nanos - self.last_paddle_ts_ns >= 200_000:
+        if CS.out.vEgo > 2.68 and now_nanos >= (midpoint_ns - 1_000_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+          # Non-blocking 1 ms spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= 1_000_000:
             paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
             self.last_paddle_ts_ns = now_nanos
@@ -191,9 +191,9 @@ class CarController(CarControllerBase):
                        self.spoof_accum,
                        0.7,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= (slot2_ns - 200_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          # Non-blocking 200 µs spacing for paddle frames
-          if now_nanos - self.last_paddle_ts_ns >= 200_000:
+        if CS.out.vEgo > 2.68 and now_nanos >= (slot2_ns - 1_000_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+          # Non-blocking 1 ms spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= 1_000_000:
             paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
             self.last_paddle_ts_ns = now_nanos
@@ -215,14 +215,14 @@ class CarController(CarControllerBase):
 
     if hasattr(self, "off_schedule_ns"):
       for i, t_ns in enumerate(self.off_schedule_ns):
-        if not self.off_sent[i] and now_nanos >= (t_ns - 200_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if not self.off_sent[i] and now_nanos >= (t_ns - 1_000_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
           cloudlog.error("PADDLE OFF %d: Δafter=%.1fms Δto_slot=%.1fms timer=%d",
                          i,
                          (now_nanos - self.last_steer_ts_ns) * 1e-6,
                          (now_nanos - t_ns) * 1e-6,
                          self.regen_paddle_timer)
-          # Non-blocking 200 µs spacing for paddle frames
-          if now_nanos - self.last_paddle_ts_ns >= 200_000:
+          # Non-blocking 1 ms spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= 1_000_000:
             paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
             self.last_paddle_ts_ns = now_nanos
@@ -273,15 +273,13 @@ class CarController(CarControllerBase):
     self.last_regen_active = regen_active
     self.last_regen_paddle_pressed = self.regen_paddle_pressed
 
-    # Merge paddle spoof CAN frames, time-guarded only
     if paddle_sends:
-      # wait at least 5 ms after the last bus0 steer send
       if now_nanos - self.last_steer_ts_ns >= 5_000_000:
         can_sends.extend(paddle_sends)
 
     if self.CP.openpilotLongitudinalControl:
       # Gas/regen, brakes, and UI commands - all at 25Hz
-      if self.frame % 4 == 0:
+      if self.frame % 8 == 0:
         stopping = actuators.longControlState == LongCtrlState.stopping
 
         # Pitch compensated acceleration;
@@ -328,10 +326,9 @@ class CarController(CarControllerBase):
           # "Tap" the accelerator pedal to re-engage ACC
           interceptor_gas_cmd = self.params.SNG_INTERCEPTOR_GAS
           self.apply_brake = 0
-          press_regen_paddle = False
           self.apply_gas = self.params.INACTIVE_REGEN
 
-        idx = (self.frame // 4) % 4
+        idx = (self.frame // 8) % 4
 
         if self.CP.flags & GMFlags.CC_LONG.value:
           if CC.longActive and CS.out.vEgo > self.CP.minEnableSpeed:
