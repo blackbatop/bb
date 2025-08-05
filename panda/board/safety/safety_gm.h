@@ -143,12 +143,13 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
     // Reference for brake pressed signals:
     // https://github.com/commaai/openpilot/blob/master/selfdrive/car/gm/carstate.py
     if ((addr == 0xBE) && ((gm_hw == GM_ASCM) || gm_force_brake_c9)) {
-+      // For SDGM cars, use a different brake signal
-+      if (gm_is_sdgm) {
-+        brake_pressed = GET_BYTE(to_push, 5) & 0x10U;
-+      } else {
-+        brake_pressed = GET_BIT(to_push, 40U) != 0U;
-+      }
+      if (gm_is_sdgm) {
+        // SDGM cars: brake is byte 5, bit 4
+        brake_pressed = (GET_BYTE(to_push, 5) & 0x10U) != 0U;
+      } else {
+        // Normal ASCM/C9 cars: brake is byte 1 threshold 8
+        brake_pressed = GET_BYTE(to_push, 1) >= 8U;
+      }
     }
 
     if ((addr == 0xC9) && ((gm_hw == GM_CAM) && !gm_force_brake_c9)) {
