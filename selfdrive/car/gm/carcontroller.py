@@ -25,6 +25,11 @@ TransmissionType = car.CarParams.TransmissionType
 CAMERA_CANCEL_DELAY_FRAMES = 10
 # Enforce a minimum interval between steering messages to avoid a fault
 MIN_STEER_MSG_INTERVAL_MS = 1
+# Paddle/steer spacing and scheduling (ns)
+PADDLE_STEER_GAP_NS = 15_000_000      # require ≥15 ms away from last and next steer
+PADDLE_NONBLOCK_GAP_NS = 2_000_000    # ≥2 ms since last paddle send
+PADDLE_SLOT_EARLY_NS = 2_000_000      # allow firing up to 2 ms before slot
+OVERFLOW_THRESH = 0.85                # credits threshold for overflow spoof
 # Constants for pitch compensation
 PITCH_DEADZONE = 0.01  # [radians] 0.01 ≈ 1% grade
 BRAKE_PITCH_FACTOR_BP = [5., 10.]  # [m/s] smoothly revert to planned accel at low speeds
@@ -173,9 +178,16 @@ class CarController(CarControllerBase):
                        (now_nanos - self.prev_steer_ts_ns) * 1e-6,
                        self.spoof_accum,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= (midpoint_ns - 1_000_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          # Non-blocking 1 ms spacing for paddle frames
-          if now_nanos - self.last_paddle_ts_ns >= 1_000_000:
+        # Compute spacing to last and next steer (two-sided guard)
+        next_steer_ts_ns = self.last_steer_ts_ns + interval_ns if interval_ns > 0 else 0
+        delta_after_ns = now_nanos - self.last_steer_ts_ns
+        delta_before_ns = (next_steer_ts_ns - now_nanos) if interval_ns > 0 else 1_000_000_000
+        if (CS.out.vEgo > 2.68
+            and now_nanos >= (midpoint_ns - PADDLE_SLOT_EARLY_NS)
+            and delta_after_ns >= PADDLE_STEER_GAP_NS
+            and delta_before_ns >= PADDLE_STEER_GAP_NS):
+          # Non-blocking 2 ms spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= PADDLE_NONBLOCK_GAP_NS:
             paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
             self.last_paddle_ts_ns = now_nanos
@@ -183,23 +195,30 @@ class CarController(CarControllerBase):
           self.spoof_mid_sent = True
 
       # Overflow spoof: insert extra when accumulator allows
-      if self.spoof_accum >= 0.7 and not self.spoof_over_sent and interval_ns > 0:
+      if self.spoof_accum >= OVERFLOW_THRESH and not self.spoof_over_sent and interval_ns > 0:
         slot2_ns = self.prev_steer_ts_ns + (interval_ns * 2) // 3
         cloudlog.error("PADDLE OFL: Δafter=%.1fms Δbefore=%.1fms credits=%.3f thresh=%.1f timer=%d",
                        (now_nanos - self.last_steer_ts_ns) * 1e-6,
                        (now_nanos - self.prev_steer_ts_ns) * 1e-6,
                        self.spoof_accum,
-                       0.7,
+                       OVERFLOW_THRESH,
                        self.regen_paddle_timer)
-        if CS.out.vEgo > 2.68 and now_nanos >= (slot2_ns - 1_000_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
-          # Non-blocking 1 ms spacing for paddle frames
-          if now_nanos - self.last_paddle_ts_ns >= 1_000_000:
+        # Two-sided spacing relative to steer
+        next_steer_ts_ns = self.last_steer_ts_ns + interval_ns if interval_ns > 0 else 0
+        delta_after_ns = now_nanos - self.last_steer_ts_ns
+        delta_before_ns = (next_steer_ts_ns - now_nanos) if interval_ns > 0 else 1_000_000_000
+        if (CS.out.vEgo > 2.68
+            and now_nanos >= (slot2_ns - PADDLE_SLOT_EARLY_NS)
+            and delta_after_ns >= PADDLE_STEER_GAP_NS
+            and delta_before_ns >= PADDLE_STEER_GAP_NS):
+          # Non-blocking 2 ms spacing for paddle frames
+          if now_nanos - self.last_paddle_ts_ns >= PADDLE_NONBLOCK_GAP_NS:
             paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
             self.last_paddle_ts_ns = now_nanos
           self.last_spoof_ts_ns = now_nanos
           self.spoof_over_sent = True
-          self.spoof_accum -= 0.7
+          self.spoof_accum -= OVERFLOW_THRESH
     # === End Spoof scheduling ===
 
     # === Off-pulse scheduling on regen release ===
@@ -215,18 +234,24 @@ class CarController(CarControllerBase):
 
     if hasattr(self, "off_schedule_ns"):
       for i, t_ns in enumerate(self.off_schedule_ns):
-        if not self.off_sent[i] and now_nanos >= (t_ns - 1_000_000) and now_nanos - self.last_steer_ts_ns >= 5_000_000:
+        if not self.off_sent[i] and now_nanos >= (t_ns - PADDLE_SLOT_EARLY_NS):
           cloudlog.error("PADDLE OFF %d: Δafter=%.1fms Δto_slot=%.1fms timer=%d",
                          i,
                          (now_nanos - self.last_steer_ts_ns) * 1e-6,
                          (now_nanos - t_ns) * 1e-6,
                          self.regen_paddle_timer)
-          # Non-blocking 1 ms spacing for paddle frames
-          if now_nanos - self.last_paddle_ts_ns >= 1_000_000:
-            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
-            paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
-            self.last_paddle_ts_ns = now_nanos
-          self.off_sent[i] = True
+          # Two-sided spacing to steer before sending
+          interval_ns = self.last_steer_ts_ns - self.prev_steer_ts_ns
+          next_steer_ts_ns = self.last_steer_ts_ns + interval_ns if interval_ns > 0 else 0
+          delta_after_ns = now_nanos - self.last_steer_ts_ns
+          delta_before_ns = (next_steer_ts_ns - now_nanos) if interval_ns > 0 else 1_000_000_000
+          if (delta_after_ns >= PADDLE_STEER_GAP_NS and delta_before_ns >= PADDLE_STEER_GAP_NS):
+            # Non-blocking 2 ms spacing for paddle frames
+            if now_nanos - self.last_paddle_ts_ns >= PADDLE_NONBLOCK_GAP_NS:
+              paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+              paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
+              self.last_paddle_ts_ns = now_nanos
+            self.off_sent[i] = True
       # clean up once both off pulses are sent
       if hasattr(self, "off_sent") and all(self.off_sent):
         del self.off_schedule_ns
@@ -274,7 +299,7 @@ class CarController(CarControllerBase):
     self.last_regen_paddle_pressed = self.regen_paddle_pressed
 
     if paddle_sends:
-      if now_nanos - self.last_steer_ts_ns >= 5_000_000:
+      if now_nanos - self.last_steer_ts_ns >= PADDLE_STEER_GAP_NS:
         can_sends.extend(paddle_sends)
 
     if self.CP.openpilotLongitudinalControl:
