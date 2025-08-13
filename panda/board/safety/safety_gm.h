@@ -195,9 +195,7 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
       int gas_interceptor = GM_GET_INTERCEPTOR(to_push);
       gas_pressed = gas_interceptor > GM_GAS_INTERCEPTOR_THRESHOLD;
       gas_interceptor_prev = gas_interceptor;
-      // Force-disable ACC states when interceptor is active
-      cruise_engaged_prev = false;
-      acc_main_on = false;
+//      gm_pcm_cruise = false;
     }
 
     bool stock_ecu_detected = (addr == 0x180);  // ASCMLKASteeringCmd
@@ -356,11 +354,8 @@ static safety_config gm_init(uint16_t param) {
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG) && !gm_cc_long;
   gm_pcm_cruise = ((gm_hw == GM_CAM) && (!gm_cam_long || gm_cc_long) && !gm_force_ascm && !gm_pedal_long) || (gm_hw == GM_SDGM);
   gm_skip_relay_check = GET_FLAG(param, GM_PARAM_NO_CAMERA);
-  gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC) && !GET_FLAG(param, GM_PARAM_PEDAL_INTERCEPTOR);
+  gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
   enable_gas_interceptor = GET_FLAG(param, GM_PARAM_PEDAL_INTERCEPTOR);
-  if (enable_gas_interceptor) {
-    gm_pcm_cruise = false;
-  }
 
   safety_config ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_ASCM_TX_MSGS);
   if (gm_hw == GM_CAM) {
