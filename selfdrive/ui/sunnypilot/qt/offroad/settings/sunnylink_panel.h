@@ -49,7 +49,6 @@ private:
   QString sunnylinkBtnDescription;
   PushButtonSP *restoreSettings;
   PushButtonSP *backupSettings;
-  ParamControlSP * sunnylinkUploaderEnabledBtn;
 
   void stopSunnylink() const;
   void startSunnylink() const;
