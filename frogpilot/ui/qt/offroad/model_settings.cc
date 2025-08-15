@@ -1,4 +1,7 @@
 #include "frogpilot/ui/qt/offroad/model_settings.h"
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent), parent(parent) {
   QStackedLayout *modelLayout = new QStackedLayout();
@@ -84,6 +87,36 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
     } else if (param == "DownloadModel") {
       downloadModelBtn = new FrogPilotButtonsControl(title, desc, icon, {tr("DOWNLOAD"), tr("DOWNLOAD ALL")});
       QObject::connect(downloadModelBtn, &FrogPilotButtonsControl::buttonClicked, [this](int id) {
+        auto isInstalled = [this](const QString &key) {
+          bool has_thneed = false;
+          bool has_policy_meta = false;
+          bool has_policy_tg = false;
+          bool has_vision_meta = false;
+          bool has_vision_tg = false;
+
+          for (const QString &file : modelDir.entryList(QDir::Files)) {
+            QFileInfo fi(modelDir.filePath(file));
+            const QString base = fi.baseName();
+            const QString ext = fi.suffix();
+            if (!(base.startsWith(key) || base.startsWith(key + "_"))) continue;
+
+            if (ext == "thneed") {
+              // Classic model (WD-40 etc.)
+              has_thneed = true;
+            } else if (ext == "pkl") {
+              // TinyGrad bundle uses these four exact suffixes
+              if (base.contains("_driving_policy_metadata"))       has_policy_meta  = true;
+              else if (base.contains("_driving_policy_tinygrad"))  has_policy_tg    = true;
+              else if (base.contains("_driving_vision_metadata"))  has_vision_meta  = true;
+              else if (base.contains("_driving_vision_tinygrad"))  has_vision_tg    = true;
+            }
+          }
+
+          // Classic models: any matching .thneed counts as installed
+          if (has_thneed) return true;
+          // TinyGrad models: require all four policy/vision files to be present
+          return has_policy_meta && has_policy_tg && has_vision_meta && has_vision_tg;
+        };
         if (id == 0) {
           if (modelDownloading) {
             params_memory.putBool("CancelModelDownload", true);
@@ -93,7 +126,7 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
             QStringList downloadableModels = availableModelNames;
             for (const QString &modelKey : modelFileToNameMap.keys()) {
               QString modelName = modelFileToNameMap.value(modelKey);
-              if (modelDir.exists(modelKey + ".thneed")) {
+              if (isInstalled(modelKey)) {
                 downloadableModels.removeAll(modelName);
               }
             }
@@ -102,7 +135,21 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
 
             QString modelToDownload = MultiOptionDialog::getSelection(tr("Select a driving model to download"), downloadableModels, "", this);
             if (!modelToDownload.isEmpty()) {
-              params_memory.put("ModelToDownload", modelFileToNameMap.key(modelToDownload).toStdString());
+              QString modelKey = modelFileToNameMap.key(modelToDownload);
+              params_memory.put("ModelToDownload", modelKey.toStdString());
+              // Also persist the version for this downloaded model if known
+              {
+                QFile vf("/data/models/.model_versions.json");
+                if (vf.open(QIODevice::ReadOnly)) {
+                  auto doc = QJsonDocument::fromJson(vf.readAll());
+                  if (doc.isObject()) {
+                    auto obj = doc.object();
+                    if (obj.contains(modelKey)) {
+                      params.put("ModelVersion", obj.value(modelKey).toString().toStdString());
+                    }
+                  }
+                }
+              }
               params_memory.put("ModelDownloadProgress", "Downloading...");
 
               downloadModelBtn->setText(0, tr("CANCEL"));
@@ -204,6 +251,36 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
     } else if (param == "SelectModel") {
       selectModelBtn = new ButtonControl(title, tr("SELECT"), desc);
       QObject::connect(selectModelBtn, &ButtonControl::clicked, [this]() {
+        auto isInstalled = [this](const QString &key) {
+          bool has_thneed = false;
+          bool has_policy_meta = false;
+          bool has_policy_tg = false;
+          bool has_vision_meta = false;
+          bool has_vision_tg = false;
+
+          for (const QString &file : modelDir.entryList(QDir::Files)) {
+            QFileInfo fi(modelDir.filePath(file));
+            const QString base = fi.baseName();
+            const QString ext = fi.suffix();
+            if (!(base.startsWith(key) || base.startsWith(key + "_"))) continue;
+
+            if (ext == "thneed") {
+              // Classic model (WD-40 etc.)
+              has_thneed = true;
+            } else if (ext == "pkl") {
+              // TinyGrad bundle uses these four exact suffixes
+              if (base.contains("_driving_policy_metadata"))       has_policy_meta  = true;
+              else if (base.contains("_driving_policy_tinygrad"))  has_policy_tg    = true;
+              else if (base.contains("_driving_vision_metadata"))  has_vision_meta  = true;
+              else if (base.contains("_driving_vision_tinygrad"))  has_vision_tg    = true;
+            }
+          }
+
+          // Classic models: any matching .thneed counts as installed
+          if (has_thneed) return true;
+          // TinyGrad models: require all four policy/vision files to be present
+          return has_policy_meta && has_policy_tg && has_vision_meta && has_vision_tg;
+        };
         QStringList selectableModels;
         for (const QString &modelKey : modelFileToNameMap.keys()) {
           QString modelName = modelFileToNameMap.value(modelKey);
@@ -211,7 +288,7 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
             continue;
           }
 
-          if (modelDir.exists(modelKey + ".thneed")) {
+          if (isInstalled(modelKey)) {
             selectableModels.append(modelName);
           }
         }
@@ -224,6 +301,20 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
           currentModel = modelToSelect;
 
           params.put("Model", modelFileToNameMap.key(modelToSelect).toStdString());
+          // Sync ModelVersion with the selected model if known
+          {
+            QString modelKey = modelFileToNameMap.key(modelToSelect);
+            QFile vf("/data/models/.model_versions.json");
+            if (vf.open(QIODevice::ReadOnly)) {
+              auto doc = QJsonDocument::fromJson(vf.readAll());
+              if (doc.isObject()) {
+                auto obj = doc.object();
+                if (obj.contains(modelKey)) {
+                  params.put("ModelVersion", obj.value(modelKey).toString().toStdString());
+                }
+              }
+            }
+          }
 
           updateFrogPilotToggles();
 
@@ -296,9 +387,22 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
   modelDownloading = !params_memory.get("ModelToDownload").empty();
 
   QStringList availableModels = QString::fromStdString(params.get("AvailableModels")).split(",");
-  availableModels.sort();
   availableModelNames = QString::fromStdString(params.get("AvailableModelNames")).split(",");
-  availableModelNames.sort();
+
+  // Build a simple model->version map for quick lookups elsewhere
+  {
+    QStringList versionList = QString::fromStdString(params.get("ModelVersions")).split(",");
+    QJsonObject versionObj;
+    int verCount = qMin(availableModels.size(), versionList.size());
+    for (int i = 0; i < verCount; ++i) {
+      versionObj.insert(availableModels[i], versionList[i]);
+    }
+    QFile out("/data/models/.model_versions.json");
+    if (out.open(QIODevice::WriteOnly)) {
+      out.write(QJsonDocument(versionObj).toJson());
+      out.close();
+    }
+  }
 
   modelFileToNameMap.clear();
   modelFileToNameMapProcessed.clear();
@@ -310,10 +414,40 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
   modelFileToNameMap.insert("space-lab", "Space Lab 👀📡");
   modelFileToNameMapProcessed.insert("space-lab", "Space Lab");
 
+  auto isInstalled = [this](const QString &key) {
+    bool has_thneed = false;
+    bool has_policy_meta = false;
+    bool has_policy_tg = false;
+    bool has_vision_meta = false;
+    bool has_vision_tg = false;
+
+    for (const QString &file : modelDir.entryList(QDir::Files)) {
+      QFileInfo fi(modelDir.filePath(file));
+      const QString base = fi.baseName();
+      const QString ext = fi.suffix();
+      if (!(base.startsWith(key) || base.startsWith(key + "_"))) continue;
+
+      if (ext == "thneed") {
+        // Classic model (WD-40 etc.)
+        has_thneed = true;
+      } else if (ext == "pkl") {
+        // TinyGrad bundle uses these four exact suffixes
+        if (base.contains("_driving_policy_metadata"))       has_policy_meta  = true;
+        else if (base.contains("_driving_policy_tinygrad"))  has_policy_tg    = true;
+        else if (base.contains("_driving_vision_metadata"))  has_vision_meta  = true;
+        else if (base.contains("_driving_vision_tinygrad"))  has_vision_tg    = true;
+      }
+    }
+
+    // Classic models: any matching .thneed counts as installed
+    if (has_thneed) return true;
+    // TinyGrad models: require all four policy/vision files to be present
+    return has_policy_meta && has_policy_tg && has_vision_meta && has_vision_tg;
+  };
   QStringList downloadableModels = availableModelNames;
   for (const QString &modelKey : modelFileToNameMap.keys()) {
     QString modelName = modelFileToNameMap.value(modelKey);
-    if (modelDir.exists(modelKey + ".thneed")) {
+    if (isInstalled(modelKey)) {
       downloadableModels.removeAll(modelName);
     }
   }
@@ -336,7 +470,7 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
   noModelsDownloaded = deletableModels.isEmpty();
 
   QString modelKey = QString::fromStdString(params.get("Model"));
-  if (!modelDir.exists(modelKey + ".thneed")) {
+  if (!isInstalled(modelKey)) {
     modelKey = QString::fromStdString(params_default.get("Model"));
   }
   currentModel = modelFileToNameMap.value(modelKey);
