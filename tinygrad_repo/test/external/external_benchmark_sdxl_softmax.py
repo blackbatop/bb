@@ -1,5 +1,4 @@
 from tinygrad import Tensor, dtypes, GlobalCounters
-from tinygrad.engine.realize import get_program
 
 if __name__ == "__main__":
   t = Tensor.empty(81920, 4096, dtype=dtypes.half)
@@ -24,5 +23,5 @@ if __name__ == "__main__":
   #k.apply_opt(Opt(OptOps.GROUP, 1, 32))
   #k.apply_opt(Opt(OptOps.GROUP, 0, 32))
   from tinygrad.engine.realize import CompiledRunner, ExecItem
-  run = CompiledRunner(prg:=get_program(k.get_optimized_ast(), k.opts))
+  run = CompiledRunner(prg:=k.to_program())
   ExecItem(run, si.bufs).run()

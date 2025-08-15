@@ -4,17 +4,12 @@
 
 from typing import Any
 import unittest, onnx, tempfile
-from tinygrad import dtypes, Tensor
+from tinygrad import dtypes
 from tinygrad.frontend.onnx import OnnxRunner
 import numpy as np
 from extra.onnx_helpers import validate
 from onnx.defs import ONNX_DOMAIN, AI_ONNX_PREVIEW_TRAINING_DOMAIN
 MICROSOFT_CONTRIB_OPS_DOMAIN = "com.microsoft"
-# TODO: remove this once ORT supports 1.18.0
-from onnx.helper import VERSION_TABLE
-VERSION_MAP = {row[0]: row[1:] for row in VERSION_TABLE}
-IR_VERSION, ai_onnx, ai_onnx_ml, ai_onnx_training = VERSION_MAP["1.17.0"]
-
 
 class TestOnnxOps(unittest.TestCase):
   DOMAIN = None
@@ -23,14 +18,7 @@ class TestOnnxOps(unittest.TestCase):
     onnx_outputs = [onnx.helper.make_empty_tensor_value_info(name) for name in outs]
     nodes = [onnx.helper.make_node(op, list(inps), list(outs), domain=self.DOMAIN, **opts)]
     graph = onnx.helper.make_graph(nodes, f"test_{op.lower()}", onnx_inputs, onnx_outputs)
-    #model = onnx.helper.make_model(graph, producer_name=f"test_{op.lower()}")
-    # TODO: remove this once ORT supports 1.18.0
-    opset_id = None
-    if type(self).__name__ == "TestMainOnnxOps": opset_id = ai_onnx
-    if type(self).__name__ == "TestTrainingOnnxOps": opset_id = ai_onnx_training
-    if type(self).__name__ == "TestContribOnnxOps": opset_id = 1
-    model = onnx.helper.make_model(graph, producer_name=f"test_{op.lower()}", ir_version=IR_VERSION,
-                                    opset_imports=[onnx.helper.make_opsetid(self.DOMAIN, opset_id)])
+    model = onnx.helper.make_model(graph, producer_name=f"test_{op.lower()}")
     return model
 
   def helper_test_single_op(self, op:str, inps:dict[str, np.ndarray], opts:dict[str, Any], outs:list[str], rtol=1e-3, atol=1e-6):
@@ -100,8 +88,7 @@ class TestMainOnnxOps(TestOnnxOps):
     attributes = {"detect_negative":1, "detect_positive":1}
     outputs = ["y"]
     model = self.helper_build_model("IsInf", inputs, attributes, outputs)
-    runner = OnnxRunner(Tensor(model.SerializeToString(), device="PYTHON"))
-    outputs = runner(inputs)
+    outputs = OnnxRunner(model)(inputs)
     assert outputs["y"].dtype is dtypes.bool
 
   def test_quantize_linear(self):
@@ -216,7 +203,7 @@ class TestTrainingOnnxOps(TestOnnxOps):
   def _validate_training(self, op:str, onnx_fxn, inps:dict[str, np.ndarray], opts:dict[str, Any], outs:list[str]):
     model = self.helper_build_model(op, inps, opts, outs)
     if op == "Momentum": del opts['mode']
-    runner = OnnxRunner(Tensor(model.SerializeToString(), device="PYTHON"))
+    runner = OnnxRunner(model)
     tiny_out = runner(inps)
     onnx_out = onnx_fxn(**inps, **opts)
     for (nm, t_out), o_out in  zip(tiny_out.items(), onnx_out):
@@ -251,7 +238,6 @@ class TestTrainingOnnxOps(TestOnnxOps):
         outputs = ["X_out", "V_out"]
         self._validate_training("Momentum", onnx_fxn, inputs, attributes, outputs)
 
-  @unittest.expectedFailure  # TODO: regression from removing StrEnum in Domain
   def test_adam_t_greater_than_zero(self):
     from onnx.backend.test.case.node.adam import apply_adam
     for t in [1, 3, 100]:
