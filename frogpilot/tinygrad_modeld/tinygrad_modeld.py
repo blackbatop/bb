@@ -143,6 +143,11 @@ class ModelState:
     # img buffers are managed in openCL transform code
     self.vision_inputs: dict[str, Tensor] = {}
     self.vision_output = np.zeros(vision_output_size, dtype=np.float32)
+    self.policy_inputs = {k: Tensor(v, device='NPY').realize() for k,v in self.numpy_inputs.items()}
+    # For v11 policy networks, ensure we don't pass legacy inputs
+    if getattr(self, 'is_v11', False):
+      self.policy_inputs.pop('lateral_control_params', None)
+      self.policy_inputs.pop('prev_desired_curv', None)
     self.policy_output = np.zeros(policy_output_size, dtype=np.float32)
     self.parser = Parser()
 
@@ -151,23 +156,6 @@ class ModelState:
 
     with open(POLICY_PKL_PATH, "rb") as f:
       self.policy_run = pickle.load(f)
-
-    # Build policy_inputs strictly to what the compiled policy expects (and in that order).
-    expected_names = None
-    try:
-      expected_names = list(self.policy_run.captured.expected_names)  # e.g. ['desire','features_buffer','traffic_convention']
-    except Exception:
-      expected_names = None
-
-    if expected_names:
-      ordered_pairs = []
-      for name in expected_names:
-        if name in self.numpy_inputs:
-          ordered_pairs.append((name, self.numpy_inputs[name]))
-      self.policy_inputs = {k: Tensor(v, device='NPY').realize() for k, v in ordered_pairs}
-    else:
-      # Fallback for older tinygrad builds that don't expose captured arg names
-      self.policy_inputs = {k: Tensor(v, device='NPY').realize() for k, v in self.numpy_inputs.items()}
 
   def slice_outputs(self, model_outputs: np.ndarray, output_slices: dict[str, slice]) -> dict[str, np.ndarray]:
     parsed_model_outputs = {k: model_outputs[np.newaxis, v] for k,v in output_slices.items()}
@@ -209,33 +197,42 @@ class ModelState:
     self.full_features_buffer[0,-1] = vision_outputs_dict['hidden_state'][0, :]
     self.numpy_inputs['features_buffer'][:] = self.full_features_buffer[0, self.temporal_idxs]
 
-    self.policy_output = self.policy_run(**self.policy_inputs).numpy().flatten()
+    # Match policy inputs to the model's expected argument names to avoid JIT mismatches across generations
+    expected = getattr(getattr(self.policy_run, 'captured', None), 'expected_names', None)
+    if expected is not None:
+      policy_inputs_to_run = {k: self.policy_inputs[k] for k in expected if k in self.policy_inputs}
+    else:
+      # Fallback based on detected generation
+      if getattr(self, 'is_v11', False):
+        policy_inputs_to_run = {k: self.policy_inputs[k] for k in ('desire', 'features_buffer', 'traffic_convention') if k in self.policy_inputs}
+      else:
+        policy_inputs_to_run = self.policy_inputs
+
+    self.policy_output = self.policy_run(**policy_inputs_to_run).numpy().flatten()
     policy_outputs_dict = self.parser.parse_policy_outputs(self.slice_outputs(self.policy_output, self.policy_output_slices))
+
     # TODO model only uses last value now
     if hasattr(self, 'full_prev_desired_curv'):
-      # shift buffer
-      self.full_prev_desired_curv[0, :-1] = self.full_prev_desired_curv[0, 1:]
-
-      # write newest sample if provided, otherwise zero
-      if 'desired_curvature' in policy_outputs_dict:
-        self.full_prev_desired_curv[0, -1, :] = policy_outputs_dict['desired_curvature'][0, :]
+      self.full_prev_desired_curv[0,:-1] = self.full_prev_desired_curv[0,1:]
+      self.full_prev_desired_curv[0,-1,:] = policy_outputs_dict['desired_curvature'][0, :]
+      # Set prev_desired_curv differently depending on policy_generation
+      if getattr(self, "policy_generation", "v8") == "v9":
+        if 'prev_desired_curv' in self.numpy_inputs:
+          self.numpy_inputs['prev_desired_curv'][:] = 0*self.full_prev_desired_curv[0, self.temporal_idxs]
       else:
-        self.full_prev_desired_curv[0, -1, :] = 0
-
-      # feed prev_desired_curv to policy depending on generation
-      if 'prev_desired_curv' in self.numpy_inputs:
-        if getattr(self, 'policy_generation', 'v8') == 'v9':
-          # v9 ignores prev_desired_curv (match pre-existing behavior)
-          self.numpy_inputs['prev_desired_curv'][:] = 0 * self.full_prev_desired_curv[0, self.temporal_idxs]
-        elif getattr(self, 'policy_generation', 'v8') == 'v11':
-          # v11 removed prev_desired_curv entirely; keep zeros if the tensor exists
-          self.numpy_inputs['prev_desired_curv'][:] = 0
-        elif 'desired_curvature' not in policy_outputs_dict:
-          # missing key: be safe and feed zeros
-          self.numpy_inputs['prev_desired_curv'][:] = 0 * self.full_prev_desired_curv[0, self.temporal_idxs]
-        else:
-          # v8 and other generations that still consume it
+        if 'prev_desired_curv' in self.numpy_inputs:
           self.numpy_inputs['prev_desired_curv'][:] = self.full_prev_desired_curv[0, self.temporal_idxs]
+
+    # If running a v11 model, make sure legacy buffers don't linger from older gens
+    if getattr(self, 'is_v11', False):
+      if hasattr(self, 'full_prev_desired_curv'):
+        delattr(self, 'full_prev_desired_curv')
+      if 'prev_desired_curv' in self.numpy_inputs:
+        self.numpy_inputs.pop('prev_desired_curv', None)
+        self.policy_inputs.pop('prev_desired_curv', None)
+      if 'lateral_control_params' in self.numpy_inputs and 'lateral_control_params' not in policy_inputs_to_run:
+        self.numpy_inputs.pop('lateral_control_params', None)
+        self.policy_inputs.pop('lateral_control_params', None)
 
     combined_outputs_dict = {**vision_outputs_dict, **policy_outputs_dict}
     if SEND_RAW_PRED:
