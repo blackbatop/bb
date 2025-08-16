@@ -117,6 +117,9 @@ class ModelState:
     # Add policy_generation attribute after loading policy_metadata
     self.policy_generation = policy_metadata.get("generation", policy_metadata.get("version", "v8"))
     self.is_v11 = (self.policy_generation == "v11")
+    # Fallback: if the model doesn't expose desired_curvature, treat as v11
+    if 'desired_curvature' not in self.policy_output_slices:
+      self.is_v11 = True
 
     self.frames = {name: DrivingModelFrame(context, ModelConstants.TEMPORAL_SKIP) for name in self.vision_input_names}
     self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
@@ -211,17 +214,24 @@ class ModelState:
     self.policy_output = self.policy_run(**policy_inputs_to_run).numpy().flatten()
     policy_outputs_dict = self.parser.parse_policy_outputs(self.slice_outputs(self.policy_output, self.policy_output_slices))
 
-    # TODO model only uses last value now
+    # Update legacy curvature history only if the output exists on this generation
     if hasattr(self, 'full_prev_desired_curv'):
-      self.full_prev_desired_curv[0,:-1] = self.full_prev_desired_curv[0,1:]
-      self.full_prev_desired_curv[0,-1,:] = policy_outputs_dict['desired_curvature'][0, :]
-      # Set prev_desired_curv differently depending on policy_generation
-      if getattr(self, "policy_generation", "v8") == "v9":
-        if 'prev_desired_curv' in self.numpy_inputs:
-          self.numpy_inputs['prev_desired_curv'][:] = 0*self.full_prev_desired_curv[0, self.temporal_idxs]
+      if 'desired_curvature' in policy_outputs_dict:
+        self.full_prev_desired_curv[0,:-1] = self.full_prev_desired_curv[0,1:]
+        self.full_prev_desired_curv[0,-1,:] = policy_outputs_dict['desired_curvature'][0, :]
+        # Set prev_desired_curv differently depending on policy_generation
+        if getattr(self, "policy_generation", "v8") == "v9":
+          if 'prev_desired_curv' in self.numpy_inputs:
+            self.numpy_inputs['prev_desired_curv'][:] = 0*self.full_prev_desired_curv[0, self.temporal_idxs]
+        else:
+          if 'prev_desired_curv' in self.numpy_inputs:
+            self.numpy_inputs['prev_desired_curv'][:] = self.full_prev_desired_curv[0, self.temporal_idxs]
       else:
+        # No desired_curvature present (e.g. v11): don't advance history; ensure legacy input is benign
         if 'prev_desired_curv' in self.numpy_inputs:
-          self.numpy_inputs['prev_desired_curv'][:] = self.full_prev_desired_curv[0, self.temporal_idxs]
+          self.numpy_inputs['prev_desired_curv'][:] = 0
+        # Also mark as v11 defensively so later cleanups run
+        self.is_v11 = True
 
     # If running a v11 model, make sure legacy buffers don't linger from older gens
     if getattr(self, 'is_v11', False):
