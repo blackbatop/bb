@@ -258,28 +258,31 @@ class LongitudinalPlanner:
     longitudinalPlan.longitudinalPlanSource = self.mpc.source
     longitudinalPlan.fcw = self.fcw
 
+    # Use FrogPilot’s tuned actuator delay when available; fallback to CP
+    action_t = getattr(frogpilot_toggles, 'longitudinalActuatorDelay', self.CP.longitudinalActuatorDelay) + DT_MDL
+
     if classic_model:
       a_target, should_stop = get_accel_from_plan_classic(self.CP, longitudinalPlan.speeds,
                                                           longitudinalPlan.accels, vEgoStopping=frogpilot_toggles.vEgoStopping)
     elif tinygrad_model:
-      action_t =  self.CP.longitudinalActuatorDelay + DT_MDL
+      # action_t set above via frogpilot_toggles (with CP fallback)
       output_a_target_mpc, output_should_stop_mpc = get_accel_from_plan_tomb_raider(self.v_desired_trajectory, self.a_desired_trajectory, CONTROL_N_T_IDX,
                                                                                     action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
       output_a_target_e2e = sm['modelV2'].action.desiredAcceleration
       output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
-      if self.mode == 'acc' or not self.mlsim:
+      if self.mode == 'acc':
         a_target = output_a_target_mpc
         should_stop = output_should_stop_mpc
       else:
         a_target = min(output_a_target_mpc, output_a_target_e2e)
         should_stop = output_should_stop_e2e or output_should_stop_mpc
     else:
-      action_t = self.CP.longitudinalActuatorDelay + DT_MDL
+      # action_t set above via frogpilot_toggles (with CP fallback)
       a_target, should_stop = get_accel_from_plan(longitudinalPlan.speeds, longitudinalPlan.accels,
                                                   action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
     longitudinalPlan.aTarget = float(a_target)
-    longitudinalPlan.shouldStop = bool(should_stop)
+    longitudinalPlan.shouldStop = bool(should_stop) or sm['frogpilotPlan'].forcingStopLength < 1
     longitudinalPlan.allowBrake = True
     longitudinalPlan.allowThrottle = self.allow_throttle
 
