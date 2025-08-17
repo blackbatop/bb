@@ -53,7 +53,16 @@ def get_action_from_model(model_output: dict[str, np.ndarray], prev_action: log.
                                                                  action_t=long_action_t)
     desired_accel = smooth_value(desired_accel, prev_action.desiredAcceleration, LONG_SMOOTH_SECONDS)
 
-    desired_curvature = model_output['desired_curvature'][0, 0]
+    # v8/v9 export desired_curvature; v11 does not. Fall back to plan-derived curvature when absent.
+    if 'desired_curvature' in model_output:
+      desired_curvature = float(model_output['desired_curvature'][0, 0])
+    else:
+      try:
+        curv = get_curvature_from_plan(plan)
+        desired_curvature = float(curv[0] if hasattr(curv, '__len__') else curv)
+      except Exception:
+        # last resort: hold previous curvature to stay safe
+        desired_curvature = prev_action.desiredCurvature
     if v_ego > MIN_LAT_CONTROL_SPEED:
       desired_curvature = smooth_value(desired_curvature, prev_action.desiredCurvature, LAT_SMOOTH_SECONDS)
     else:
