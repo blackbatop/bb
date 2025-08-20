@@ -325,7 +325,7 @@ class CarController(CarControllerBase):
 
     if self.CP.openpilotLongitudinalControl:
       # Gas/regen, brakes, and UI commands - all at 25Hz
-      if self.frame % 8 == 0:
+      if self.frame % 4 == 0:
         stopping = actuators.longControlState == LongCtrlState.stopping
 
         # Pitch compensated acceleration;
@@ -374,7 +374,7 @@ class CarController(CarControllerBase):
           self.apply_brake = 0
           self.apply_gas = self.params.INACTIVE_REGEN
 
-        idx = (self.frame // 8) % 4
+        idx = (self.frame // 4) % 4
 
         if self.CP.flags & GMFlags.CC_LONG.value:
           if CC.longActive and CS.out.vEgo > self.CP.minEnableSpeed:
