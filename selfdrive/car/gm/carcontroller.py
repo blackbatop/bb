@@ -25,13 +25,15 @@ TransmissionType = car.CarParams.TransmissionType
 CAMERA_CANCEL_DELAY_FRAMES = 10
 # Enforce a minimum interval between steering messages to avoid a fault
 MIN_STEER_MSG_INTERVAL_MS = 1
-# Two‑sided spacing tuned for ~50 Hz steer; target a 10 ms wide window per interval
+# Two‑sided spacing tuned for ~33 Hz steer; target a 10 ms wide window per interval
+# Paddle spoofing and scheduling constants
 PADDLE_STEER_GAP_MIN_NS = 5_000_000   # ≥5 ms each side (EPS guard)
 PADDLE_STEER_GAP_MAX_NS = 12_000_000  # cap for long intervals
 PADDLE_GAP_TARGET_NS    = 5_000_000   # aim per‑side gap even if interval//2 − early is larger
 PADDLE_NONBLOCK_GAP_NS  = 1_000_000   # ≥1 ms since last paddle send
 PADDLE_SLOT_EARLY_NS    = 1_000_000   # allow firing up to 1 ms before slot
-OVERFLOW_THRESH         = 0.70        # credits threshold for overflow spoof (to reach ~40 Hz)
+OVERFLOW_THRESH         = 1.00        # fire one extra slot whenever credits ≥ 1.0
+PADDLE_TARGET_HZ        = 42.0        # desired paddle rate (Hz) when regen active; steer is ~33 Hz
 # Constants for pitch compensation
 PITCH_DEADZONE = 0.01  # [radians] 0.01 ≈ 1% grade
 BRAKE_PITCH_FACTOR_BP = [5., 10.]  # [m/s] smoothly revert to planned accel at low speeds
@@ -150,7 +152,7 @@ class CarController(CarControllerBase):
     )
     regen_active = raw_regen_active
 
-    # === Spoof scheduling: midpoint + overflow (~40Hz) ===
+    # === Spoof scheduling: midpoint + overflow (~target Hz) ===
     # Rising-edge reset on regen start
     if raw_regen_active and not self.last_regen_active:
       self.prev_steer_ts_ns = self.last_steer_ts_ns
@@ -169,14 +171,16 @@ class CarController(CarControllerBase):
                     min(PADDLE_STEER_GAP_MAX_NS,
                         min((interval_ns // 2) - PADDLE_SLOT_EARLY_NS, PADDLE_GAP_TARGET_NS))))
 
-      # New steer interval? clear per-interval flags
+      # New steer interval? clear per-interval flags and add credits to reach target Hz
       if interval_ns != self.last_interval_ns:
         self.spoof_mid_sent = False
         self.spoof_over_sent = False
         self.last_interval_ns = interval_ns
-
-      # Accumulate extra spoofs needed above 33Hz base to reach 40Hz
-      self.spoof_accum += (40.0/33.0 - 1.0)
+        # Add credits once per new steer interval to reach the desired paddle rate
+        if interval_ns > 0:
+          steer_hz = 1e9 / float(interval_ns)
+          extra_needed = max(0.0, (PADDLE_TARGET_HZ / steer_hz) - 1.0)  # e.g., 42/33 − 1 ≈ 0.2727
+          self.spoof_accum += extra_needed
 
       # Midpoint spoof: one per interval
       if not self.spoof_mid_sent and interval_ns > 0:
