@@ -55,6 +55,8 @@ GEAR_SHIFTER_MAP: dict[str, car.CarState.GearShifter] = {
   'S': GearShifter.sport, 'SPORT': GearShifter.sport,
   'L': GearShifter.low, 'LOW': GearShifter.low,
   'B': GearShifter.brake, 'BRAKE': GearShifter.brake,
+  'L2': GearShifter.low,
+  'L3': GearShifter.low,
 }
 
 
