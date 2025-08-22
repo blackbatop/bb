@@ -5,7 +5,7 @@ from openpilot.common.numpy_fast import mean
 from opendbc.can.can_define import CANDefine
 from opendbc.can.parser import CANParser
 from openpilot.selfdrive.car.interfaces import CarStateBase
-from openpilot.selfdrive.car.gm.values import DBC, AccState, CanBus, STEER_THRESHOLD, GMFlags, CC_ONLY_CAR, CAMERA_ACC_CAR, SDGM_CAR
+from openpilot.selfdrive.car.gm.values import DBC, AccState, CanBus, STEER_THRESHOLD, GMFlags, CC_ONLY_CAR, CAMERA_ACC_CAR, SDGM_CAR, CC_REGEN_PADDLE_CAR
 
 TransmissionType = car.CarParams.TransmissionType
 NetworkLocation = car.CarParams.NetworkLocation
@@ -59,7 +59,10 @@ class CarState(CarStateBase):
 
     # Track timestamps for OEM PRNDL2 and Regen Paddle messages (used to sync spoofing timing)
     self.prndl2_ts_nanos = pt_cp.ts_nanos["ECMPRDNL2"]["PRNDL2"]
-    self.regen_paddle_ts_nanos = pt_cp.ts_nanos["EBCMRegenPaddle"]["RegenPaddle"]
+    if self.CP.carFingerprint in CC_REGEN_PADDLE_CAR:
+      self.regen_paddle_ts_nanos = pt_cp.ts_nanos["EBCMRegenPaddle"]["RegenPaddle"]
+    else:
+      self.regen_paddle_ts_nanos = 0
     if self.CP.networkLocation == NetworkLocation.fwdCamera and not self.CP.flags & GMFlags.NO_CAMERA.value:
       self.pt_lka_steering_cmd_counter = pt_cp.vl["ASCMLKASteeringCmd"]["RollingCounter"]
       self.cam_lka_steering_cmd_counter = cam_cp.vl["ASCMLKASteeringCmd"]["RollingCounter"]
