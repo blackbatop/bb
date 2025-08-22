@@ -186,6 +186,13 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
       }
     }
 
+    // Cruise check for ACC models with pedal interceptor - block stock ACC
+    if ((addr == 0x1C4) && gm_has_acc && enable_gas_interceptor) {
+      // When pedal interceptor is active on ACC models, ignore stock cruise state
+      // to prevent conflicts between pedal interceptor and stock ACC
+      cruise_engaged_prev = false;
+    }
+
     if (addr == 0xBD) {
       regen_braking = (GET_BYTE(to_push, 0) >> 4) != 0U;
     }
@@ -352,6 +359,10 @@ static safety_config gm_init(uint16_t param) {
   gm_pedal_long = GET_FLAG(param, GM_PARAM_PEDAL_LONG);
   gm_cc_long = GET_FLAG(param, GM_PARAM_CC_LONG);
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG) && !gm_cc_long;
+  // Block ACC messages when pedal interceptor is active on ACC models
+  if (gm_hw == GM_CAM && enable_gas_interceptor) {
+    gm_cam_long = true;
+  }
   gm_pcm_cruise = ((gm_hw == GM_CAM) && (!gm_cam_long || gm_cc_long) && !gm_force_ascm && !gm_pedal_long) || (gm_hw == GM_SDGM);
   gm_skip_relay_check = GET_FLAG(param, GM_PARAM_NO_CAMERA);
   gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
