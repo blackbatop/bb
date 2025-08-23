@@ -162,31 +162,6 @@ class ModelState:
     self.full_desire = np.zeros((1, ModelConstants.FULL_HISTORY_BUFFER_LEN, ModelConstants.DESIRE_LEN), dtype=np.float32)
     self.temporal_idxs = slice(-1-(ModelConstants.TEMPORAL_SKIP*(ModelConstants.INPUT_HISTORY_BUFFER_LEN-1)), None, ModelConstants.TEMPORAL_SKIP)
 
-    # Optional per-input temporal index mapping to handle models expecting 24/25-step histories
-    self.temporal_idxs_map: dict[str, np.ndarray] = {}
-    buffer_history_len = ModelConstants.FULL_HISTORY_BUFFER_LEN
-
-    def _compute_idxs(n_steps: int) -> np.ndarray:
-      # If model expects 24/25 steps but our buffer is longer, build an index mapping
-      if n_steps in (24, 25) and 'features_buffer' in self.policy_input_shapes and self.policy_input_shapes.get('features_buffer', [None, None])[1] == 24:
-        step = int(-buffer_history_len / n_steps)
-        return np.arange(step, step * (n_steps + 1), step)[::-1]
-      elif n_steps == 25:
-        skip = buffer_history_len // n_steps
-        return np.arange(buffer_history_len)[-1 - (skip * (n_steps - 1))::skip]
-      elif n_steps == buffer_history_len:
-        return np.arange(buffer_history_len)
-      else:
-        # Generic fallback: evenly spaced indices
-        return np.linspace(0, buffer_history_len - 1, n_steps, dtype=int)
-
-    # Build mappings for any temporal inputs present
-    for key in ("desire", "features_buffer"):
-      if key in self.policy_input_shapes:
-        self.temporal_idxs_map[key] = _compute_idxs(self.policy_input_shapes[key][1])
-    if self.prev_desired_curv_key is not None:
-      self.temporal_idxs_map[self.prev_desired_curv_key] = _compute_idxs(self.policy_input_shapes[self.prev_desired_curv_key][1])
-
 
     # policy inputs (built dynamically to support all generations)
     self.numpy_inputs = {}
@@ -269,12 +244,7 @@ class ModelState:
 
     self.full_features_buffer[0,:-1] = self.full_features_buffer[0,1:]
     self.full_features_buffer[0,-1] = vision_outputs_dict['hidden_state'][0, :]
-    idxs_fb = self.temporal_idxs_map.get('features_buffer', None)
-    self.numpy_inputs['features_buffer'][:] = (
-      self.full_features_buffer[0, idxs_fb]
-      if idxs_fb is not None else
-      self.full_features_buffer[0, self.temporal_idxs]
-    )
+    self.numpy_inputs['features_buffer'][:] = self.full_features_buffer[0, self.temporal_idxs]
 
     self.policy_output = self.policy_run(**self.policy_inputs).contiguous().realize().uop.base.buffer.numpy()
     policy_outputs_dict = self.parser.parse_policy_outputs(self.slice_outputs(self.policy_output, self.policy_output_slices))
@@ -285,17 +255,11 @@ class ModelState:
       self.full_prev_desired_curv[0,-1,:] = policy_outputs_dict['desired_curvature'][0, :]
 
       if self.prev_desired_curv_key is not None:
-        idxs_pdc = self.temporal_idxs_map.get(self.prev_desired_curv_key, None)
-        src_prev = (
-          self.full_prev_desired_curv[0, idxs_pdc]
-          if idxs_pdc is not None else
-          self.full_prev_desired_curv[0, self.temporal_idxs]
-        )
         # v9 models expect zeros for prev_desired_curv(s); others use history
         if self.is_v9:
-          self.numpy_inputs[self.prev_desired_curv_key][:] = 0 * src_prev
+          self.numpy_inputs[self.prev_desired_curv_key][:] = 0 * self.full_prev_desired_curv[0, self.temporal_idxs]
         else:
-          self.numpy_inputs[self.prev_desired_curv_key][:] = src_prev
+          self.numpy_inputs[self.prev_desired_curv_key][:] = self.full_prev_desired_curv[0, self.temporal_idxs]
 
     combined_outputs_dict = {**vision_outputs_dict, **policy_outputs_dict}
     if SEND_RAW_PRED:
