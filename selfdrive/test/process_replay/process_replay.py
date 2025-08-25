@@ -476,7 +476,7 @@ CONFIGS = [
       "modelV2", "driverCameraState", "roadCameraState", "wideRoadCameraState", "managerState",
       "testJoystick", "liveTorqueParameters", "accelerometer", "gyroscope", "carOutput"
     ],
-    subs=["controlsState", "carControl", "onroadEvents"],
+    subs=["selfdriveState", "controlsState", "carControl", "onroadEvents"],
     ignore=["logMonoTime", "controlsState.startMonoTime", "controlsState.cumLagMs"],
     config_callback=controlsd_config_callback,
     init_callback=get_car_params_callback,
@@ -810,8 +810,8 @@ def check_openpilot_enabled(msgs: LogIterable) -> bool:
     if msg.which() == "carParams":
       if msg.carParams.notCar:
         return True
-    elif msg.which() == "controlsState":
-      if msg.controlsState.active:
+    elif msg.which() == "selfdriveState":
+      if msg.selfdriveState.active:
         cur_enabled_count += 1
       else:
         cur_enabled_count = 0

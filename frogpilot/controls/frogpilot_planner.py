@@ -50,16 +50,16 @@ class FrogPilotPlanner:
   def update(self, sm, frogpilot_toggles):
     self.lead_one = sm["radarState"].leadOne
 
-    v_cruise = min(sm["controlsState"].vCruise, V_CRUISE_MAX) * CV.KPH_TO_MS
+    v_cruise = min(sm["selfdriveState"].vCruise, V_CRUISE_MAX) * CV.KPH_TO_MS
     v_ego = max(sm["carState"].vEgo, 0)
 
-    if sm["controlsState"].enabled:
+    if sm["selfdriveState"].enabled:
       self.frogpilot_acceleration.update(v_ego, sm, frogpilot_toggles)
     else:
       self.frogpilot_acceleration.max_accel = 0
       self.frogpilot_acceleration.min_accel = 0
 
-    if sm["controlsState"].enabled and frogpilot_toggles.conditional_experimental_mode:
+    if sm["selfdriveState"].enabled and frogpilot_toggles.conditional_experimental_mode:
       self.cem.update(v_ego, sm, frogpilot_toggles)
     else:
       self.cem.curve_detected = False

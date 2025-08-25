@@ -55,7 +55,7 @@ void ExperimentalButton::changeMode() {
 }
 
 void ExperimentalButton::updateState(const UIState &s, const FrogPilotUIState &fs, const QJsonObject &frogpilot_toggles) {
-  const auto cs = (*s.sm)["controlsState"].getControlsState();
+  const auto cs = (*s.sm)["selfdriveState"].getSelfdriveState();
   bool eng = cs.getEngageable() || cs.getEnabled() || fs.frogpilot_scene.always_on_lateral_active;
   if ((cs.getExperimentalMode() != experimental_mode) || (eng != engageable)) {
     engageable = eng;

@@ -127,7 +127,7 @@ public:
   UIState(QObject* parent = 0);
   void updateStatus(FrogPilotUIState *fs);
   inline bool engaged() const {
-    return scene.started && (*sm)["controlsState"].getControlsState().getEnabled();
+    return scene.started && (*sm)["selfdriveState"].getSelfdriveState().getEnabled();
   }
 
   void setPrimeType(PrimeType type);

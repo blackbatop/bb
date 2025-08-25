@@ -292,7 +292,7 @@ class SpeedLimitController:
 
           self.target = desired_target
 
-        elif sm["controlsState"].enabled and self.frogpilot_toggles.slc_fallback_set_speed:
+        elif sm["selfdriveState"].enabled and self.frogpilot_toggles.slc_fallback_set_speed:
           desired_source = "None"
           desired_target = v_cruise
     else:
@@ -310,7 +310,7 @@ class SpeedLimitController:
   def update_override(self, v_cruise, v_cruise_diff, v_ego, v_ego_diff, sm):
     self.override_slc = self.overridden_speed > self.target + self.offset > 0
     self.override_slc |= sm["carState"].gasPressed and v_ego > self.target + self.offset > 0
-    self.override_slc &= sm["controlsState"].enabled
+    self.override_slc &= sm["selfdriveState"].enabled
 
     if self.override_slc:
       if self.frogpilot_toggles.speed_limit_controller_override_manual:

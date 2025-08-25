@@ -46,7 +46,7 @@ TESTING_CLOSET = "TESTING_CLOSET" in os.environ
 IGNORE_PROCESSES = {"loggerd", "encoderd", "statsd"}
 
 ThermalStatus = log.DeviceState.ThermalStatus
-State = log.ControlsState.OpenpilotState
+State = log.SelfdriveState.OpenpilotState
 PandaType = log.PandaState.PandaType
 Desire = log.Desire
 LaneChangeState = log.LaneChangeState
@@ -86,7 +86,7 @@ class Controls:
     self.branch = get_short_branch()
 
     # Setup sockets
-    self.pm = messaging.PubMaster(['controlsState', 'carControl', 'onroadEvents'])
+    self.pm = messaging.PubMaster(['selfdriveState', 'controlsState', 'carControl', 'onroadEvents'])
 
     self.sensor_packets = ["accelerometer", "gyroscope"]
     self.camera_packets = ["roadCameraState", "driverCameraState", "wideRoadCameraState"]
@@ -846,21 +846,12 @@ class Controls:
     dat.valid = CS.canValid
     controlsState = dat.controlsState
     if current_alert:
-      controlsState.alertText1 = current_alert.alert_text_1
-      controlsState.alertText2 = current_alert.alert_text_2
-      controlsState.alertSize = current_alert.alert_size
-      controlsState.alertStatus = current_alert.alert_status
       controlsState.alertBlinkingRate = current_alert.alert_rate
-      controlsState.alertType = current_alert.alert_type
-      controlsState.alertSound = current_alert.audible_alert
 
     controlsState.longitudinalPlanMonoTime = self.sm.logMonoTime['longitudinalPlan']
     controlsState.lateralPlanMonoTime = self.sm.logMonoTime['modelV2']
-    controlsState.enabled = self.enabled
-    controlsState.active = self.active
     controlsState.curvature = curvature
     controlsState.desiredCurvature = self.desired_curvature
-    controlsState.state = self.state
     controlsState.engageable = not self.events.contains(ET.NO_ENTRY)
     controlsState.longControlState = self.LoC.long_control_state
     controlsState.vPid = float(self.LoC.v_pid)
@@ -872,8 +863,6 @@ class Controls:
     controlsState.cumLagMs = -self.rk.remaining * 1000.
     controlsState.startMonoTime = int(start_time * 1e9)
     controlsState.forceDecel = bool(force_decel)
-    controlsState.experimentalMode = self.experimental_mode
-    controlsState.personality = self.personality
 
     lat_tuning = self.CP.lateralTuning.which()
     if self.joystick_mode:
@@ -886,6 +875,25 @@ class Controls:
       controlsState.lateralControlState.torqueState = lac_log
 
     self.pm.send('controlsState', dat)
+
+    # selfdriveState
+    ss_msg = messaging.new_message('selfdriveState')
+    ss_msg.valid = CS.canValid
+    ss = ss_msg.selfdriveState
+    ss.state = self.state
+    ss.enabled = self.enabled
+    ss.active = self.active
+    ss.engageable = not self.events.contains(ET.NO_ENTRY)
+    if current_alert:
+      ss.alertText1 = current_alert.alert_text_1
+      ss.alertText2 = current_alert.alert_text_2
+      ss.alertStatus = current_alert.alert_status
+      ss.alertSize = current_alert.alert_size
+      ss.alertType = current_alert.alert_type
+      ss.alertSound = current_alert.audible_alert
+    ss.experimentalMode = self.experimental_mode
+    ss.personality = self.personality
+    self.pm.send('selfdriveState', ss_msg)
 
     # onroadEvents - logged every second or on change
     if (self.sm.frame % int(1. / DT_CTRL) == 0) or (self.events.names != self.events_prev):

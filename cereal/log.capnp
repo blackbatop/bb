@@ -694,53 +694,24 @@ struct LiveTracks {
   oncoming @9 :Bool;
 }
 
-struct ControlsState @0x97ff69c53601abf1 {
-  startMonoTime @48 :UInt64;
-  longitudinalPlanMonoTime @28 :UInt64;
-  lateralPlanMonoTime @50 :UInt64;
-
-  state @31 :OpenpilotState;
-  enabled @19 :Bool;
-  active @36 :Bool;
-
-  experimentalMode @64 :Bool;
-  personality @66 :LongitudinalPersonality;
-
-  longControlState @30 :Car.CarControl.Actuators.LongControlState;
-  vPid @2 :Float32;
-  vTargetLead @3 :Float32;
-  vCruise @22 :Float32;  # actual set speed
-  vCruiseCluster @63 :Float32;  # set speed to display in the UI
-  upAccelCmd @4 :Float32;
-  uiAccelCmd @5 :Float32;
-  ufAccelCmd @33 :Float32;
-  aTarget @35 :Float32;
-  curvature @37 :Float32;  # path curvature from vehicle model
-  desiredCurvature @61 :Float32;  # lag adjusted curvatures used by lateral controllers
-  forceDecel @51 :Bool;
+struct SelfdriveState {
+  # high level system state
+  state @0 :OpenpilotState;
+  enabled @1 :Bool;
+  active @2 :Bool;
+  engageable @3 :Bool;  # can OP be engaged?
 
   # UI alerts
-  alertText1 @24 :Text;
-  alertText2 @25 :Text;
-  alertStatus @38 :AlertStatus;
-  alertSize @39 :AlertSize;
-  alertBlinkingRate @42 :Float32;
-  alertType @44 :Text;
-  alertSound @56 :Car.CarControl.HUDControl.AudibleAlert;
-  engageable @41 :Bool;  # can OP be engaged?
+  alertText1 @4 :Text;
+  alertText2 @5 :Text;
+  alertStatus @6 :AlertStatus;
+  alertSize @7 :AlertSize;
+  alertType @8 :Text;
+  alertSound @9 :Car.CarControl.HUDControl.AudibleAlert;
 
-  cumLagMs @15 :Float32;
-
-  lateralControlState :union {
-    indiState @52 :LateralINDIState;
-    pidState @53 :LateralPIDState;
-    angleState @58 :LateralAngleState;
-    debugState @59 :LateralDebugState;
-    torqueState @60 :LateralTorqueState;
-
-    curvatureStateDEPRECATED @65 :LateralCurvatureState;
-    lqrStateDEPRECATED @55 :LateralLQRState;
-  }
+  # configurable driving settings
+  experimentalMode @10 :Bool;
+  personality @11 :LongitudinalPersonality;
 
   enum OpenpilotState @0xdbe58b96d2d1ac61 {
     disabled @0;
@@ -750,19 +721,62 @@ struct ControlsState @0x97ff69c53601abf1 {
     overriding @4;  # superset of overriding with steering or accelerator
   }
 
-  enum AlertStatus {
-    normal @0;       # low priority alert for user's convenience
-    userPrompt @1;   # mid priority alert that might require user intervention
-    critical @2;     # high priority alert that needs immediate user intervention
+  enum AlertStatus @0xa0d0dcd113193c62 {
+    normal @0;
+    userPrompt @1;
+    critical @2;
     frogpilot @3;    # FrogPilot startup alert
   }
 
-  enum AlertSize {
-    none @0;    # don't display the alert
-    small @1;   # small box
-    mid @2;     # mid screen
-    full @3;    # full screen
+  enum AlertSize @0xe98bb99d6e985f64 {
+    none @0;
+    small @1;
+    mid @2;
+    full @3;
   }
+}
+
+struct ControlsState @0x97ff69c53601abf1 {
+  startMonoTime @0 :UInt64;
+  longitudinalPlanMonoTime @1 :UInt64;
+  lateralPlanMonoTime @2 :UInt64;
+
+  longControlState @3 :Car.CarControl.Actuators.LongControlState;
+  vPid @4 :Float32;
+  vTargetLead @5 :Float32;
+  vCruise @6 :Float32;  # actual set speed
+  vCruiseCluster @7 :Float32;  # set speed to display in the UI
+  upAccelCmd @8 :Float32;
+  uiAccelCmd @9 :Float32;
+  ufAccelCmd @10 :Float32;
+  aTarget @11 :Float32;
+  curvature @12 :Float32;  # path curvature from vehicle model
+  desiredCurvature @13 :Float32;  # lag adjusted curvatures used by lateral controllers
+  forceDecel @14 :Bool;
+
+  # UI alerts
+  alertText1 @15 :Text;
+  alertText2 @16 :Text;
+  alertStatus @17 :SelfdriveState.AlertStatus;
+  alertSize @18 :SelfdriveState.AlertSize;
+  alertBlinkingRate @19 :Float32;
+  alertType @20 :Text;
+  alertSound @21 :Car.CarControl.HUDControl.AudibleAlert;
+  engageable @22 :Bool;  # can OP be engaged?
+
+  cumLagMs @23 :Float32;
+
+  lateralControlState :union {
+    indiState @24 :LateralINDIState;
+    pidState @25 :LateralPIDState;
+    angleState @26 :LateralAngleState;
+    debugState @27 :LateralDebugState;
+    torqueState @28 :LateralTorqueState;
+
+    curvatureStateDEPRECATED @29 :LateralCurvatureState;
+    lqrStateDEPRECATED @30 :LateralLQRState;
+  }
+
 
   struct LateralINDIState {
     active @0 :Bool;
@@ -846,37 +860,37 @@ struct ControlsState @0x97ff69c53601abf1 {
   }
 
   # deprecated
-  vEgoDEPRECATED @0 :Float32;
-  vEgoRawDEPRECATED @32 :Float32;
-  aEgoDEPRECATED @1 :Float32;
-  canMonoTimeDEPRECATED @16 :UInt64;
-  radarStateMonoTimeDEPRECATED @17 :UInt64;
-  mdMonoTimeDEPRECATED @18 :UInt64;
-  yActualDEPRECATED @6 :Float32;
-  yDesDEPRECATED @7 :Float32;
-  upSteerDEPRECATED @8 :Float32;
-  uiSteerDEPRECATED @9 :Float32;
-  ufSteerDEPRECATED @34 :Float32;
-  aTargetMinDEPRECATED @10 :Float32;
-  aTargetMaxDEPRECATED @11 :Float32;
-  rearViewCamDEPRECATED @23 :Bool;
-  driverMonitoringOnDEPRECATED @43 :Bool;
-  hudLeadDEPRECATED @14 :Int32;
-  alertSoundDEPRECATED @45 :Text;
-  angleModelBiasDEPRECATED @27 :Float32;
-  gpsPlannerActiveDEPRECATED @40 :Bool;
-  decelForTurnDEPRECATED @47 :Bool;
-  decelForModelDEPRECATED @54 :Bool;
-  awarenessStatusDEPRECATED @26 :Float32;
-  angleSteersDEPRECATED @13 :Float32;
-  vCurvatureDEPRECATED @46 :Float32;
-  mapValidDEPRECATED @49 :Bool;
-  jerkFactorDEPRECATED @12 :Float32;
-  steerOverrideDEPRECATED @20 :Bool;
-  steeringAngleDesiredDegDEPRECATED @29 :Float32;
-  canMonoTimesDEPRECATED @21 :List(UInt64);
-  desiredCurvatureRateDEPRECATED @62 :Float32;
-  canErrorCounterDEPRECATED @57 :UInt32;
+  vEgoDEPRECATED @31 :Float32;
+  aEgoDEPRECATED @32 :Float32;
+  yActualDEPRECATED @33 :Float32;
+  yDesDEPRECATED @34 :Float32;
+  upSteerDEPRECATED @35 :Float32;
+  uiSteerDEPRECATED @36 :Float32;
+  aTargetMinDEPRECATED @37 :Float32;
+  aTargetMaxDEPRECATED @38 :Float32;
+  jerkFactorDEPRECATED @39 :Float32;
+  angleSteersDEPRECATED @40 :Float32;
+  hudLeadDEPRECATED @41 :Int32;
+  canMonoTimeDEPRECATED @42 :UInt64;
+  radarStateMonoTimeDEPRECATED @43 :UInt64;
+  mdMonoTimeDEPRECATED @44 :UInt64;
+  awarenessStatusDEPRECATED @45 :Float32;
+  angleModelBiasDEPRECATED @46 :Float32;
+  rearViewCamDEPRECATED @47 :Bool;
+  steerOverrideDEPRECATED @48 :Bool;
+  canMonoTimesDEPRECATED @49 :List(UInt64);
+  steeringAngleDesiredDegDEPRECATED @50 :Float32;
+  vEgoRawDEPRECATED @51 :Float32;
+  ufSteerDEPRECATED @52 :Float32;
+  driverMonitoringOnDEPRECATED @53 :Bool;
+  alertSoundDEPRECATED @54 :Text;
+  gpsPlannerActiveDEPRECATED @55 :Bool;
+  vCurvatureDEPRECATED @56 :Float32;
+  mapValidDEPRECATED @57 :Bool;
+  decelForTurnDEPRECATED @58 :Bool;
+  decelForModelDEPRECATED @59 :Bool;
+  desiredCurvatureRateDEPRECATED @60 :Float32;
+  canErrorCounterDEPRECATED @61 :UInt32;
 }
 
 struct DrivingModelData {
@@ -2327,6 +2341,7 @@ struct Event {
     gpsNMEA @3 :GPSNMEAData;
     can @5 :List(CanData);
     controlsState @7 :ControlsState;
+    selfdriveState @130 :SelfdriveState;
     gyroscope @99 :SensorEventData;
     gyroscope2 @100 :SensorEventData;
     accelerometer @98 :SensorEventData;
@@ -2354,7 +2369,7 @@ struct Event {
     gnssMeasurements @91 :GnssMeasurements;
     liveParameters @61 :LiveParametersData;
     liveTorqueParameters @94 :LiveTorqueParametersData;
-    liveDelay @130 : LiveDelayData;
+    liveDelay @131 : LiveDelayData;
     cameraOdometry @63 :CameraOdometry;
     thumbnail @66: Thumbnail;
     onroadEvents @68: List(Car.CarEvent);

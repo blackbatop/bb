@@ -6,7 +6,7 @@ from openpilot.selfdrive.controls.lib.events import Events, ET, Alert, Priority,
                                           AudibleAlert, EVENTS
 from openpilot.selfdrive.car.mock.values import CAR as MOCK
 
-State = log.ControlsState.OpenpilotState
+State = log.SelfdriveState.OpenpilotState
 
 # The event types that maintain the current state
 MAINTAIN_STATES = {State.enabled: (None,), State.disabled: (None,), State.softDisabling: (ET.SOFT_DISABLE,),

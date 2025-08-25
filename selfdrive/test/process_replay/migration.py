@@ -15,6 +15,7 @@ def migrate_all(lr, old_logtime=False, manager_states=False, panda_states=False,
   msgs = migrate_gpsLocation(msgs)
   msgs = migrate_deviceState(msgs)
   msgs = migrate_carOutput(msgs)
+  msgs = migrate_selfdriveState(msgs)
   if manager_states:
     msgs = migrate_managerState(msgs)
   if panda_states:
@@ -85,6 +86,33 @@ def migrate_carOutput(lr):
       all_msgs.append(co.as_reader())
     all_msgs.append(msg)
   return all_msgs
+
+
+def migrate_selfdriveState(lr):
+  ret = []
+  for msg in lr:
+    if msg.which() == 'controlsState':
+      m = messaging.new_message('selfdriveState')
+      m.valid = msg.valid
+      m.logMonoTime = msg.logMonoTime
+      ss = m.selfdriveState
+      cs = msg.controlsState
+      # Map from ControlsState fields to SelfdriveState fields
+      ss.state = cs.state
+      ss.enabled = cs.enabled
+      ss.active = cs.active
+      ss.engageable = cs.engageable
+      ss.alertText1 = cs.alertText1
+      ss.alertText2 = cs.alertText2
+      ss.alertStatus = cs.alertStatus
+      ss.alertSize = cs.alertSize
+      ss.alertType = cs.alertType
+      ss.alertSound = cs.alertSound
+      ss.experimentalMode = cs.experimentalMode
+      ss.personality = cs.personality
+      ret.append(m.as_reader())
+    ret.append(msg)
+  return ret
 
 
 def migrate_pandaStates(lr):

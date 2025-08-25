@@ -314,7 +314,7 @@ void FrogPilotAnnotatedCameraWidget::paintCEMStatus(QPainter &p, FrogPilotUIScen
   p.setBrush(blackColor(166));
   if (frogpilot_scene.conditional_status == 1) {
     p.setPen(QPen(QColor(bg_colors[STATUS_CONDITIONAL_OVERRIDDEN]), 10));
-  } else if (frogpilot_scene.enabled && sm["controlsState"].getControlsState().getExperimentalMode()) {
+  } else if (frogpilot_scene.enabled && sm["selfdriveState"].getSelfdriveState().getExperimentalMode()) {
     p.setPen(QPen(QColor(bg_colors[STATUS_EXPERIMENTAL_MODE_ENABLED]), 10));
   } else {
     p.setPen(QPen(blackColor(), 10));
@@ -322,7 +322,7 @@ void FrogPilotAnnotatedCameraWidget::paintCEMStatus(QPainter &p, FrogPilotUIScen
   p.drawRoundedRect(cemWidget, 24, 24);
 
   QPixmap iconToDraw;
-  if (frogpilot_scene.enabled && sm["controlsState"].getControlsState().getExperimentalMode()) {
+  if (frogpilot_scene.enabled && sm["selfdriveState"].getSelfdriveState().getExperimentalMode()) {
     if (frogpilot_scene.conditional_status == 1) {
       iconToDraw = chillModeIcon;
     } else if (frogpilot_scene.conditional_status == 2) {
@@ -616,7 +616,7 @@ void FrogPilotAnnotatedCameraWidget::paintPathEdges(QPainter &p, const cereal::N
     setPathEdgeColors(pe, bg_colors[STATUS_ALWAYS_ON_LATERAL_ACTIVE]);
   } else if (frogpilot_scene.conditional_status == 1) {
     setPathEdgeColors(pe, bg_colors[STATUS_CONDITIONAL_OVERRIDDEN]);
-  } else if (sm["controlsState"].getControlsState().getExperimentalMode()) {
+  } else if (sm["selfdriveState"].getSelfdriveState().getExperimentalMode()) {
     setPathEdgeColors(pe, bg_colors[STATUS_EXPERIMENTAL_MODE_ENABLED]);
   } else if (frogpilot_scene.traffic_mode_enabled) {
     setPathEdgeColors(pe, bg_colors[STATUS_TRAFFIC_MODE_ENABLED]);

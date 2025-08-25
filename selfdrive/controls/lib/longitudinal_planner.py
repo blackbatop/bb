@@ -153,9 +153,9 @@ class LongitudinalPlanner:
     self.generation = frogpilot_toggles.model_version
     if tinygrad_model:
       self.mpc.mode = 'acc'
-      self.mode = 'blended' if sm['controlsState'].experimentalMode else 'acc'
+      self.mode = 'blended' if sm['selfdriveState'].experimentalMode else 'acc'
     else:
-      self.mpc.mode = 'blended' if sm['controlsState'].experimentalMode else 'acc'
+      self.mpc.mode = 'blended' if sm['selfdriveState'].experimentalMode else 'acc'
     if not self.mlsim:
       self.mpc.mode = self.mode
 
@@ -166,13 +166,13 @@ class LongitudinalPlanner:
 
     v_ego = max(sm['carState'].vEgo, sm['carState'].vEgoCluster)
     v_cruise = sm['frogpilotPlan'].vCruise
-    v_cruise_initialized = sm['controlsState'].vCruise != V_CRUISE_UNSET
+    v_cruise_initialized = sm['selfdriveState'].vCruise != V_CRUISE_UNSET
 
     long_control_off = sm['controlsState'].longControlState == LongCtrlState.off
     force_slow_decel = sm['controlsState'].forceDecel
 
     # Reset current state when not engaged, or user is controlling the speed
-    reset_state = long_control_off if self.CP.openpilotLongitudinalControl else not sm['controlsState'].enabled
+    reset_state = long_control_off if self.CP.openpilotLongitudinalControl else not sm['selfdriveState'].enabled
     # PCM cruise speed may be updated a few cycles later, check if initialized
     reset_state = reset_state or not v_cruise_initialized
 
@@ -215,7 +215,7 @@ class LongitudinalPlanner:
     self.lead_two = sm['radarState'].leadTwo
 
     self.mpc.set_weights(sm['frogpilotPlan'].accelerationJerk, sm['frogpilotPlan'].dangerJerk, sm['frogpilotPlan'].speedJerk, prev_accel_constraint,
-                         personality=sm['controlsState'].personality)
+                         personality=sm['selfdriveState'].personality)
     self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
     # After deciding the MPC mode via get_mpc_mode(), ensure MPC uses that mode when not mlsim
@@ -223,7 +223,7 @@ class LongitudinalPlanner:
     if not self.mlsim:
       self.mpc.mode = dec_mpc_mode
     self.mpc.update(self.lead_one, self.lead_two, v_cruise, x, v, a, j, sm['frogpilotPlan'].tFollow,
-                    sm['frogpilotPlan'].trackingLead, personality=sm['controlsState'].personality)
+                    sm['frogpilotPlan'].trackingLead, personality=sm['selfdriveState'].personality)
 
     self.a_desired_trajectory_full = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)

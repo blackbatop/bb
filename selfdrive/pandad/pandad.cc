@@ -483,7 +483,7 @@ void panda_state_thread(std::vector<Panda *> pandas, bool spoofing_started) {
     is_onroad_last = is_onroad;
 
     sm.update(0);
-    const bool engaged = sm.allAliveAndValid({"controlsState"}) && sm["controlsState"].getControlsState().getEnabled();
+    const bool engaged = sm.allAliveAndValid({"selfdriveState"}) && sm["selfdriveState"].getSelfdriveState().getEnabled();
 
     for (const auto &panda : pandas) {
       panda->send_heartbeat(engaged);

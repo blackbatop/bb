@@ -57,7 +57,7 @@ def cycle_alerts(duration=200, is_metric=False):
                             'driverMonitoringState', 'longitudinalPlan', 'liveLocationKalman',
                             'managerState'] + cameras)
 
-  pm = messaging.PubMaster(['controlsState', 'pandaStates', 'deviceState'])
+  pm = messaging.PubMaster(['selfdriveState', 'pandaStates', 'deviceState'])
 
   events = Events()
   AM = AlertManager()
@@ -100,18 +100,18 @@ def cycle_alerts(duration=200, is_metric=False):
       print(alert)
       for _ in range(duration):
         dat = messaging.new_message()
-        dat.init('controlsState')
-        dat.controlsState.enabled = False
+        dat.init('selfdriveState')
+        ss = dat.selfdriveState
+        ss.enabled = False
 
         if alert:
-          dat.controlsState.alertText1 = alert.alert_text_1
-          dat.controlsState.alertText2 = alert.alert_text_2
-          dat.controlsState.alertSize = alert.alert_size
-          dat.controlsState.alertStatus = alert.alert_status
-          dat.controlsState.alertBlinkingRate = alert.alert_rate
-          dat.controlsState.alertType = alert.alert_type
-          dat.controlsState.alertSound = alert.audible_alert
-        pm.send('controlsState', dat)
+          ss.alertText1 = alert.alert_text_1
+          ss.alertText2 = alert.alert_text_2
+          ss.alertStatus = alert.alert_status
+          ss.alertSize = alert.alert_size
+          ss.alertType = alert.alert_type
+          ss.alertSound = alert.audible_alert
+        pm.send('selfdriveState', dat)
 
         dat = messaging.new_message()
         dat.init('deviceState')

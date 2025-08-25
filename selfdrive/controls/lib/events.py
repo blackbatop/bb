@@ -14,8 +14,8 @@ from openpilot.common.params import Params
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.locationd.calibrationd import MIN_SPEED_FILTER
 
-AlertSize = log.ControlsState.AlertSize
-AlertStatus = log.ControlsState.AlertStatus
+AlertSize = log.SelfdriveState.AlertSize
+AlertStatus = log.SelfdriveState.AlertStatus
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 EventName = car.CarEvent.EventName
@@ -112,8 +112,8 @@ class Alert:
   def __init__(self,
                alert_text_1: str,
                alert_text_2: str,
-               alert_status: log.ControlsState.AlertStatus,
-               alert_size: log.ControlsState.AlertSize,
+               alert_status: log.SelfdriveState.AlertStatus,
+               alert_size: log.SelfdriveState.AlertSize,
                priority: Priority,
                visual_alert: car.CarControl.HUDControl.VisualAlert,
                audible_alert: car.CarControl.HUDControl.AudibleAlert,

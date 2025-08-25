@@ -49,16 +49,17 @@ void AnnotatedCameraWidget::updateState(const UIState &s, const FrogPilotUIState
   const SubMaster &fpsm = *(fs.sm);
   const QJsonObject &frogpilot_toggles = fs.frogpilot_toggles;
 
-  const bool cs_alive = sm.alive("controlsState");
+  const bool cs_alive = sm.alive("selfdriveState");
   const bool nav_alive = sm.alive("navInstruction") && sm["navInstruction"].getValid();
-  const auto cs = sm["controlsState"].getControlsState();
+  const auto cs = sm["selfdriveState"].getSelfdriveState();
   const auto car_state = sm["carState"].getCarState();
   const auto nav_instruction = sm["navInstruction"].getNavInstruction();
 
   const cereal::FrogPilotPlan::Reader &frogpilotPlan = fpsm["frogpilotPlan"].getFrogpilotPlan();
 
   // Handle older routes where vCruiseCluster is not set
-  float v_cruise = cs.getVCruiseCluster() == 0.0 ? cs.getVCruise() : cs.getVCruiseCluster();
+  const auto controls_state = sm["controlsState"].getControlsState();
+  float v_cruise = controls_state.getVCruiseCluster() == 0.0 ? controls_state.getVCruise() : controls_state.getVCruiseCluster();
   setSpeed = cs_alive ? v_cruise : SET_SPEED_NA;
   is_cruise_set = setSpeed > 0 && (int)setSpeed != SET_SPEED_NA;
   if (is_cruise_set && !s.scene.is_metric) {
@@ -89,7 +90,7 @@ void AnnotatedCameraWidget::updateState(const UIState &s, const FrogPilotUIState
   has_eu_speed_limit |= (frogpilot_toggles.value("show_speed_limits").toBool() || frogpilot_toggles.value("speed_limit_controller").toBool()) && frogpilot_toggles.value("speed_limit_vienna").toBool();
   is_metric = s.scene.is_metric;
   speedUnit =  s.scene.is_metric ? tr("km/h") : tr("mph");
-  hideBottomIcons = (cs.getAlertSize() != cereal::ControlsState::AlertSize::NONE);
+  hideBottomIcons = (cs.getAlertSize() != cereal::SelfdriveState::AlertSize::NONE);
   hideBottomIcons |= (frogpilot_nvg->signalStyle == "traditional" || frogpilot_nvg->signalStyle == "traditional_gif") && (car_state.getLeftBlinker() || car_state.getRightBlinker());
   status = s.status;
 
@@ -333,7 +334,7 @@ void AnnotatedCameraWidget::drawLaneLines(QPainter &painter, const UIState *s, c
 
   // paint path
   QLinearGradient bg(0, height(), 0, 0);
-  if (sm["controlsState"].getControlsState().getExperimentalMode() || frogpilot_toggles.value("acceleration_path").toBool() || frogpilot_toggles.value("rainbow_path").toBool()) {
+  if (sm["selfdriveState"].getSelfdriveState().getExperimentalMode() || frogpilot_toggles.value("acceleration_path").toBool() || frogpilot_toggles.value("rainbow_path").toBool()) {
     // The first half of track_vertices are the points for the right side of the path
     // and the indices match the positions of accel from uiPlan
     const auto &acceleration = sm["uiPlan"].getUiPlan().getAccel();
@@ -538,7 +539,7 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
       } else if (v_ego > 15) {
         wide_cam_requested = false;
       }
-      wide_cam_requested = wide_cam_requested && sm["controlsState"].getControlsState().getExperimentalMode();
+      wide_cam_requested = wide_cam_requested && sm["selfdriveState"].getSelfdriveState().getExperimentalMode();
       // for replay of old routes, never go to widecam
       wide_cam_requested = wide_cam_requested && s->scene.calibration_wide_valid;
     }

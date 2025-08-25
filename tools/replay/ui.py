@@ -198,9 +198,9 @@ def ui_thread(addr):
     SPACING = 25
 
     lines = [
-      info_font.render("ENABLED", True, GREEN if sm['controlsState'].enabled else BLACK),
+      info_font.render("ENABLED", True, GREEN if sm['selfdriveState'].enabled else BLACK),
       info_font.render("SPEED: " + str(round(sm['carState'].vEgo, 1)) + " m/s", True, YELLOW),
-      info_font.render("LONG CONTROL STATE: " + str(sm['controlsState'].longControlState), True, YELLOW),
+      info_font.render("LONG CONTROL STATE: " + str(sm['selfdriveState'].longControlState), True, YELLOW),
       info_font.render("LONG MPC SOURCE: " + str(sm['longitudinalPlan'].longitudinalPlanSource), True, YELLOW),
       None,
       info_font.render("ANGLE OFFSET (AVG): " + str(round(sm['liveParameters'].angleOffsetAverageDeg, 2)) + " deg", True, YELLOW),
