@@ -21,7 +21,7 @@ class FrogPilotFollowing:
     self.t_follow = 0
 
   def update(self, v_ego, sm, frogpilot_toggles):
-    if sm["selfdriveState"].enabled and sm["frogpilotCarState"].trafficModeEnabled:
+    if sm["controlsState"].enabled and sm["frogpilotCarState"].trafficModeEnabled:
       if sm["carState"].aEgo >= 0:
         self.base_acceleration_jerk = float(np.interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_jerk_acceleration))
         self.base_speed_jerk = float(np.interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_jerk_speed))
@@ -31,27 +31,27 @@ class FrogPilotFollowing:
 
       self.base_danger_jerk = float(np.interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_jerk_danger))
       self.t_follow = float(np.interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_follow))
-    elif sm["selfdriveState"].enabled:
+    elif sm["controlsState"].enabled:
       if sm["carState"].aEgo >= 0:
         self.base_acceleration_jerk, self.base_danger_jerk, self.base_speed_jerk = get_jerk_factor(
           frogpilot_toggles.aggressive_jerk_acceleration, frogpilot_toggles.aggressive_jerk_danger, frogpilot_toggles.aggressive_jerk_speed,
           frogpilot_toggles.standard_jerk_acceleration, frogpilot_toggles.standard_jerk_danger, frogpilot_toggles.standard_jerk_speed,
           frogpilot_toggles.relaxed_jerk_acceleration, frogpilot_toggles.relaxed_jerk_danger, frogpilot_toggles.relaxed_jerk_speed,
-          frogpilot_toggles.custom_personalities, sm["selfdriveState"].personality
+          frogpilot_toggles.custom_personalities, sm["controlsState"].personality
         )
       else:
         self.base_acceleration_jerk, self.base_danger_jerk, self.base_speed_jerk = get_jerk_factor(
           frogpilot_toggles.aggressive_jerk_deceleration, frogpilot_toggles.aggressive_jerk_danger, frogpilot_toggles.aggressive_jerk_speed_decrease,
           frogpilot_toggles.standard_jerk_deceleration, frogpilot_toggles.standard_jerk_danger, frogpilot_toggles.standard_jerk_speed_decrease,
           frogpilot_toggles.relaxed_jerk_deceleration, frogpilot_toggles.relaxed_jerk_danger, frogpilot_toggles.relaxed_jerk_speed_decrease,
-          frogpilot_toggles.custom_personalities, sm["selfdriveState"].personality
+          frogpilot_toggles.custom_personalities, sm["controlsState"].personality
         )
 
       self.t_follow = get_T_FOLLOW(
         frogpilot_toggles.aggressive_follow,
         frogpilot_toggles.standard_follow,
         frogpilot_toggles.relaxed_follow,
-        frogpilot_toggles.custom_personalities, sm["selfdriveState"].personality
+        frogpilot_toggles.custom_personalities, sm["controlsState"].personality
       )
     else:
       self.base_acceleration_jerk = 0
@@ -65,7 +65,7 @@ class FrogPilotFollowing:
 
     self.following_lead = self.frogpilot_planner.tracking_lead and self.frogpilot_planner.lead_one.dRel < (self.t_follow + 1) * v_ego
 
-    if sm["selfdriveState"].enabled and self.frogpilot_planner.tracking_lead:
+    if sm["controlsState"].enabled and self.frogpilot_planner.tracking_lead:
       self.update_follow_values(self.frogpilot_planner.lead_one.dRel, v_ego, self.frogpilot_planner.lead_one.vLead, frogpilot_toggles)
       self.desired_follow_distance = int(desired_follow_distance(v_ego, self.frogpilot_planner.lead_one.vLead, self.t_follow))
     else:

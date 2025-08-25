@@ -28,7 +28,7 @@ class FrogPilotTracking:
     self.total_tracked_time = self.frogpilot_stats.get("TotalTrackedTime", 0)
 
   def update(self, sm):
-    self.enabled |= sm["selfdriveState"].enabled or sm["frogpilotCarState"].alwaysOnLateralEnabled
+    self.enabled |= sm["controlsState"].enabled or sm["frogpilotCarState"].alwaysOnLateralEnabled
 
     self.drive_distance += sm["carState"].vEgo * DT_MDL
     self.drive_time += DT_MDL

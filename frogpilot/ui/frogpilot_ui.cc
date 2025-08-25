@@ -12,9 +12,9 @@ static void update_state(FrogPilotUIState *fs) {
     frogpilot_scene.reverse = carState.getGearShifter() == cereal::CarState::GearShifter::REVERSE;
     frogpilot_scene.standstill = carState.getStandstill() && !frogpilot_scene.reverse;
   }
-  if (sm.updated("selfdriveState")) {
-    const cereal::SelfdriveState::Reader &selfdriveState = sm["selfdriveState"].getSelfdriveState();
-    frogpilot_scene.enabled = selfdriveState.getEnabled();
+  if (sm.updated("controlsState")) {
+    const cereal::ControlsState::Reader &controlsState = sm["controlsState"].getControlsState();
+    frogpilot_scene.enabled = controlsState.getEnabled();
   }
   if (sm.updated("deviceState")) {
     const cereal::DeviceState::Reader &deviceState = sm["deviceState"].getDeviceState();
@@ -62,7 +62,7 @@ void update_theme(FrogPilotUIState *fs) {
 
 FrogPilotUIState::FrogPilotUIState(QObject *parent) : QObject(parent) {
   sm = std::make_unique<SubMaster, const std::initializer_list<const char *>>({
-    "carControl", "carState", "selfdriveState", "deviceState", "frogpilotCarState", "frogpilotDeviceState",
+    "carControl", "carState", "controlsState", "deviceState", "frogpilotCarState", "frogpilotDeviceState",
     "frogpilotNavigation", "frogpilotPlan", "liveDelay", "liveParameters", "liveTorqueParameters", "liveTracks",
     "navInstruction"
   });

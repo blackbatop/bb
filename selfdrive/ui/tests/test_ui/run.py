@@ -127,7 +127,7 @@ class TestUI:
 
   def setup(self):
     self.sm = SubMaster(["uiDebug"])
-    self.pm = PubMaster(["deviceState", "pandaStates", "selfdriveState", 'roadCameraState', 'wideRoadCameraState', 'liveLocationKalman'])
+    self.pm = PubMaster(["deviceState", "pandaStates", "controlsState", 'roadCameraState', 'wideRoadCameraState', 'liveLocationKalman'])
     while not self.sm.valid["uiDebug"]:
       self.sm.update(1)
     time.sleep(UI_DELAY) # wait a bit more for the UI to start rendering

@@ -276,23 +276,23 @@ void UIState::updateStatus(FrogPilotUIState *fs) {
   FrogPilotUIScene &frogpilot_scene = fs->frogpilot_scene;
   QJsonObject &frogpilot_toggles = fs->frogpilot_toggles;
 
-  if (scene.started && sm->updated("selfdriveState")) {
-    auto ss = (*sm)["selfdriveState"].getSelfdriveState();
-    auto state = ss.getState();
+  if (scene.started && sm->updated("controlsState")) {
+    auto controls_state = (*sm)["controlsState"].getControlsState();
+    auto state = controls_state.getState();
 
     const UIStatus previous_status = status;
 
-    if (state == cereal::SelfdriveState::OpenpilotState::PRE_ENABLED || state == cereal::SelfdriveState::OpenpilotState::OVERRIDING) {
+    if (state == cereal::ControlsState::OpenpilotState::PRE_ENABLED || state == cereal::ControlsState::OpenpilotState::OVERRIDING) {
       status = STATUS_OVERRIDE;
     } else if (frogpilot_scene.always_on_lateral_active) {
       status = STATUS_ALWAYS_ON_LATERAL_ACTIVE;
-    } else if (frogpilot_scene.traffic_mode_enabled && ss.getEnabled()) {
+    } else if (frogpilot_scene.traffic_mode_enabled && controls_state.getEnabled()) {
       status = STATUS_TRAFFIC_MODE_ENABLED;
     } else {
-      status = ss.getEnabled() ? STATUS_ENGAGED : STATUS_DISENGAGED;
+      status = controls_state.getEnabled() ? STATUS_ENGAGED : STATUS_DISENGAGED;
     }
 
-    fs->frogpilot_scene.wake_up_screen = ss.getAlertStatus() != cereal::SelfdriveState::AlertStatus::NORMAL || (status != previous_status && status != STATUS_OVERRIDE);
+    fs->frogpilot_scene.wake_up_screen = controls_state.getAlertStatus() != cereal::ControlsState::AlertStatus::NORMAL || (status != previous_status && status != STATUS_OVERRIDE);
   }
 
   // Handle onroad/offroad transition
@@ -317,7 +317,7 @@ void UIState::updateStatus(FrogPilotUIState *fs) {
 
 UIState::UIState(QObject *parent) : QObject(parent) {
   sm = std::make_unique<SubMaster, const std::initializer_list<const char *>>({
-    "modelV2", "selfdriveState", "controlsState", "liveCalibration", "radarState", "deviceState",
+    "modelV2", "controlsState", "liveCalibration", "radarState", "deviceState",
     "pandaStates", "carParams", "driverMonitoringState", "carState", "liveLocationKalman", "driverStateV2",
     "wideRoadCameraState", "managerState", "navInstruction", "navRoute", "uiPlan", "clocks",
   });

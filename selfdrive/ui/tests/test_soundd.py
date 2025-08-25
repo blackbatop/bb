@@ -10,14 +10,14 @@ AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 
 class TestSoundd:
   def test_check_controls_timeout_alert(self):
-    sm = SubMaster(['selfdriveState'])
-    pm = PubMaster(['selfdriveState'])
+    sm = SubMaster(['controlsState'])
+    pm = PubMaster(['controlsState'])
 
     for _ in range(100):
-      cs = messaging.new_message('selfdriveState')
-      cs.selfdriveState.enabled = True
+      cs = messaging.new_message('controlsState')
+      cs.controlsState.enabled = True
 
-      pm.send("selfdriveState", cs)
+      pm.send("controlsState", cs)
 
       time.sleep(0.01)
 

@@ -167,8 +167,8 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
       self.simulated_sensors.update(self.simulator_state, self.world)
 
       self.simulated_car.sm.update(0)
-      selfdriveState = self.simulated_car.sm['selfdriveState']
-      self.simulator_state.is_engaged = selfdriveState.active
+      controlsState = self.simulated_car.sm['controlsState']
+      self.simulator_state.is_engaged = controlsState.active
 
       if self.simulator_state.is_engaged:
         throttle_op = clip(self.simulated_car.sm['carControl'].actuators.accel / 1.6, 0.0, 1.0)
@@ -176,7 +176,7 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         steer_op = self.simulated_car.sm['carControl'].actuators.steeringAngleDeg
 
         self.past_startup_engaged = True
-      elif not self.past_startup_engaged and selfdriveState.engageable:
+      elif not self.past_startup_engaged and controlsState.engageable:
         self.simulator_state.cruise_button = CruiseButtons.DECEL_SET if self.startup_button_prev else CruiseButtons.MAIN # force engagement on startup
         self.startup_button_prev = not self.startup_button_prev
 

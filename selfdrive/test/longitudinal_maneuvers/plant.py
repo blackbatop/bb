@@ -113,7 +113,9 @@ class Plant:
     model.modelV2.meta.disengagePredictions.gasPressProbs = [float(prob_throttle) for _ in range(6)]
 
     control.controlsState.longControlState = LongCtrlState.pid if self.enabled else LongCtrlState.off
-    control.selfdriveState.vCruise = float(v_cruise * 3.6)
+    control.controlsState.vCruise = float(v_cruise * 3.6)
+    control.controlsState.experimentalMode = self.e2e
+    control.controlsState.personality = self.personality
     control.controlsState.forceDecel = self.force_decel
     car_state.carState.vEgo = float(self.speed)
     car_state.carState.standstill = self.speed < 0.01
