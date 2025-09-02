@@ -6,6 +6,7 @@ from cereal import log
 from openpilot.common.numpy_fast import clip
 from openpilot.common.realtime import DT_MDL
 from openpilot.common.swaglog import cloudlog
+from openpilot.common.filter_simple import FirstOrderFilter
 # WARNING: imports outside of constants will not trigger a rebuild
 from openpilot.selfdrive.modeld.constants import index_function
 from openpilot.selfdrive.car.interfaces import ACCEL_MIN
@@ -15,7 +16,7 @@ if __name__ == '__main__':  # generating code
 else:
   from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.c_generated_code.acados_ocp_solver_pyx import AcadosOcpSolverCython
 
-from casadi import SX, vertcat
+from casadi import SX, vertcat, fabs, if_else
 
 MODEL_NAME = 'long'
 LONG_MPC_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,12 +32,12 @@ COST_E_DIM = 5
 COST_DIM = COST_E_DIM + 1
 CONSTR_DIM = 4
 
-X_EGO_OBSTACLE_COST = 3.
+X_EGO_OBSTACLE_COST = 3.25  # Slightly increased to reduce aggressive gap closing
 X_EGO_COST = 0.
 V_EGO_COST = 0.
 A_EGO_COST = 0.
-J_EGO_COST = 5.0
-A_CHANGE_COST = 200.
+J_EGO_COST = 6.0  # Increased from 5.0 to reduce jerky behavior
+A_CHANGE_COST = 250.  # Increased from 200.0 to penalize acceleration changes more
 DANGER_ZONE_COST = 100.
 CRASH_DISTANCE = .25
 LEAD_DANGER_FACTOR = 0.75
@@ -187,11 +188,12 @@ def gen_long_ocp():
   # from an obstacle at every timestep. This obstacle can be a lead car
   # or other object. In e2e mode we can use x_position targets as a cost
   # instead.
+  accel_change = a_ego - prev_a
   costs = [((x_obstacle - x_ego) - (desired_dist_comfort)) / (v_ego + 10.),
            x_ego,
            v_ego,
            a_ego,
-           a_ego - prev_a,
+           accel_change,
            j_ego]
   ocp.model.cost_y_expr = vertcat(*costs)
   ocp.model.cost_y_expr_e = vertcat(*costs[:-1])
@@ -251,6 +253,9 @@ class LongitudinalMpc:
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
     self.reset()
     self.source = SOURCES[2]
+    # Smoothing filters for lead vehicle predictions
+    self.lead_a_filter = FirstOrderFilter(0.0, 2.0, self.dt)
+    self.lead_v_filter = FirstOrderFilter(0.0, 2.0, self.dt)
 
   def reset(self):
     # self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
@@ -297,7 +302,15 @@ class LongitudinalMpc:
     for i in range(N):
       self.solver.cost_set(i, 'Zl', Zl)
 
-  def set_weights(self, acceleration_jerk=1.0, danger_jerk=1.0, speed_jerk=1.0, prev_accel_constraint=True, personality=log.LongitudinalPersonality.standard):
+  def set_weights(self, acceleration_jerk=1.0, danger_jerk=1.0, speed_jerk=1.0, prev_accel_constraint=True, personality=log.LongitudinalPersonality.standard, v_ego=0.0, lead_dist=50.0):
+    # Adaptive jerk factors for better smoothness in different conditions
+    speed_factor = 1.0 + 0.04 * (v_ego / 30.0)  # Higher speeds = higher jerk penalties
+    dist_factor = 1.0 + 0.06 * (20.0 / max(lead_dist, 5.0))  # Closer distances = higher jerk penalties
+    adaptive_factor = speed_factor * dist_factor
+    acceleration_jerk *= adaptive_factor
+    danger_jerk *= adaptive_factor
+    speed_jerk *= adaptive_factor
+
     if self.mode == 'acc':
       a_change_cost = acceleration_jerk if prev_accel_constraint else 0
       cost_weights = [X_EGO_OBSTACLE_COST, X_EGO_COST, V_EGO_COST, A_EGO_COST, a_change_cost, speed_jerk]
@@ -320,9 +333,10 @@ class LongitudinalMpc:
 
   @staticmethod
   def extrapolate_lead(x_lead, v_lead, a_lead, a_lead_tau):
-    a_lead_traj = a_lead * np.exp(-a_lead_tau * (T_IDXS**2)/2.)
-    v_lead_traj = np.clip(v_lead + np.cumsum(T_DIFFS * a_lead_traj), 0.0, 1e8)
-    x_lead_traj = x_lead + np.cumsum(T_DIFFS * v_lead_traj)
+    # Use constant acceleration model for smoother predictions
+    a_lead_traj = np.full_like(T_IDXS, a_lead)
+    v_lead_traj = np.clip(v_lead + a_lead * T_IDXS, 0.0, 1e8)
+    x_lead_traj = x_lead + v_lead * T_IDXS + 0.5 * a_lead * T_IDXS**2
     lead_xv = np.column_stack((x_lead_traj, v_lead_traj))
     return lead_xv
 
@@ -346,6 +360,11 @@ class LongitudinalMpc:
     x_lead = clip(x_lead, min_x_lead, 1e8)
     v_lead = clip(v_lead, 0.0, 1e8)
     a_lead = clip(a_lead, -10., 5.)
+    # Apply smoothing filters to lead predictions
+    self.lead_a_filter.update(a_lead)
+    self.lead_v_filter.update(v_lead)
+    a_lead = self.lead_a_filter.x
+    v_lead = self.lead_v_filter.x
     lead_xv = self.extrapolate_lead(x_lead, v_lead, a_lead, a_lead_tau)
     return lead_xv
 
