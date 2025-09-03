@@ -5,13 +5,50 @@ from openpilot.common.realtime import DT_MDL
 from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, THRESHOLD, params_memory, scale_threshold
 
 class ConditionalExperimentalMode:
+  # ===== CONDITIONAL EXPERIMENTAL MODE SPEED-BASED TUNING =====
+  # Speed ranges: [0-35, 35-55, 55-70, 70+ mph]
+
+  # FILTER TIME CONSTANTS (Lower = More responsive, Higher = Smoother)
+  # [City, Urban Hwy, Rural Hwy, High Speed]
+  FILTER_TIME_CURVES = [0.9, 0.8, 0.7, 0.6]    # More responsive at higher speeds
+  FILTER_TIME_LEADS = [0.9, 0.8, 0.7, 0.6]     # More responsive at higher speeds
+  FILTER_TIME_LIGHTS = [0.9, 0.8, 0.7, 0.6]    # More responsive at higher speeds
+
+  # HIGHWAY LIGHT DETECTION MULTIPLIERS
+  # How much to increase model stop time at highway speeds
+  LIGHT_BOOSTS = [1.0, 1.1, 1.25, 1.4]         # More boost at higher speeds
+  LIGHT_SPEED_LOW = 22.2     # 50 mph threshold
+  LIGHT_SPEED_HIGH = 26.7    # 60 mph threshold
+  LIGHT_MAX_TIME = 10.0      # Maximum model time (model's limit)
+
+  # ===== END TUNING PARAMETERS =====
+
+  # Current active values
+  FILTER_TIME_CURVE = 0.8
+  FILTER_TIME_LEAD = 0.8
+  FILTER_TIME_LIGHT = 0.8
+  LIGHT_BOOST_LOW = 1.15
+  LIGHT_BOOST_HIGH = 1.3
+
+  @staticmethod
+  def get_speed_based_param(speed_mph, param_array):
+    """Get parameter value based on current speed using breakpoints [0, 35, 55, 70]"""
+    if speed_mph < 35:
+        return param_array[0]
+    elif speed_mph < 55:
+        return param_array[1]
+    elif speed_mph < 70:
+        return param_array[2]
+    else:
+        return param_array[3]
+
   def __init__(self, FrogPilotPlanner):
     self.frogpilot_planner = FrogPilotPlanner
 
     # Faster filters with hysteresis for better responsiveness
-    self.curvature_filter = FirstOrderFilter(0, 0.8, DT_MDL)
-    self.slow_lead_filter = FirstOrderFilter(0, 0.8, DT_MDL)
-    self.stop_light_filter = FirstOrderFilter(0, 0.8, DT_MDL)
+    self.curvature_filter = FirstOrderFilter(0, self.FILTER_TIME_CURVE, DT_MDL)
+    self.slow_lead_filter = FirstOrderFilter(0, self.FILTER_TIME_LEAD, DT_MDL)
+    self.stop_light_filter = FirstOrderFilter(0, self.FILTER_TIME_LIGHT, DT_MDL)
 
     self.curve_detected = False
     self.experimental_mode = False
@@ -116,7 +153,17 @@ class ConditionalExperimentalMode:
 
   def stop_sign_and_light(self, v_ego, sm, model_time):
     if not sm["frogpilotCarState"].trafficModeEnabled:
-      model_stopping = self.frogpilot_planner.model_length < v_ego * model_time
+      # Update filter times based on speed
+      speed_mph = v_ego * 2.23694  # Convert m/s to mph
+      self.curvature_filter = FirstOrderFilter(self.curvature_filter.x, self.get_speed_based_param(speed_mph, self.FILTER_TIME_CURVES), DT_MDL)
+      self.slow_lead_filter = FirstOrderFilter(self.slow_lead_filter.x, self.get_speed_based_param(speed_mph, self.FILTER_TIME_LEADS), DT_MDL)
+      self.stop_light_filter = FirstOrderFilter(self.stop_light_filter.x, self.get_speed_based_param(speed_mph, self.FILTER_TIME_LIGHTS), DT_MDL)
+
+      # Dynamically adjust model stop time for better responsiveness at higher speeds
+      light_boost = self.get_speed_based_param(speed_mph, self.LIGHT_BOOSTS)
+      adjusted_model_time = min(model_time * light_boost, self.LIGHT_MAX_TIME)
+
+      model_stopping = self.frogpilot_planner.model_length < v_ego * adjusted_model_time
 
       self.stop_light_filter.update(self.frogpilot_planner.model_stopped or model_stopping)
       self.stop_light_detected = self.stop_light_filter.x >= THRESHOLD**2 and not self.frogpilot_planner.tracking_lead

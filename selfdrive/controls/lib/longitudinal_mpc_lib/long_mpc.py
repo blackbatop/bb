@@ -32,12 +32,57 @@ COST_E_DIM = 5
 COST_DIM = COST_E_DIM + 1
 CONSTR_DIM = 4
 
-X_EGO_OBSTACLE_COST = 3.25  # Slightly increased to reduce aggressive gap closing
+# ===== VOACC SPEED-BASED TUNING PARAMETERS =====
+# Adjust values for each speed range to optimize behavior
+# Speed ranges: [0-35, 35-55, 55-70, 70+ mph]
+
+# SPEED BREAKPOINTS (mph)
+SPEED_BREAKPOINTS = [0, 35, 55, 70]  # 4 ranges: 0-35, 35-55, 55-70, 70+
+
+# ===== CHANGE THESE VALUES FOR DIFFERENT SPEEDS =====
+
+# RESPONSIVENESS TO LEAD CARS (Lower = More responsive, Higher = More stable)
+# [City, Urban Hwy, Rural Hwy, High Speed]
+X_EGO_OBSTACLE_COSTS = [3.0, 2.8, 2.75, 2.7]  # More responsive at higher speeds
+
+# JERK CONTROL (Lower = More jerky/responsive, Higher = Smoother/conservative)
+# [City, Urban Hwy, Rural Hwy, High Speed]
+J_EGO_COSTS = [5.5, 6.0, 6.0, 5.8]  # Less conservative at high speeds
+
+# ACCELERATION CHANGE PENALTIES (Lower = More responsive, Higher = Smoother)
+# [City, Urban Hwy, Rural Hwy, High Speed]
+A_CHANGE_COSTS = [200, 250, 250, 220]  # More responsive at high speeds
+
+# SMOOTHING FILTERS - Speed-adaptive for optimal responsiveness
+# Lower = More responsive, Higher = Smoother
+LEAD_FILTER_TIME_LOW = 1.2   # Under 40 mph: Fast response for city emergency braking
+LEAD_FILTER_TIME_HIGH = 1.0  # Over 40 mph: Maximum responsiveness for highway emergencies
+SPEED_FILTER_THRESHOLD = 17.9  # 40 mph threshold
+
+# DISTANCE ADAPTATION STRENGTH (How much penalties increase when close to lead)
+# [City, Urban Hwy, Rural Hwy, High Speed]
+DIST_ADAPTS = [0.04, 0.06, 0.06, 0.05]  # Balanced across speeds
+
+# ===== END TUNING PARAMETERS =====
+
+# Function to get parameter value based on current speed
+def get_speed_based_param(speed_mph, param_array):
+    """Get parameter value based on current speed using breakpoints"""
+    for i, speed_threshold in enumerate(SPEED_BREAKPOINTS[1:], 1):
+        if speed_mph < speed_threshold:
+            return param_array[i-1]
+    return param_array[-1]  # Return last value for speeds above highest breakpoint
+
+# Current active values (set based on speed)
+X_EGO_OBSTACLE_COST = 2.75
+J_EGO_COST = 5.5
+A_CHANGE_COST = 250.0
+LEAD_FILTER_TIME = 2.0
+DIST_ADAPT = 0.06
+
 X_EGO_COST = 0.
 V_EGO_COST = 0.
 A_EGO_COST = 0.
-J_EGO_COST = 6.0  # Increased from 5.0 to reduce jerky behavior
-A_CHANGE_COST = 250.  # Increased from 200.0 to penalize acceleration changes more
 DANGER_ZONE_COST = 100.
 CRASH_DISTANCE = .25
 LEAD_DANGER_FACTOR = 0.75
@@ -254,8 +299,8 @@ class LongitudinalMpc:
     self.reset()
     self.source = SOURCES[2]
     # Smoothing filters for lead vehicle predictions
-    self.lead_a_filter = FirstOrderFilter(0.0, 2.0, self.dt)
-    self.lead_v_filter = FirstOrderFilter(0.0, 2.0, self.dt)
+    self.lead_a_filter = FirstOrderFilter(0.0, LEAD_FILTER_TIME, self.dt)
+    self.lead_v_filter = FirstOrderFilter(0.0, LEAD_FILTER_TIME, self.dt)
 
   def reset(self):
     # self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
@@ -303,13 +348,22 @@ class LongitudinalMpc:
       self.solver.cost_set(i, 'Zl', Zl)
 
   def set_weights(self, acceleration_jerk=1.0, danger_jerk=1.0, speed_jerk=1.0, prev_accel_constraint=True, personality=log.LongitudinalPersonality.standard, v_ego=0.0, lead_dist=50.0):
-    # Adaptive jerk factors for better smoothness in different conditions
-    speed_factor = 1.0 + 0.04 * (v_ego / 30.0)  # Higher speeds = higher jerk penalties
-    dist_factor = 1.0 + 0.06 * (20.0 / max(lead_dist, 5.0))  # Closer distances = higher jerk penalties
-    adaptive_factor = speed_factor * dist_factor
-    acceleration_jerk *= adaptive_factor
-    danger_jerk *= adaptive_factor
-    speed_jerk *= adaptive_factor
+    # Update parameters based on current speed
+    speed_mph = v_ego * 2.23694  # Convert m/s to mph
+    global X_EGO_OBSTACLE_COST, J_EGO_COST, A_CHANGE_COST, LEAD_FILTER_TIME, DIST_ADAPT
+
+    X_EGO_OBSTACLE_COST = get_speed_based_param(speed_mph, X_EGO_OBSTACLE_COSTS)
+    J_EGO_COST = get_speed_based_param(speed_mph, J_EGO_COSTS)
+    A_CHANGE_COST = get_speed_based_param(speed_mph, A_CHANGE_COSTS)
+    # Speed-adaptive filter time: stable at low speeds, responsive at high speeds
+    LEAD_FILTER_TIME = LEAD_FILTER_TIME_LOW if speed_mph < SPEED_FILTER_THRESHOLD else LEAD_FILTER_TIME_HIGH
+    DIST_ADAPT = get_speed_based_param(speed_mph, DIST_ADAPTS)
+
+    # Adaptive jerk factors for distance (close lead = more conservative)
+    dist_factor = 1.0 + DIST_ADAPT * (20.0 / max(lead_dist, 5.0))
+    acceleration_jerk *= dist_factor
+    danger_jerk *= dist_factor
+    speed_jerk *= dist_factor
 
     if self.mode == 'acc':
       a_change_cost = acceleration_jerk if prev_accel_constraint else 0
