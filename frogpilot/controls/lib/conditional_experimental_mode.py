@@ -10,16 +10,16 @@ class ConditionalExperimentalMode:
 
   # FILTER TIME CONSTANTS (Lower = More responsive, Higher = Smoother)
   # [City, Urban Hwy, Rural Hwy, High Speed]
-  FILTER_TIME_CURVES = [0.9, 0.8, 0.7, 0.6]    # More responsive at higher speeds
-  FILTER_TIME_LEADS = [0.9, 0.8, 0.7, 0.6]     # More responsive at higher speeds
-  FILTER_TIME_LIGHTS = [0.9, 0.8, 0.7, 0.6]    # More responsive at higher speeds
+  FILTER_TIME_CURVES = [0.9, 0.8, 0.6, 0.5]    # Faster detection at highway speeds
+  FILTER_TIME_LEADS = [0.9, 0.8, 0.5, 0.4]     # Much faster slow lead detection at 60 mph
+  FILTER_TIME_LIGHTS = [0.9, 0.8, 0.6, 0.5]    # Faster stoplight detection
 
   # HIGHWAY LIGHT DETECTION MULTIPLIERS
   # How much to increase model stop time at highway speeds
-  LIGHT_BOOSTS = [1.0, 1.1, 1.25, 1.4]         # More boost at higher speeds
+  LIGHT_BOOSTS = [1.0, 1.1, 1.15, 1.15]         # Keep conservative boost for highest speeds
   LIGHT_SPEED_LOW = 22.2     # 50 mph threshold
   LIGHT_SPEED_HIGH = 26.7    # 60 mph threshold
-  LIGHT_MAX_TIME = 10.0      # Maximum model time (model's limit)
+  LIGHT_MAX_TIME = 9.0       # Balanced max time preserving city performance
 
   # ===== END TUNING PARAMETERS =====
 
@@ -158,6 +158,12 @@ class ConditionalExperimentalMode:
       self.curvature_filter = FirstOrderFilter(self.curvature_filter.x, self.get_speed_based_param(speed_mph, self.FILTER_TIME_CURVES), DT_MDL)
       self.slow_lead_filter = FirstOrderFilter(self.slow_lead_filter.x, self.get_speed_based_param(speed_mph, self.FILTER_TIME_LEADS), DT_MDL)
       self.stop_light_filter = FirstOrderFilter(self.stop_light_filter.x, self.get_speed_based_param(speed_mph, self.FILTER_TIME_LIGHTS), DT_MDL)
+
+      # Disable stoplight detection at very high speeds to prevent false positives
+      if speed_mph > 75:  # Disable above 75 mph
+        self.stop_light_filter.x = 0
+        self.stop_light_detected = False
+        return
 
       # Dynamically adjust model stop time for better responsiveness at higher speeds
       light_boost = self.get_speed_based_param(speed_mph, self.LIGHT_BOOSTS)
