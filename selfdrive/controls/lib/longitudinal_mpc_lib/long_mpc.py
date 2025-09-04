@@ -33,7 +33,7 @@ COST_DIM = COST_E_DIM + 1
 CONSTR_DIM = 4
 
 # ===== VOACC SPEED-BASED TUNING PARAMETERS =====
-# Adjust values for each speed range to optimize behavior
+# City: Emergency-responsive | Highway: Rubber-banding prevention
 # Speed ranges: [0-35, 35-55, 55-70, 70+ mph]
 
 # SPEED BREAKPOINTS (mph)
@@ -42,21 +42,21 @@ SPEED_BREAKPOINTS = [0, 35, 55, 70]  # 4 ranges: 0-35, 35-55, 55-70, 70+
 # ===== CHANGE THESE VALUES FOR DIFFERENT SPEEDS =====
 
 # RESPONSIVENESS TO LEAD CARS (Lower = More responsive, Higher = More stable)
-# [City, Urban Hwy, Rural Hwy, High Speed]
-X_EGO_OBSTACLE_COSTS = [3.25, 3.0, 2.8, 2.75]  # Safer values for stability
+# [City Emergency, Urban Hwy, Rural Hwy, High Speed]
+X_EGO_OBSTACLE_COSTS = [1.8, 3.0, 2.8, 2.75]  # City more responsive for emergency braking
 
 # JERK CONTROL (Lower = More jerky/responsive, Higher = Smoother/conservative)
-# [City, Urban Hwy, Rural Hwy, High Speed]
-J_EGO_COSTS = [6.0, 6.0, 5.8, 5.5]  # Safer values for stability
+# [City Emergency, Urban Hwy, Rural Hwy, High Speed]
+J_EGO_COSTS = [2.5, 6.0, 5.8, 5.5]  # City allows emergency braking jerk
 
 # ACCELERATION CHANGE PENALTIES (Lower = More responsive, Higher = Smoother)
-# [City, Urban Hwy, Rural Hwy, High Speed]
-A_CHANGE_COSTS = [250, 250, 250, 220]  # Safer values for stability
+# [City Emergency, Urban Hwy, Rural Hwy, High Speed]
+A_CHANGE_COSTS = [150, 250, 250, 220]  # City more responsive to changes
 
 # SMOOTHING FILTERS - Speed-adaptive for optimal responsiveness
 # Lower = More responsive, Higher = Smoother
-LEAD_FILTER_TIME_LOW = 2.0   # Under 40 mph: Balanced response for city driving
-LEAD_FILTER_TIME_HIGH = 1.5  # Over 40 mph: Good responsiveness for highway emergencies
+LEAD_FILTER_TIME_LOW = 0.8   # Under 40 mph: Fast response for city emergency braking
+LEAD_FILTER_TIME_HIGH = 1.5  # Over 40 mph: Balanced for highway rubber-banding prevention
 SPEED_FILTER_THRESHOLD = 17.9  # 40 mph threshold
 
 # DISTANCE ADAPTATION STRENGTH (How much penalties increase when close to lead)
