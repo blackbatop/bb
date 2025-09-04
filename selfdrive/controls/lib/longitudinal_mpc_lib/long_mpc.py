@@ -7,6 +7,7 @@ from openpilot.common.numpy_fast import clip
 from openpilot.common.realtime import DT_MDL
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.filter_simple import FirstOrderFilter
+from openpilot.common.conversions import Conversions as CV
 # WARNING: imports outside of constants will not trigger a rebuild
 from openpilot.selfdrive.modeld.constants import index_function
 from openpilot.selfdrive.car.interfaces import ACCEL_MIN
@@ -57,7 +58,7 @@ A_CHANGE_COSTS = [150, 250, 250, 220]  # City more responsive to changes
 # Lower = More responsive, Higher = Smoother
 LEAD_FILTER_TIME_LOW = 0.8   # Under 40 mph: Fast response for city emergency braking
 LEAD_FILTER_TIME_HIGH = 1.5  # Over 40 mph: Balanced for highway rubber-banding prevention
-SPEED_FILTER_THRESHOLD = 17.9  # 40 mph threshold
+SPEED_FILTER_THRESHOLD = 40 * CV.MPH_TO_MS  # 40 mph threshold
 
 # DISTANCE ADAPTATION STRENGTH (How much penalties increase when close to lead)
 # [City, Urban Hwy, Rural Hwy, High Speed]
@@ -358,7 +359,7 @@ class LongitudinalMpc:
 
   def set_weights(self, acceleration_jerk=1.0, danger_jerk=1.0, speed_jerk=1.0, prev_accel_constraint=True, personality=log.LongitudinalPersonality.standard, v_ego=0.0, lead_dist=50.0):
     # Update parameters based on current speed (use instance variables, not globals)
-    speed_mph = v_ego * 2.23694  # Convert m/s to mph
+    speed_mph = v_ego * CV.MS_TO_MPH  # Convert m/s to mph
 
     self.current_x_ego_cost = get_speed_based_param(speed_mph, X_EGO_OBSTACLE_COSTS)
     self.current_j_ego_cost = get_speed_based_param(speed_mph, J_EGO_COSTS)
