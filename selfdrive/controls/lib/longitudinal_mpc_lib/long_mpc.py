@@ -296,7 +296,6 @@ class LongitudinalMpc:
     self.mode = mode
     self.dt = dt
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
-    self.reset()
     self.source = SOURCES[2]
     # Initialize smoothing filters with default time constants
     self.current_filter_time = LEAD_FILTER_TIME_LOW
@@ -307,6 +306,10 @@ class LongitudinalMpc:
     self.current_j_ego_cost = J_EGO_COSTS[0]
     self.current_a_change_cost = A_CHANGE_COSTS[0]
     self.current_dist_adapt = DIST_ADAPTS[0]
+    # Initialize acceleration limits to prevent AttributeError
+    self.cruise_min_a = ACCEL_MIN
+    self.max_a = 1.2  # Default max acceleration
+    self.reset()
 
   def reset(self):
     # self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
