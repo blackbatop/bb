@@ -16,7 +16,7 @@ if __name__ == '__main__':  # generating code
 else:
   from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.c_generated_code.acados_ocp_solver_pyx import AcadosOcpSolverCython
 
-from casadi import SX, vertcat, fabs, if_else
+from casadi import SX, vertcat
 
 MODEL_NAME = 'long'
 LONG_MPC_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,20 +43,20 @@ SPEED_BREAKPOINTS = [0, 35, 55, 70]  # 4 ranges: 0-35, 35-55, 55-70, 70+
 
 # RESPONSIVENESS TO LEAD CARS (Lower = More responsive, Higher = More stable)
 # [City, Urban Hwy, Rural Hwy, High Speed]
-X_EGO_OBSTACLE_COSTS = [3.0, 2.8, 2.75, 2.7]  # More responsive at higher speeds
+X_EGO_OBSTACLE_COSTS = [3.25, 3.0, 2.8, 2.75]  # Safer values for stability
 
 # JERK CONTROL (Lower = More jerky/responsive, Higher = Smoother/conservative)
 # [City, Urban Hwy, Rural Hwy, High Speed]
-J_EGO_COSTS = [5.5, 6.0, 6.0, 5.8]  # Less conservative at high speeds
+J_EGO_COSTS = [6.0, 6.0, 5.8, 5.5]  # Safer values for stability
 
 # ACCELERATION CHANGE PENALTIES (Lower = More responsive, Higher = Smoother)
 # [City, Urban Hwy, Rural Hwy, High Speed]
-A_CHANGE_COSTS = [200, 250, 250, 220]  # More responsive at high speeds
+A_CHANGE_COSTS = [250, 250, 250, 220]  # Safer values for stability
 
 # SMOOTHING FILTERS - Speed-adaptive for optimal responsiveness
 # Lower = More responsive, Higher = Smoother
-LEAD_FILTER_TIME_LOW = 1.2   # Under 40 mph: Fast response for city emergency braking
-LEAD_FILTER_TIME_HIGH = 1.0  # Over 40 mph: Maximum responsiveness for highway emergencies
+LEAD_FILTER_TIME_LOW = 2.0   # Under 40 mph: Balanced response for city driving
+LEAD_FILTER_TIME_HIGH = 1.5  # Over 40 mph: Good responsiveness for highway emergencies
 SPEED_FILTER_THRESHOLD = 17.9  # 40 mph threshold
 
 # DISTANCE ADAPTATION STRENGTH (How much penalties increase when close to lead)
@@ -298,9 +298,15 @@ class LongitudinalMpc:
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
     self.reset()
     self.source = SOURCES[2]
-    # Smoothing filters for lead vehicle predictions
-    self.lead_a_filter = FirstOrderFilter(0.0, LEAD_FILTER_TIME, self.dt)
-    self.lead_v_filter = FirstOrderFilter(0.0, LEAD_FILTER_TIME, self.dt)
+    # Initialize smoothing filters with default time constants
+    self.current_filter_time = LEAD_FILTER_TIME_LOW
+    self.lead_a_filter = FirstOrderFilter(0.0, self.current_filter_time, self.dt)
+    self.lead_v_filter = FirstOrderFilter(0.0, self.current_filter_time, self.dt)
+    # Instance variables to avoid global modifications
+    self.current_x_ego_cost = X_EGO_OBSTACLE_COSTS[0]
+    self.current_j_ego_cost = J_EGO_COSTS[0]
+    self.current_a_change_cost = A_CHANGE_COSTS[0]
+    self.current_dist_adapt = DIST_ADAPTS[0]
 
   def reset(self):
     # self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
@@ -348,26 +354,33 @@ class LongitudinalMpc:
       self.solver.cost_set(i, 'Zl', Zl)
 
   def set_weights(self, acceleration_jerk=1.0, danger_jerk=1.0, speed_jerk=1.0, prev_accel_constraint=True, personality=log.LongitudinalPersonality.standard, v_ego=0.0, lead_dist=50.0):
-    # Update parameters based on current speed
+    # Update parameters based on current speed (use instance variables, not globals)
     speed_mph = v_ego * 2.23694  # Convert m/s to mph
-    global X_EGO_OBSTACLE_COST, J_EGO_COST, A_CHANGE_COST, LEAD_FILTER_TIME, DIST_ADAPT
 
-    X_EGO_OBSTACLE_COST = get_speed_based_param(speed_mph, X_EGO_OBSTACLE_COSTS)
-    J_EGO_COST = get_speed_based_param(speed_mph, J_EGO_COSTS)
-    A_CHANGE_COST = get_speed_based_param(speed_mph, A_CHANGE_COSTS)
-    # Speed-adaptive filter time: stable at low speeds, responsive at high speeds
-    LEAD_FILTER_TIME = LEAD_FILTER_TIME_LOW if speed_mph < SPEED_FILTER_THRESHOLD else LEAD_FILTER_TIME_HIGH
-    DIST_ADAPT = get_speed_based_param(speed_mph, DIST_ADAPTS)
+    self.current_x_ego_cost = get_speed_based_param(speed_mph, X_EGO_OBSTACLE_COSTS)
+    self.current_j_ego_cost = get_speed_based_param(speed_mph, J_EGO_COSTS)
+    self.current_a_change_cost = get_speed_based_param(speed_mph, A_CHANGE_COSTS)
+    self.current_dist_adapt = get_speed_based_param(speed_mph, DIST_ADAPTS)
+
+    # Update filter time constants based on speed and recreate filters if needed
+    new_filter_time = LEAD_FILTER_TIME_LOW if speed_mph < SPEED_FILTER_THRESHOLD else LEAD_FILTER_TIME_HIGH
+    if abs(self.current_filter_time - new_filter_time) > 0.1:  # Only update if significant change
+      self.current_filter_time = new_filter_time
+      # Recreate filters with new time constant while preserving current values
+      current_a = self.lead_a_filter.x if hasattr(self.lead_a_filter, 'x') else 0.0
+      current_v = self.lead_v_filter.x if hasattr(self.lead_v_filter, 'x') else 0.0
+      self.lead_a_filter = FirstOrderFilter(current_a, self.current_filter_time, self.dt)
+      self.lead_v_filter = FirstOrderFilter(current_v, self.current_filter_time, self.dt)
 
     # Adaptive jerk factors for distance (close lead = more conservative)
-    dist_factor = 1.0 + DIST_ADAPT * (20.0 / max(lead_dist, 5.0))
+    dist_factor = 1.0 + self.current_dist_adapt * (20.0 / max(lead_dist, 5.0))
     acceleration_jerk *= dist_factor
     danger_jerk *= dist_factor
     speed_jerk *= dist_factor
 
     if self.mode == 'acc':
       a_change_cost = acceleration_jerk if prev_accel_constraint else 0
-      cost_weights = [X_EGO_OBSTACLE_COST, X_EGO_COST, V_EGO_COST, A_EGO_COST, a_change_cost, speed_jerk]
+      cost_weights = [self.current_x_ego_cost, X_EGO_COST, V_EGO_COST, A_EGO_COST, a_change_cost, speed_jerk]
       constraint_cost_weights = [LIMIT_COST, LIMIT_COST, LIMIT_COST, danger_jerk]
     elif self.mode == 'blended':
       a_change_cost = 40.0 if prev_accel_constraint else 0
@@ -388,7 +401,6 @@ class LongitudinalMpc:
   @staticmethod
   def extrapolate_lead(x_lead, v_lead, a_lead, a_lead_tau):
     # Use constant acceleration model for smoother predictions
-    a_lead_traj = np.full_like(T_IDXS, a_lead)
     v_lead_traj = np.clip(v_lead + a_lead * T_IDXS, 0.0, 1e8)
     x_lead_traj = x_lead + v_lead * T_IDXS + 0.5 * a_lead * T_IDXS**2
     lead_xv = np.column_stack((x_lead_traj, v_lead_traj))
