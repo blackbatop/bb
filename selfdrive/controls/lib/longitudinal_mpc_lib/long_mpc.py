@@ -44,15 +44,15 @@ SPEED_BREAKPOINTS = [0, 35, 55, 70]  # 4 ranges: 0-35, 35-55, 55-70, 70+
 
 # RESPONSIVENESS TO LEAD CARS (Lower = More responsive, Higher = More stable)
 # [City Emergency, Urban Hwy, Rural Hwy, High Speed]
-X_EGO_OBSTACLE_COSTS = [1.8, 3.0, 2.8, 2.2]  # Highway more responsive to prevent gaps
+X_EGO_OBSTACLE_COSTS = [3.0, 3.0, 2.8, 2.2]  # Less aggressive at low speeds, closer to original
 
 # JERK CONTROL (Lower = More jerky/responsive, Higher = Smoother/conservative)
 # [City Emergency, Urban Hwy, Rural Hwy, High Speed]
-J_EGO_COSTS = [2.5, 6.0, 5.6, 4.5]  # Slight nudge for 55-70 mph responsiveness
+J_EGO_COSTS = [5.0, 6.0, 5.6, 4.5]  # Reverted to original 5.0 at low speeds
 
 # ACCELERATION CHANGE PENALTIES (Lower = More responsive, Higher = Smoother)
 # [City Emergency, Urban Hwy, Rural Hwy, High Speed]
-A_CHANGE_COSTS = [150, 250, 250, 180]  # Highway more responsive to changes
+A_CHANGE_COSTS = [200, 250, 250, 180]  # Reverted to original 200 at low speeds
 
 # SMOOTHING FILTERS - Speed-adaptive for optimal responsiveness
 # Lower = More responsive, Higher = Smoother
