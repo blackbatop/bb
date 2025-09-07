@@ -11,15 +11,15 @@ class ConditionalExperimentalMode:
   # FILTER TIME CONSTANTS (Lower = More responsive, Higher = Smoother)
   # [City, Urban Hwy, Rural Hwy, High Speed]
   FILTER_TIME_CURVES = [0.9, 0.8, 0.6, 0.5]    # Faster detection at highway speeds
-  FILTER_TIME_LEADS = [0.9, 0.8, 0.5, 0.5]     # Slightly less sensitive at 70+ mph for slow leads
-  FILTER_TIME_LIGHTS = [0.9, 0.8, 0.75, 0.5]   # Slightly less sensitive at 60+ mph for stoplights
+  FILTER_TIME_LEADS = [0.9, 0.8, 0.5, 0.5]     # Less sensitive at 70+ mph for slow leads
+  FILTER_TIME_LIGHTS = [0.9, 0.8, 0.75, 0.55]  # Less sensitive at 60+ mph for stoplights
 
   # HIGHWAY LIGHT DETECTION MULTIPLIERS
   # How much to increase model stop time at highway speeds
-  LIGHT_BOOSTS = [1.0, 1.1, 1.15, 1.15]         # Keep conservative boost for highest speeds
+  LIGHT_BOOSTS = [1.0, 1.2, 1.1, 1.0]         # Keep conservative boost for highest speeds
   LIGHT_SPEED_LOW = 22.2     # 50 mph threshold
   LIGHT_SPEED_HIGH = 26.7    # 60 mph threshold
-  LIGHT_MAX_TIME = 9.0       # Balanced max time preserving city performance
+  LIGHT_MAX_TIME = 8.5       # Balanced max time preserving city performance
 
   # ===== END TUNING PARAMETERS =====
 
@@ -28,7 +28,7 @@ class ConditionalExperimentalMode:
   FILTER_TIME_LEAD = 0.8
   FILTER_TIME_LIGHT = 0.8
   LIGHT_BOOST_LOW = 1.15
-  LIGHT_BOOST_HIGH = 1.3
+  LIGHT_BOOST_HIGH = 1.2
 
   @staticmethod
   def get_speed_based_param(speed_mph, param_array):
