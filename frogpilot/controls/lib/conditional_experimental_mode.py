@@ -20,7 +20,7 @@ class ConditionalExperimentalMode:
   LIGHT_BOOSTS = [1.0, 1.2, 1.1, 1.0]         # Keep conservative boost for highest speeds
   LIGHT_SPEED_LOW = 22.2     # 50 mph threshold
   LIGHT_SPEED_HIGH = 26.7    # 60 mph threshold
-  LIGHT_MAX_TIME = 8.5       # Balanced max time preserving city performance
+  LIGHT_MAX_TIME = 9       # Balanced max time preserving city performance
 
   # ===== END TUNING PARAMETERS =====
 
