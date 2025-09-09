@@ -3,6 +3,8 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDoubleSpinBox>
+#include <QPushButton>
 
 FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent), parent(parent) {
   QStackedLayout *modelLayout = new QStackedLayout();
@@ -25,6 +27,8 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
     {"DeleteModel", tr("Delete Driving Models"), tr("Delete driving models from the device."), ""},
     {"DownloadModel", tr("Download Driving Models"), tr("Download driving models to the device."), ""},
     {"ModelRandomizer", tr("Model Randomizer"), tr("Driving models are chosen at random each drive and feedback prompts are used to find the model that best suits your needs."), ""},
+    {"ModelUI", tr("Model UI"), tr("Enable model visualization on the driving screen."), ""},
+    {"StopDistance", tr("Stop Distance"), tr("Adjust the model's stopping distance in meters (minimum 4 for safety). Most users prefer 6."), ""},
     {"ManageBlacklistedModels", tr("Manage Model Blacklist"), tr("Add or remove models from the <b>Model Randomizer</b>'s blacklist list."), ""},
     {"ManageScores", tr("Manage Model Ratings"), tr("Reset or view the saved ratings for the driving models."), ""},
     {"SelectModel", tr("Select Driving Model"), tr("Select the active driving model."), ""},
@@ -414,6 +418,67 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
       });
       modelToggle = selectModelBtn;
 
+    } else if (param == "StopDistance") {
+      // Custom control for StopDistance with QDoubleSpinBox, identical to advanced lateral tuning
+      stopDistanceControl = new QWidget();
+      QVBoxLayout *layout = new QVBoxLayout(stopDistanceControl);
+      layout->setContentsMargins(0, 0, 0, 0);
+      layout->setSpacing(10);
+
+      QLabel *titleLabel = new QLabel(title);
+      titleLabel->setStyleSheet("QLabel { font-size: 18px; font-weight: bold; color: #000000; }");
+      layout->addWidget(titleLabel);
+
+      QLabel *descLabel = new QLabel(desc);
+      descLabel->setWordWrap(true);
+      descLabel->setStyleSheet("QLabel { font-size: 14px; color: #666666; }");
+      layout->addWidget(descLabel);
+
+      QHBoxLayout *spinLayout = new QHBoxLayout();
+      QDoubleSpinBox *spinBox = new QDoubleSpinBox();
+      spinBox->setRange(4.0, 20.0);
+      spinBox->setSingleStep(0.5);
+      spinBox->setDecimals(1);
+      spinBox->setValue(params.getFloat("StopDistance"));
+      spinBox->setStyleSheet("QDoubleSpinBox { font-size: 16px; padding: 5px; }");
+      spinLayout->addWidget(spinBox);
+
+      QLabel *unitLabel = new QLabel("meters");
+      unitLabel->setStyleSheet("QLabel { font-size: 16px; color: #666666; }");
+      spinLayout->addWidget(unitLabel);
+
+      QPushButton *resetButton = new QPushButton("Reset");
+      resetButton->setStyleSheet("QPushButton { font-size: 14px; padding: 5px; background-color: #f0f0f0; }");
+      spinLayout->addWidget(resetButton);
+
+      layout->addLayout(spinLayout);
+
+      QObject::connect(spinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [this](double value) {
+        params.putFloat("StopDistance", value);
+        updateFrogPilotToggles();
+      });
+
+      QObject::connect(resetButton, &QPushButton::clicked, [this, spinBox]() {
+        double default_value = 6.0;
+        spinBox->setValue(default_value);
+        params.putFloat("StopDistance", default_value);
+        updateFrogPilotToggles();
+      });
+
+      // Handle metric units
+      bool is_metric = params.getBool("IsMetric");
+      if (!is_metric) {
+        double value_feet = params.getFloat("StopDistance") / 3.28084; // feet to meters conversion inverse
+        spinBox->setValue(value_feet);
+        unitLabel->setText("feet");
+        QObject::connect(spinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [this, spinBox](double value) {
+          double meters = value * 3.28084;
+          params.putFloat("StopDistance", meters);
+          updateFrogPilotToggles();
+        });
+      }
+
+      modelToggle = stopDistanceControl;
     } else {
       modelToggle = new ParamControl(param, title, desc, icon);
     }
@@ -651,6 +716,8 @@ void FrogPilotModelPanel::updateToggles() {
 
     else if (key == "SelectModel") {
       setVisible &= !params.getBool("ModelRandomizer");
+    } else if (key == "StopDistance") {
+      setVisible &= (tuningLevel == 3); // Only visible in developer tuning level
     }
 
     toggle->setVisible(setVisible);
