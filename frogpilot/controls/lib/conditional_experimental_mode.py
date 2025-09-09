@@ -12,7 +12,7 @@ class ConditionalExperimentalMode:
   # FILTER TIME CONSTANTS (Lower = More responsive, Higher = Smoother)
   # [City, Urban Hwy, Rural Hwy, High Speed]
   FILTER_TIME_CURVES = [0.9, 0.8, 0.6, 0.5]    # Faster detection at highway speeds
-  FILTER_TIME_LEADS = [0.9, 0.8, 0.5, 0.5]     # Less sensitive at 70+ mph for slow leads
+  FILTER_TIME_LEADS = [0.9, 0.8, 0.7, 0.5]     # Less sensitive at 70+ mph for slow leads
   FILTER_TIME_LIGHTS = [0.9, 0.8, 0.75, 0.55]  # Less sensitive at 60+ mph for stoplights
 
   # HIGHWAY LIGHT DETECTION MULTIPLIERS
