@@ -2,6 +2,7 @@
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.common.numpy_fast import interp
+from openpilot.common.conversions import Conversions as CV
 
 from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, THRESHOLD, params_memory, scale_threshold
 
@@ -154,7 +155,7 @@ class ConditionalExperimentalMode:
 
   def stop_sign_and_light(self, v_ego, sm, model_time):
     if not sm["frogpilotCarState"].trafficModeEnabled:
-      speed_mph = v_ego * 2.23694  # Convert m/s to mph
+      speed_mph = v_ego * CV.MS_TO_MPH  # Convert m/s to mph
 
       # Interp for smooth scaling in 20-35 mph
       bp = [0, 20, 35]
