@@ -53,5 +53,6 @@ private:
 
   QFileSystemWatcher *watcher;
   QHash<QString, QString> params_hash;
+  QHash<QString, QString> param_paths;
   Params params;
 };

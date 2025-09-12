@@ -274,5 +274,14 @@ void ParamWatcher::fileChanged(const QString &path) {
 }
 
 void ParamWatcher::addParam(const QString &param_name) {
-  watcher->addPath(QString::fromStdString(params.getParamPath(param_name.toStdString())));
+  QString param_path;
+  if (param_paths.contains(param_name)) {
+    param_path = param_paths[param_name];
+  } else {
+    param_path = QString::fromStdString(params.getParamPath(param_name.toStdString()));
+    param_paths[param_name] = param_path;
+  }
+  if (!watcher->files().contains(param_path)) {
+    watcher->addPath(param_path);
+  }
 }
