@@ -130,10 +130,9 @@ class ConditionalExperimentalMode:
     self.curve_detected = self.curvature_filter.x >= THRESHOLD and v_ego > CRUISING_SPEED
 
   def slow_lead(self, frogpilot_toggles, v_ego):
-    v_lead = self.frogpilot_planner.lead_one.vLead
     if self.frogpilot_planner.tracking_lead:
       slower_lead = frogpilot_toggles.conditional_slower_lead and self.frogpilot_planner.frogpilot_following.slower_lead
-      stopped_lead = frogpilot_toggles.conditional_stopped_lead and v_lead < 1
+      stopped_lead = frogpilot_toggles.conditional_stopped_lead and self.frogpilot_planner.lead_one.vLead < 1
       lead_threshold = scale_threshold(v_ego)
 
       # Adjust threshold based on lead probability for vision-only accuracy
