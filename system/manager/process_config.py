@@ -74,7 +74,7 @@ procs = [
   NativeProcess("encoderd", "system/loggerd", ["./encoderd"], allow_logging),
   NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
   NativeProcess("loggerd", "system/loggerd", ["./loggerd"], allow_logging),
-  NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], run_new_modeld),
+  PythonProcess("modeld", "frogpilot.tinygrad_modeld.tinygrad_modeld", run_new_modeld),
   NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], run_classic_modeld),
   PythonProcess("navmodeld", "frogpilot.classic_modeld.navmodeld", run_classic_modeld),
   NativeProcess("sensord", "system/sensord", ["./sensord"], only_onroad, enabled=not PC),
