@@ -1,10 +1,13 @@
 import os
-from openpilot.system.hardware import TICI
+from openpilot.system.hardware import HARDWARE, TICI
 from openpilot.frogpilot.classic_modeld.runners.runmodel_pyx import RunModel, Runtime
 assert Runtime
 
+SNPE_SUPPORTED_DEVICE_TYPES = {"tici", "tizi"}
+
 USE_THNEED = int(os.getenv('USE_THNEED', str(int(TICI))))
-USE_SNPE = int(os.getenv('USE_SNPE', str(int(TICI))))
+default_use_snpe = int(TICI and HARDWARE.get_device_type() in SNPE_SUPPORTED_DEVICE_TYPES)
+USE_SNPE = int(os.getenv('USE_SNPE', str(default_use_snpe)))
 
 class ModelRunner(RunModel):
   THNEED = 'THNEED'
