@@ -10,6 +10,7 @@ import pickle
 import ctypes
 import numpy as np
 from pathlib import Path
+from setproctitle import setproctitle
 
 from cereal import messaging
 from cereal.messaging import PubMaster, SubMaster
@@ -20,6 +21,7 @@ from openpilot.common.transformations.model import dmonitoringmodel_intrinsics, 
 from openpilot.common.transformations.camera import _ar_ox_fisheye, _os_fisheye
 from openpilot.frogpilot.tinygrad_modeld.models.commonmodel_pyx import CLContext, MonitoringModelFrame
 from openpilot.frogpilot.tinygrad_modeld.parse_model_outputs import sigmoid
+from openpilot.system import sentry
 from openpilot.frogpilot.tinygrad_modeld.runners.tinygrad_helpers import qcom_tensor_from_opencl_address
 
 MODEL_WIDTH, MODEL_HEIGHT = DM_INPUT_SIZE
@@ -30,6 +32,9 @@ OUTPUT_SIZE = 84 + FEATURE_LEN
 PROCESS_NAME = "frogpilot.tinygrad_modeld.dmonitoringmodeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 MODEL_PKL_PATH = Path(__file__).parent / 'models/dmonitoring_model_tinygrad.pkl'
+
+# Fixed small stagger to reduce overlap with driving model GPU work
+DM_STAGGER_SEC = 0.010
 
 
 class DriverStateResult(ctypes.Structure):
@@ -118,7 +123,7 @@ def get_driverstate_packet(model_output: np.ndarray, frame_id: int, location_ts:
   ds = msg.driverStateV2
   ds.frameId = frame_id
   ds.modelExecutionTime = execution_time
-  ds.gpuExecutionTime = gpu_execution_time
+  ds.dspExecutionTime = gpu_execution_time
   ds.poorVisionProb = float(sigmoid(model_result.poor_vision_prob))
   ds.wheelOnRightProb = float(sigmoid(model_result.wheel_on_right_prob))
   ds.rawPredictions = model_output.tobytes() if SEND_RAW_PRED else b''
@@ -128,7 +133,11 @@ def get_driverstate_packet(model_output: np.ndarray, frame_id: int, location_ts:
 
 
 def main():
+  setproctitle(PROCESS_NAME)
   config_realtime_process(7, 5)
+
+  sentry.set_tag("daemon", PROCESS_NAME)
+  cloudlog.bind(daemon=PROCESS_NAME)
 
   cl_context = CLContext()
   model = ModelState(cl_context)
@@ -160,6 +169,9 @@ def main():
     if sm.updated["liveCalibration"]:
       calib[:] = np.array(sm["liveCalibration"].rpyCalib)
 
+    # Small fixed delay to reduce GPU overlap with driving model
+    time.sleep(DM_STAGGER_SEC)
+
     t1 = time.perf_counter()
     model_output, gpu_execution_time = model.run(buf, calib, model_transform)
     t2 = time.perf_counter()
@@ -171,4 +183,7 @@ if __name__ == "__main__":
   try:
     main()
   except KeyboardInterrupt:
-    cloudlog.warning("got SIGINT")
+    cloudlog.warning(f"child {PROCESS_NAME} got SIGINT")
+  except Exception:
+    sentry.capture_exception()
+    raise
