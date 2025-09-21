@@ -1,5 +1,7 @@
 #include "frogpilot/ui/qt/onroad/frogpilot_onroad.h"
 
+#include <QQueue>
+
 FrogPilotOnroadWindow::FrogPilotOnroadWindow(QWidget *parent) : QWidget(parent) {
   signalTimer = new QTimer(this);
 
@@ -77,14 +79,14 @@ void FrogPilotOnroadWindow::paintFPS(QPainter &p, const QRect &rect) {
   static double minFPS = 99.9;
   static double totalFPS = 0.0;
 
-  static QList<QPair<qint64, double>> fpsHistory;
+  static QQueue<std::pair<qint64, double>> fpsHistory;
 
-  fpsHistory.append({now, fps});
+  fpsHistory.enqueue({now, fps});
   totalFPS += fps;
 
   while (!fpsHistory.isEmpty() && now - fpsHistory.first().first > 60000) {
     totalFPS -= fpsHistory.first().second;
-    fpsHistory.removeFirst();
+    fpsHistory.dequeue();
   }
 
   double avgFPS = fpsHistory.isEmpty() ? 0.0 : totalFPS / fpsHistory.size();

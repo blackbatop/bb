@@ -43,8 +43,8 @@ public:
     CL_CHECK(clSetKernelArg(krnl_, 2, sizeof(cl_int), &expo_time));
 
     const size_t globalWorkSize[] = {size_t(width / 2), size_t(height / 2)};
-    const int imgproc_local_worksize = 16;
-    const size_t localWorkSize[] = {imgproc_local_worksize, imgproc_local_worksize};
+    const int imgproc_local_worksize = 8;  // Reduced from 16 to lessen GPU load
+    const size_t localWorkSize[] = {size_t(imgproc_local_worksize), size_t(imgproc_local_worksize)};
     CL_CHECK(clEnqueueNDRangeKernel(q, krnl_, 2, NULL, globalWorkSize, localWorkSize, 0, 0, imgproc_event));
   }
 
@@ -91,7 +91,8 @@ void CameraBuf::init(cl_device_id device_id, cl_context context, CameraState *s,
 
   imgproc = new ImgProc(device_id, context, this, s, nv12_width, nv12_uv_offset);
 
-  const cl_queue_properties props[] = {0};  //CL_QUEUE_PRIORITY_KHR, CL_QUEUE_PRIORITY_HIGH_KHR, 0};
+  // Use default queue priority to balance camera processing with tinygrad workloads
+  const cl_queue_properties props[] = { 0 };
   q = CL_CHECK_ERR(clCreateCommandQueueWithProperties(context, device_id, props, &err));
 }
 
@@ -317,8 +318,8 @@ std::thread start_process_thread(MultiCameraState *cameras, CameraState *cs, pro
 void camerad_thread() {
   cl_device_id device_id = cl_get_device_id(CL_DEVICE_TYPE_DEFAULT);
 #ifdef QCOM2
-  const cl_context_properties props[] = {CL_CONTEXT_PRIORITY_HINT_QCOM, CL_PRIORITY_HINT_HIGH_QCOM, 0};
-  cl_context context = CL_CHECK_ERR(clCreateContext(props, 1, &device_id, NULL, NULL, &err));
+  // Use default context priority (no hint) to avoid starving camera or tinygrad
+  cl_context context = CL_CHECK_ERR(clCreateContext(NULL, 1, &device_id, NULL, NULL, &err));
 #else
   cl_context context = CL_CHECK_ERR(clCreateContext(NULL, 1, &device_id, NULL, NULL, &err));
 #endif
