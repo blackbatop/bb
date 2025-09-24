@@ -259,7 +259,7 @@ static bool gm_tx_hook(const CANPacket_t *to_send) {
     int gas_regen = ((GET_BYTE(to_send, 1) & 0x1U) << 13) + ((GET_BYTE(to_send, 2) & 0xFFU) << 5) + ((GET_BYTE(to_send, 3) & 0xF8U) >> 3);
 
     bool violation = false;
-    // Allow apply bit in pre-enabled and overriding states
+    // Allow apply bit in pre-enabled and overriding states, except for inactive gas    // Allow apply bit in pre-enabled and overriding states
     violation |= !controls_allowed && apply;
     violation |= longitudinal_gas_checks(gas_regen, *gm_long_limits);
 
