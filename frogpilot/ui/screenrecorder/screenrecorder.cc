@@ -35,7 +35,28 @@ void ScreenRecorder::updateState() {
   }
 
   if (frameCount % 2 == 0) {
-    imageQueue.push(rootWidget->grab().toImage());
+    QImage frame = rootWidget->grab().toImage();
+
+    if (!imageQueue.try_push(std::move(frame))) {
+      QImage dropped_frame;
+
+      if (imageQueue.try_pop(dropped_frame)) {
+        if (frame.isNull()) {
+          frame = rootWidget->grab().toImage();
+        }
+
+        if (!imageQueue.try_push(std::move(frame))) {
+          // Drop backlog and enqueue the newest frame to keep the recorder responsive.
+          imageQueue.clear();
+
+          if (frame.isNull()) {
+            frame = rootWidget->grab().toImage();
+          }
+
+          imageQueue.try_push(std::move(frame));
+        }
+      }
+    }
   }
 
   frameCount += 1;
@@ -69,6 +90,8 @@ void ScreenRecorder::stopRecording() {
   if (encodingThread.joinable()) {
     encodingThread.join();
   }
+
+  imageQueue.clear();
 
   if (encoder) {
     encoder->encoder_close();

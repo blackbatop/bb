@@ -25,7 +25,10 @@ FrogPilotAnnotatedCameraWidget::FrogPilotAnnotatedCameraWidget(QWidget *parent) 
   QObject::connect(animationTimer, &QTimer::timeout, [this] {
     animationFrameIndex = (animationFrameIndex + 1) % totalFrames;
   });
-  QObject::connect(frogpilotUIState(), &FrogPilotUIState::themeUpdated, this, &FrogPilotAnnotatedCameraWidget::updateSignals);
+  QObject::connect(frogpilotUIState(), &FrogPilotUIState::themeUpdated, this, [this] {
+    signalsLoaded = false;
+    updateSignals();
+  });
   QObject::connect(uiState(), &UIState::offroadTransition, [this] {
     standstillTimer.invalidate();
   });
@@ -55,12 +58,18 @@ void FrogPilotAnnotatedCameraWidget::showEvent(QShowEvent *event) {
     speedConversionMetrics = MS_TO_MPH;
   }
 
-  updateSignals();
+  if (!signalsLoaded) {
+    updateSignals();
+  }
 }
 
 void FrogPilotAnnotatedCameraWidget::updateSignals() {
   blindspotImages.clear();
+  blindspotImages.squeeze();
   signalImages.clear();
+  signalImages.squeeze();
+
+  animationFrameIndex = 0;
 
   bool isGif = false;
 
@@ -121,6 +130,8 @@ void FrogPilotAnnotatedCameraWidget::updateSignals() {
 
     signalStyle = "None";
   }
+
+  signalsLoaded = true;
 }
 
 void FrogPilotAnnotatedCameraWidget::updateState(const FrogPilotUIState &fs, const QJsonObject &frogpilot_toggles) {

@@ -120,4 +120,6 @@ private:
 
   QVector<QPixmap> blindspotImages;
   QVector<QPixmap> signalImages;
+
+  bool signalsLoaded = false;
 };

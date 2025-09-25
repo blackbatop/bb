@@ -24,11 +24,11 @@ private:
   void encodeImage();
   void updateState();
 
-  bool recording;
+  bool recording = false;
 
-  int frameCount;
+  int frameCount = 0;
 
-  qint64 startedTime;
+  qint64 startedTime = 0;
 
   std::thread encodingThread;
 
@@ -36,7 +36,8 @@ private:
 
   std::vector<uint8_t> rgbScaleBuffer;
 
-  BlockingQueue<QImage> imageQueue{UI_FREQ};
+  static constexpr int kMaxBufferedFrames = 3;
+  BlockingQueue<QImage> imageQueue{kMaxBufferedFrames};
 
   QColor blackColor(int alpha = 255) { return QColor(0, 0, 0, alpha); }
   QColor redColor(int alpha = 255) { return QColor(201, 34, 49, alpha); }
