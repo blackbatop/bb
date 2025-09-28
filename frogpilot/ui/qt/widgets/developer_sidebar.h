@@ -41,4 +41,7 @@ private:
   ItemStatus stiffnessFactorStatus;
   ItemStatus torqueStatus;
   ItemStatus modelNameStatus;
+
+  bool hasActiveMetrics;
+  bool metricsDrawn;
 };

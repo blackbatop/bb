@@ -1,5 +1,6 @@
 #include "selfdrive/ui/qt/sidebar.h"
 
+#include <QFileInfo>
 #include <QMouseEvent>
 
 #include "selfdrive/ui/qt/util.h"
@@ -57,13 +58,37 @@ void Sidebar::updateTheme() {
   sidebar_color2 = frogpilot_scene.use_stock_colors ? good_color : frogpilot_scene.sidebar_color2;
   sidebar_color3 = frogpilot_scene.use_stock_colors ? good_color : frogpilot_scene.sidebar_color3;
 
-  if (util::random_int(0, 100) == 100 && frogpilot_toggles.value("random_events").toBool()) {
-    loadImage("../../frogpilot/assets/random_events/icons/button_home", home_img, home_gif, home_btn.size(), this);
-  } else {
-    loadImage("../../frogpilot/assets/active_theme/icons/button_home", home_img, home_gif, home_btn.size(), this);
+  QString next_home_asset_path = "../../frogpilot/assets/active_theme/icons/button_home";
+  if (frogpilot_toggles.value("random_events").toBool() && util::random_int(0, 100) == 100) {
+    next_home_asset_path = "../../frogpilot/assets/random_events/icons/button_home";
   }
-  loadImage("../../frogpilot/assets/active_theme/icons/button_flag", flag_img, flag_gif, home_btn.size(), this);
-  loadImage("../../frogpilot/assets/active_theme/icons/button_settings", settings_img, settings_gif, settings_btn.size(), this, Qt::IgnoreAspectRatio);
+
+  auto reloadIfNeeded = [this](const QString &path, QString &cached_path, QDateTime &cached_mtime,
+                               QPixmap &pixmap, QSharedPointer<QMovie> &movie, const QSize &size,
+                               Qt::AspectRatioMode aspect_ratio_mode = Qt::KeepAspectRatio) {
+    QFileInfo asset_info(path + ".gif");
+    if (!asset_info.exists()) {
+      asset_info.setFile(path + ".png");
+    }
+
+    QDateTime asset_mtime = asset_info.exists() ? asset_info.lastModified() : QDateTime();
+    if (cached_path != path || cached_mtime != asset_mtime) {
+      cached_path = path;
+      cached_mtime = asset_mtime;
+      loadImage(path, pixmap, movie, size, this, aspect_ratio_mode);
+    }
+  };
+
+  reloadIfNeeded(next_home_asset_path, current_home_asset_path, home_asset_last_modified,
+                 home_img, home_gif, home_btn.size());
+
+  const QString next_flag_asset_path = "../../frogpilot/assets/active_theme/icons/button_flag";
+  reloadIfNeeded(next_flag_asset_path, current_flag_asset_path, flag_asset_last_modified,
+                 flag_img, flag_gif, home_btn.size());
+
+  const QString next_settings_asset_path = "../../frogpilot/assets/active_theme/icons/button_settings";
+  reloadIfNeeded(next_settings_asset_path, current_settings_asset_path, settings_asset_last_modified,
+                 settings_img, settings_gif, settings_btn.size(), Qt::IgnoreAspectRatio);
 }
 
 void Sidebar::showEvent(QShowEvent *event) {

@@ -1,5 +1,7 @@
 #include "frogpilot/ui/qt/widgets/developer_sidebar.h"
 
+#include <algorithm>
+
 void DeveloperSidebar::drawMetric(QPainter &p, const QPair<QString, QString> &label, QColor c, int y) {
   const QRect rect = {12, y, 275, 126};
 
@@ -24,12 +26,13 @@ void DeveloperSidebar::drawMetric(QPainter &p, const QPair<QString, QString> &la
   int flags = Qt::AlignHCenter | Qt::AlignVCenter;
   if (label.second.isEmpty()) {
     flags |= Qt::TextWordWrap;                        // enable wrapping for single-line metrics
+  }
+
+  p.drawText(rect.adjusted(8, 8, -22, -8), flags, text);
 }
 
-p.drawText(rect.adjusted(8, 8, -22, -8), flags, text);
-}
-
-DeveloperSidebar::DeveloperSidebar(QWidget *parent) : QFrame(parent) {
+DeveloperSidebar::DeveloperSidebar(QWidget *parent)
+    : QFrame(parent), hasActiveMetrics(false), metricsDrawn(false) {
   setAttribute(Qt::WA_OpaquePaintEvent);
   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
   setFixedWidth(300);
@@ -56,6 +59,14 @@ void DeveloperSidebar::updateTheme() {
   }
 
   metricColor = frogpilot_scene.use_stock_colors ? QColor(255, 255, 255) : frogpilot_scene.sidebar_color1;
+
+  bool nextHasActiveMetrics = std::any_of(metricAssignments.begin(), metricAssignments.end(),
+                                          [](int metricId) { return metricId > 0; });
+  if (metricsDrawn && !nextHasActiveMetrics) {
+    metricsDrawn = false;
+    update();
+  }
+  hasActiveMetrics = nextHasActiveMetrics;
 }
 
 void DeveloperSidebar::resetVariables() {
@@ -123,6 +134,10 @@ void DeveloperSidebar::updateState(const UIState &s, const FrogPilotUIState &fs)
     torqueLabel += QString(" - (%1%)").arg(maxTorque);
   }
 
+  if (!hasActiveMetrics) {
+    return;
+  }
+
   accelerationStatus = ItemStatus(QPair<QString, QString>(tr("ACCEL"), QString::number(acceleration, 'f', 2) + accelerationUnit), metricColor);
   accelerationJerkStatus = ItemStatus(QPair<QString, QString>(tr("ACCEL JERK"), QString::number(frogpilotPlan.getAccelerationJerk())), metricColor);
   actuatorAccelerationStatus = ItemStatus(QPair<QString, QString>(tr("ACT ACCEL"), QString::number(carControl.getActuators().getAccel() * accelerationConversion, 'f', 2) + accelerationUnit), metricColor);
@@ -147,6 +162,7 @@ void DeveloperSidebar::updateState(const UIState &s, const FrogPilotUIState &fs)
   cleanName = cleanName.trimmed();
   modelNameStatus = ItemStatus(QPair<QString, QString>(cleanName, ""), metricColor);
 
+  metricsDrawn = true;
   update();
 }
 

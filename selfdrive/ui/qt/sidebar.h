@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <QDateTime>
 #include <QFrame>
 #include <QMap>
 #include <QMovie>
@@ -92,4 +93,12 @@ private:
   QSharedPointer<QMovie> flag_gif;
   QSharedPointer<QMovie> home_gif;
   QSharedPointer<QMovie> settings_gif;
+
+  QString current_home_asset_path;
+  QString current_flag_asset_path;
+  QString current_settings_asset_path;
+
+  QDateTime home_asset_last_modified;
+  QDateTime flag_asset_last_modified;
+  QDateTime settings_asset_last_modified;
 };
