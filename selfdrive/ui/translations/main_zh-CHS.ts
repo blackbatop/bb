@@ -432,6 +432,17 @@
     </message>
 </context>
 <context>
+    <name>ExpandableMultiOptionDialog</name>
+    <message>
+        <source>Select</source>
+        <translation type="unfinished">选择</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished">取消</translation>
+    </message>
+</context>
+<context>
     <name>ExperimentalModeButton</name>
     <message>
         <source>EXPERIMENTAL MODE ON</source>
@@ -2476,6 +2487,78 @@
         <source>Select a Model — 🗺️ = Navigation | 📡 = Radar | 👀 = VOACC</source>
         <translation type="gpt-5-generated">选择模型 — 🗺️ = 导航 | 📡 = 雷达 | 👀 = VOACC</translation>
     </message>
+    <message>
+        <source>Automatically download new driving models as they become available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete driving models from the device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Download driving models to the device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Driving models are chosen at random each drive and feedback prompts are used to find the model that best suits your needs.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop Distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Adjust the model's stopping distance in meters (minimum 4 for safety). Most users prefer 6.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add or remove models from the &lt;b&gt;Model Randomizer&lt;/b&gt;'s blacklist list.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset or view the saved ratings for the driving models.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the active driving model.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no more models to blacklist! The only available model is "%1"!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a model to add to the blacklist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a model to remove from the blacklist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove all of your blacklisted models?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset all of your model drives and scores?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a model - 🗺️ = Navigation | 📡 = Radar | 👀 = VOACC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The "Model Randomizer" only works with downloaded models. Do you want to download all the driving models?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset your &lt;b&gt;Stop Distance&lt;/b&gt; to the default of 6 meters?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation type="unfinished">重置</translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotModelReview</name>
@@ -4321,6 +4404,10 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     <message>
         <source>&lt;b&gt;Set the road-edge thickness.&lt;/b&gt;&lt;br&gt;&lt;br&gt;Default matches half of the MUTCD lane-line width standard of 10 centimeters.</source>
         <translation type="gpt-5-generated">&lt;b&gt;设置路缘厚度。&lt;/b&gt;&lt;br&gt;&lt;br&gt;默认值等于 MUTCD 车道线宽度标准 10 厘米的一半。</translation>
+    </message>
+    <message>
+        <source>Driving Model: Current</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
