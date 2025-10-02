@@ -1,6 +1,4 @@
 #include <QMovie>
-#include <QTransform>
-#include <algorithm>
 
 #include "frogpilot/ui/qt/onroad/frogpilot_annotated_camera.h"
 
@@ -28,21 +26,9 @@ FrogPilotAnnotatedCameraWidget::FrogPilotAnnotatedCameraWidget(QWidget *parent) 
   loadGif("../../frogpilot/assets/other_images/experimental_mode_icon.gif", experimentalModeIcon, QSize(btn_size / 2, btn_size / 2), this);
 
   QObject::connect(animationTimer, &QTimer::timeout, [this] {
-    if (totalFrames <= 0) {
-      if (animationTimer->isActive()) {
-        animationTimer->stop();
-      }
-      animationFrameIndex = 0;
-      return;
-    }
-
     animationFrameIndex = (animationFrameIndex + 1) % totalFrames;
-    update();
   });
-  QObject::connect(frogpilotUIState(), &FrogPilotUIState::themeUpdated, this, [this] {
-    signalsLoaded = false;
-    updateSignals();
-  });
+  QObject::connect(frogpilotUIState(), &FrogPilotUIState::themeUpdated, this, &FrogPilotAnnotatedCameraWidget::updateSignals);
   QObject::connect(uiState(), &UIState::offroadTransition, [this] {
     standstillTimer.invalidate();
 
@@ -78,9 +64,7 @@ void FrogPilotAnnotatedCameraWidget::showEvent(QShowEvent *event) {
     speedConversionMetrics = MS_TO_MPH;
   }
 
-  if (!signalsLoaded) {
-    updateSignals();
-  }
+  updateSignals();
 }
 
 void FrogPilotAnnotatedCameraWidget::updateSignals() {
@@ -131,11 +115,6 @@ void FrogPilotAnnotatedCameraWidget::updateSignals() {
     signalWidth = firstImage.width();
     totalFrames = signalImages.size();
 
-    signalImagesMirrored.reserve(signalImages.size());
-    for (const QPixmap &pixmap : signalImages) {
-      signalImagesMirrored.append(pixmap.transformed(QTransform().scale(-1, 1)));
-    }
-
     if (isGif && signalStyle == "traditional") {
       signalMovement = (width() + signalWidth * 2) / totalFrames;
 
@@ -152,19 +131,6 @@ void FrogPilotAnnotatedCameraWidget::updateSignals() {
 
     signalStyle = "None";
   }
-
-  if (!blindspotImages.isEmpty()) {
-    blindspotImagesMirrored.reserve(blindspotImages.size());
-    for (const QPixmap &pixmap : blindspotImages) {
-      blindspotImagesMirrored.append(pixmap.transformed(QTransform().scale(-1, 1)));
-    }
-  }
-
-  if (totalFrames <= 1 && animationTimer->isActive()) {
-    animationTimer->stop();
-  }
-
-  signalsLoaded = true;
 }
 
 void FrogPilotAnnotatedCameraWidget::updateState(const FrogPilotUIState &fs, const QJsonObject &frogpilot_toggles) {
@@ -278,21 +244,13 @@ void FrogPilotAnnotatedCameraWidget::paintFrogPilotWidgets(QPainter &p, UIState 
     paintStoppingPoint(p, scene, frogpilot_scene, frogpilot_toggles);
   }
 
-  const bool signalActive = carState.getLeftBlinker() || carState.getRightBlinker();
-  const bool shouldShowSignals = !bigMapOpen && signalActive && signalStyle != "None";
-  const bool shouldAnimateSignals = shouldShowSignals && totalFrames > 1;
-
-  if (shouldAnimateSignals) {
-    const int interval = signalAnimationLength > 0 ? signalAnimationLength : 500;
-    if (!animationTimer->isActive() || animationTimer->interval() != interval) {
-      animationTimer->start(interval);
+  if (!bigMapOpen && (carState.getLeftBlinker() || carState.getRightBlinker()) && signalStyle != "None") {
+    if (!animationTimer->isActive()) {
+      animationTimer->start(signalAnimationLength);
     }
+    paintTurnSignals(p, carState);
   } else if (animationTimer->isActive()) {
     animationTimer->stop();
-  }
-
-  if (shouldShowSignals) {
-    paintTurnSignals(p, carState);
   }
 }
 
@@ -986,24 +944,14 @@ void FrogPilotAnnotatedCameraWidget::paintTurnSignals(QPainter &p, const cereal:
   bool leftBlinker = carState.getLeftBlinker();
   bool blindspotActive = leftBlinker ? carState.getLeftBlindspot() : carState.getRightBlindspot();
 
-  const QVector<QPixmap> &activeSignalImages = leftBlinker ? signalImages : signalImagesMirrored;
-  const QVector<QPixmap> &activeBlindspotImages = leftBlinker ? blindspotImages : blindspotImagesMirrored;
-
-  if (activeSignalImages.isEmpty()) {
-    p.restore();
-    return;
-  }
-
-  const int frameIndex = animationFrameIndex % activeSignalImages.size();
-
   if (signalStyle == "static") {
     int signalXPosition = leftBlinker ? (rect().center().x() * 0.75) - signalWidth : rect().center().x() * 1.25;
     int signalYPosition = signalHeight / 2;
 
-    if (blindspotActive && !activeBlindspotImages.isEmpty()) {
-      p.drawPixmap(signalXPosition, signalYPosition, signalWidth, signalHeight, activeBlindspotImages.front());
+    if (blindspotActive && !blindspotImages.empty()) {
+      p.drawPixmap(signalXPosition, signalYPosition, signalWidth, signalHeight, blindspotImages[0].transformed(QTransform().scale(leftBlinker ? 1 : -1, 1)));
     } else {
-      p.drawPixmap(signalXPosition, signalYPosition, signalWidth, signalHeight, activeSignalImages[frameIndex]);
+      p.drawPixmap(signalXPosition, signalYPosition, signalWidth, signalHeight, signalImages[animationFrameIndex].transformed(QTransform().scale(leftBlinker ? 1 : -1, 1)));
     }
   } else {
     int signalXPosition;
@@ -1015,10 +963,10 @@ void FrogPilotAnnotatedCameraWidget::paintTurnSignals(QPainter &p, const cereal:
 
     int signalYPosition = height() - signalHeight - alertHeight;
 
-    if (blindspotActive && !activeBlindspotImages.isEmpty()) {
-      p.drawPixmap(leftBlinker ? width() - signalWidth : 0, signalYPosition, signalWidth, signalHeight, activeBlindspotImages.front());
+    if (blindspotActive && !blindspotImages.empty()) {
+      p.drawPixmap(leftBlinker ? width() - signalWidth : 0, signalYPosition, signalWidth, signalHeight, blindspotImages[0].transformed(QTransform().scale(leftBlinker ? 1 : -1, 1)));
     } else {
-      p.drawPixmap(signalXPosition, signalYPosition, signalWidth, signalHeight, activeSignalImages[frameIndex]);
+      p.drawPixmap(signalXPosition, signalYPosition, signalWidth, signalHeight, signalImages[animationFrameIndex].transformed(QTransform().scale(leftBlinker ? 1 : -1, 1)));
     }
   }
 

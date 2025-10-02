@@ -163,12 +163,7 @@ void MapWindow::updateState(const UIState &s) {
     return;
   }
   const SubMaster &sm = *(s.sm);
-  const bool map_visible = isVisible();
-  const bool locationd_updated = sm.updated("liveLocationKalman");
-
-  if (map_visible) {
-    update();
-  }
+  update();
 
   // on rising edge of a valid system time, reinitialize the map to set a new token
   if (sm.valid("clocks") && !prev_time_valid) {
@@ -193,7 +188,7 @@ void MapWindow::updateState(const UIState &s) {
     uiState()->scene.navigate_on_openpilot = nav_enabled;
   }
 
-  if (locationd_updated) {
+  if (sm.updated("liveLocationKalman")) {
     auto locationd_location = sm["liveLocationKalman"].getLiveLocationKalman();
     auto locationd_pos = locationd_location.getPositionGeodetic();
     auto locationd_orientation = locationd_location.getCalibratedOrientationNED();
@@ -228,34 +223,11 @@ void MapWindow::updateState(const UIState &s) {
     }
   }
 
-  if (sm.updated("navInstruction")) {
-    routing_problem = !sm.valid("navInstruction") && coordinate_from_param("NavDestination").has_value();
-
-    if (sm.valid("navInstruction")) {
-      auto i = sm["navInstruction"].getNavInstruction();
-      map_eta->updateETA(i.getTimeRemaining(), i.getTimeRemainingTypical(), i.getDistanceRemaining());
-
-      if (map_visible && locationd_valid) {
-        m_map->setPitch(MAX_PITCH); // TODO: smooth pitching based on maneuver distance
-        map_instructions->updateInstructions(i);
-      }
-    } else {
-      clearRoute();
-    }
-  }
-
   loaded_once = loaded_once || (m_map && m_map->isFullyLoaded());
   if (!loaded_once) {
-    if (map_visible) {
-      setError(tr("Map Loading"));
-    }
+    setError(tr("Map Loading"));
     return;
   }
-
-  if (!map_visible) {
-    return;
-  }
-
   initLayers();
 
   if (!locationd_valid) {
@@ -266,7 +238,7 @@ void MapWindow::updateState(const UIState &s) {
     setError("");
   }
 
-  if (locationd_valid && locationd_updated) {
+  if (locationd_valid) {
     // Update current location marker
     auto point = coordinate_to_collection(*last_position);
     QMapLibre::Feature feature1(QMapLibre::Feature::PointType, point, {}, {});
@@ -282,13 +254,31 @@ void MapWindow::updateState(const UIState &s) {
   }
 
   if (interaction_counter == 0) {
-    if (locationd_updated && last_position) m_map->setCoordinate(*last_position);
-    if (locationd_updated && last_bearing) m_map->setBearing(*last_bearing);
-    if (locationd_updated) {
+    if (last_position) m_map->setCoordinate(*last_position);
+    if (last_bearing) m_map->setBearing(*last_bearing);
     m_map->setZoom(util::map_val<float>(velocity_filter.x(), 0, 30, MAX_ZOOM, MIN_ZOOM));
-    }
   } else {
     interaction_counter--;
+  }
+
+  if (sm.updated("navInstruction")) {
+    // an invalid navInstruction packet with a nav destination is only possible if:
+    // - API exception/no internet
+    // - route response is empty
+    // - any time navd is waiting for recompute_countdown
+    routing_problem = !sm.valid("navInstruction") && coordinate_from_param("NavDestination").has_value();
+
+    if (sm.valid("navInstruction")) {
+      auto i = sm["navInstruction"].getNavInstruction();
+      map_eta->updateETA(i.getTimeRemaining(), i.getTimeRemainingTypical(), i.getDistanceRemaining());
+
+      if (locationd_valid) {
+        m_map->setPitch(MAX_PITCH); // TODO: smooth pitching based on maneuver distance
+        map_instructions->updateInstructions(i);
+      }
+    } else {
+      clearRoute();
+    }
   }
 
   if (sm.rcv_frame("navRoute") != route_rcv_frame) {

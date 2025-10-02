@@ -20,7 +20,6 @@ from openpilot.common.transformations.model import dmonitoringmodel_intrinsics, 
 from openpilot.common.transformations.camera import _ar_ox_fisheye, _os_fisheye
 from openpilot.frogpilot.tinygrad_modeld.models.commonmodel_pyx import CLContext, MonitoringModelFrame
 from openpilot.frogpilot.tinygrad_modeld.parse_model_outputs import sigmoid
-from openpilot.system import sentry
 from openpilot.frogpilot.tinygrad_modeld.runners.tinygrad_helpers import qcom_tensor_from_opencl_address
 
 MODEL_WIDTH, MODEL_HEIGHT = DM_INPUT_SIZE
@@ -31,9 +30,6 @@ OUTPUT_SIZE = 84 + FEATURE_LEN
 PROCESS_NAME = "frogpilot.tinygrad_modeld.dmonitoringmodeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 MODEL_PKL_PATH = Path(__file__).parent / 'models/dmonitoring_model_tinygrad.pkl'
-
-# Fixed small stagger to reduce overlap with driving model GPU work
-DM_STAGGER_SEC = 0.010
 
 
 class DriverStateResult(ctypes.Structure):
@@ -163,9 +159,6 @@ def main():
     sm.update(0)
     if sm.updated["liveCalibration"]:
       calib[:] = np.array(sm["liveCalibration"].rpyCalib)
-
-    # Small fixed delay to reduce GPU overlap with driving model
-    time.sleep(DM_STAGGER_SEC)
 
     t1 = time.perf_counter()
     model_output, gpu_execution_time = model.run(buf, calib, model_transform)

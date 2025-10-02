@@ -23,9 +23,6 @@ private:
 
   std::vector<int> metricAssignments;
 
-  bool hasActiveMetrics;
-  bool metricsDrawn;
-
   QColor metricColor;
 
   ItemStatus accelerationJerkStatus;
@@ -38,7 +35,6 @@ private:
   ItemStatus lateralEngagementStatus;
   ItemStatus longitudinalEngagementStatus;
   ItemStatus maxAccelerationStatus;
-  ItemStatus modelNameStatus;
   ItemStatus speedJerkStatus;
   ItemStatus steerAngleStatus;
   ItemStatus steerRatioStatus;

@@ -39,17 +39,6 @@ public:
     not_empty.notify_one();
   }
 
-  void force_push(T &&item) {
-    {
-      std::unique_lock<std::mutex> lk(mutex);
-      if (content.size() == capacity && !content.empty()) {
-        content.pop_front();
-      }
-      content.push_back(std::move(item));
-    }
-    not_empty.notify_one();
-  }
-
   bool try_push(T &&item) {
     {
       std::unique_lock<std::mutex> lk(mutex);

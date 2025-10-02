@@ -1,6 +1,5 @@
 #include "selfdrive/ui/qt/sidebar.h"
 
-#include <QFileInfo>
 #include <QMouseEvent>
 
 #include "selfdrive/ui/qt/util.h"
