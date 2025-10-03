@@ -98,7 +98,7 @@ class ThemeManager:
 
     repo_url = get_repository_url()
     if not repo_url:
-      handle_error(None, "GitHub and GitLab are offline...", "Repository unavailable", asset_param, DOWNLOAD_PROGRESS_PARAM)
+      handle_error(None, "GitHub and GitLab are offline...", "Repository unavailable", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
       self.downloading_theme = False
       return
 
@@ -122,16 +122,16 @@ class ThemeManager:
       delete_file(theme_path)
 
       print(f"Downloading theme from GitHub: {theme_name}")
-      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, self.session)
+      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory)
 
       if params_memory.get_bool(CANCEL_DOWNLOAD_PARAM):
         delete_file(theme_path)
-        handle_error(None, "Download cancelled...", "Download cancelled...", asset_param, DOWNLOAD_PROGRESS_PARAM)
+        handle_error(None, "Download cancelled...", "Download cancelled...", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
 
         self.downloading_theme = False
         return
 
-      if verify_download(theme_path, theme_url, self.session):
+      if verify_download(theme_path, theme_url):
         print(f"Theme {theme_name} downloaded and verified successfully from GitHub!")
         self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
 
@@ -149,7 +149,7 @@ class ThemeManager:
       elif self.handle_verification_failure(extension, theme_component, theme_name, asset_param, theme_path, download_path, frogpilot_toggles):
         return
 
-    handle_error(download_path, "Download failed...", "Download failed...", asset_param, DOWNLOAD_PROGRESS_PARAM)
+    handle_error(download_path, "Download failed...", "Download failed...", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
     self.downloading_theme = False
 
   def fetch_assets(self, repo_url, frogpilot_toggles):
@@ -332,9 +332,9 @@ class ThemeManager:
 
     theme_url = download_link + extension
     print(f"Downloading theme from GitLab: {theme_name}")
-    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, self.session)
+    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory)
 
-    if verify_download(theme_path, theme_url, self.session):
+    if verify_download(theme_path, theme_url):
       print(f"Theme {theme_name} downloaded and verified successfully from GitLab!")
       self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
 
@@ -350,7 +350,7 @@ class ThemeManager:
       self.update_themes(frogpilot_toggles)
       return True
 
-    handle_error(None, "Download failed...", "Download failed...", asset_param, DOWNLOAD_PROGRESS_PARAM)
+    handle_error(None, "Download failed...", "Download failed...", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
     self.downloading_theme = False
     return False
 
