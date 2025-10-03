@@ -16,22 +16,8 @@ const LongitudinalLimits GM_ASCM_LONG_LIMITS = {
   .max_brake = 400,
 };
 
-const LongitudinalLimits GM_ASCM_LONG_LIMITS_SPORT = {
-  .max_gas = 8191,
-  .min_gas = 5500,
-  .inactive_gas = 5500,
-  .max_brake = 400,
-};
-
 const LongitudinalLimits GM_CAM_LONG_LIMITS = {
   .max_gas = 7496,
-  .min_gas = 5610,
-  .inactive_gas = 5650,
-  .max_brake = 400,
-};
-
-const LongitudinalLimits GM_CAM_LONG_LIMITS_SPORT = {
-  .max_gas = 8848,
   .min_gas = 5610,
   .inactive_gas = 5650,
   .max_brake = 400,
@@ -338,8 +324,6 @@ static int gm_fwd_hook(int bus_num, int addr) {
 }
 
 static safety_config gm_init(uint16_t param) {
-  sport_mode = alternative_experience & ALT_EXP_RAISE_LONGITUDINAL_LIMITS_TO_ISO_MAX;
-
   if GET_FLAG(param, GM_PARAM_HW_CAM) {
     gm_hw = GM_CAM;
   } else if GET_FLAG(param, GM_PARAM_HW_SDGM) {
@@ -351,17 +335,9 @@ static safety_config gm_init(uint16_t param) {
   gm_force_ascm = GET_FLAG(param, GM_PARAM_HW_ASCM_LONG);
 
   if (gm_hw == GM_ASCM || gm_force_ascm) {
-    if (sport_mode) {
-      gm_long_limits = &GM_ASCM_LONG_LIMITS_SPORT;
-    } else {
       gm_long_limits = &GM_ASCM_LONG_LIMITS;
-    }
   } else if ((gm_hw == GM_CAM) || (gm_hw == GM_SDGM)) {
-    if (sport_mode) {
-      gm_long_limits = &GM_CAM_LONG_LIMITS_SPORT;
-    } else {
       gm_long_limits = &GM_CAM_LONG_LIMITS;
-    }
   } else {
   }
 
