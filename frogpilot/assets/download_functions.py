@@ -88,7 +88,7 @@ def handle_error(destination, error_message, error, download_param, progress_par
   if destination:
     delete_file(destination)
 
-  if progress_param and "404" not in error_message:
+  if params_memory and progress_param and "404" not in error_message:
     print(f"Error occurred: {error}")
     params_memory.put(progress_param, error_message)
     params_memory.remove(download_param)
