@@ -29,8 +29,6 @@ params = Params()
 params_cache = Params("/cache/params")
 params_default = Params("/dev/shm/params_default")
 params_memory = Params("/dev/shm/params")
-params_tracking = Params("/cache/tracking")
-params_tracking = Params("/cache/tracking")
 
 GearShifter = car.CarState.GearShifter
 SafetyModel = car.CarParams.SafetyModel
