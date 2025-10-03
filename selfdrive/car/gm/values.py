@@ -42,13 +42,13 @@ class CarControllerParams:
     self.MAX_BRAKE = 400  # ~ -4.0 m/s^2 with regen
 
     if CP.carFingerprint in CAMERA_ACC_CAR and CP.carFingerprint not in CC_ONLY_CAR:
-      self.MAX_GAS = 7496
+      self.MAX_GAS = 8848
       self.MAX_GAS_PLUS = 8848
       self.MAX_ACC_REGEN = 5610
       self.INACTIVE_REGEN = 5650
       # Camera ACC vehicles have no regen while enabled.
       # Camera transitions to MAX_ACC_REGEN from ZERO_GAS and uses friction brakes instantly
-      self.max_regen_acceleration = 0.
+      max_regen_acceleration = 0.
       self.BRAKE_SWITCH_MAX = self.MAX_ACC_REGEN if CP.carFingerprint in EV_CAR else self.ZERO_GAS
 
     elif CP.carFingerprint in SDGM_CAR:
@@ -56,21 +56,21 @@ class CarControllerParams:
       self.MAX_GAS_PLUS = 7496
       self.MAX_ACC_REGEN = 5610
       self.INACTIVE_REGEN = 5650
-      self.max_regen_acceleration = 0.
+      max_regen_acceleration = 0.
       self.BRAKE_SWITCH = self.ZERO_GAS
 
     else:
-      self.MAX_GAS = 7168  # Safety limit, not ACC max. Stock ACC >8192 from standstill.
+      self.MAX_GAS = 8191  # Safety limit, not ACC max. Stock ACC >8192 from standstill.
       self.MAX_GAS_PLUS = 8191 # 8292 uses new bit, possible but not tested. Matches Twilsonco tw-main max
       self.MAX_ACC_REGEN = 7110  # Max ACC regen is slightly less than max paddle regen
       self.INACTIVE_REGEN = 5500
       # ICE has much less engine braking force compared to regen in EVs,
       # lower threshold removes some braking deadzone
-      self.max_regen_acceleration = -3. if CP.carFingerprint in EV_CAR else -0.1
+      max_regen_acceleration = -3. if CP.carFingerprint in EV_CAR else -0.1
       self.BRAKE_SWITCH_MAX = self.MAX_ACC_REGEN if CP.carFingerprint in EV_CAR else self.ZERO_GAS
 
-    self.GAS_LOOKUP_BP = [self.max_regen_acceleration, 0., self.ACCEL_MAX]
-    self.GAS_LOOKUP_BP_PLUS = [self.max_regen_acceleration, 0., self.ACCEL_MAX_PLUS]
+    self.GAS_LOOKUP_BP = [max_regen_acceleration, 0., self.ACCEL_MAX]
+    self.GAS_LOOKUP_BP_PLUS = [max_regen_acceleration, 0., self.ACCEL_MAX_PLUS]
     self.GAS_LOOKUP_V = [self.MAX_ACC_REGEN, self.ZERO_GAS, self.MAX_GAS]
     self.GAS_LOOKUP_V_PLUS = [self.MAX_ACC_REGEN, self.ZERO_GAS, self.MAX_GAS_PLUS]
 
