@@ -365,12 +365,8 @@ class CarController(CarControllerBase):
           else:
             accel_due_to_pitch = 0.0
 
-          if frogpilot_toggles.sport_plus:
-            gas_max = self.params.MAX_GAS_PLUS
-            accel_max = self.params.ACCEL_MAX_PLUS
-          else:
-            gas_max = self.params.MAX_GAS
-            accel_max = self.params.ACCEL_MAX
+          gas_max = self.params.MAX_GAS
+          accel_max = self.params.ACCEL_MAX
           
           accel = clip(actuators.accel + accel_due_to_pitch, self.params.ACCEL_MIN, accel_max)
           torque = self.tireRadius * ((self.mass*accel) + (0.5*self.coeffDrag*self.frontalArea*self.airDensity*CS.out.vEgo**2))
