@@ -715,8 +715,9 @@ class Controls:
       desired_lateral_accel = model_v2.action.desiredCurvature * (clipped_speed**2)
       undershooting = abs(desired_lateral_accel) / abs(1e-3 + actual_lateral_accel) > 1.2
       turning = abs(desired_lateral_accel) > 1.0
-      # TODO: lac.saturated includes speed and other checks, should be pulled out
-      if undershooting and turning and lac_log.saturated:
+      good_speed = CS.vEgo > 5
+      commanded_torque_at_max = abs(lac_log.output) > 0.99
+      if undershooting and turning and good_speed and commanded_torque_at_max:
         if self.frogpilot_toggles.goat_scream_alert:
           self.frogpilot_events.add(FrogPilotEventName.goatSteerSaturated)
         else:
