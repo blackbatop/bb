@@ -425,7 +425,7 @@ class CarController(CarControllerBase):
           if CC.cruiseControl.resume and CS.pcm_acc_status == AccState.STANDSTILL and frogpilot_toggles.volt_sng:
             acc_engaged = False
           else:
-            acc_engaged = CC.enabled and not (self.CP.carFingerprint == CAR.CHEVROLET_BOLT_EUV and self.CP.enableGasInterceptor)
+            acc_engaged = CC.enabled
 
           # GasRegenCmdActive needs to be 1 to avoid cruise faults. It describes the ACC state, not actuation
           can_sends.append(gmcan.create_gas_regen_command(self.packer_pt, CanBus.POWERTRAIN, self.apply_gas, idx, acc_engaged, at_full_stop))
