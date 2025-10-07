@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 
+
 def cubic_interp(x, xp, fp):
      """Cubic interpolation using NumPy's native operations for speed."""
      # Boundary conditions
@@ -17,7 +18,10 @@ def cubic_interp(x, xp, fp):
      t = (x - xp[i]) / float(xp[i+1] - xp[i])
 
      # Hermite cubic formula
-     return fp[i]*(1 - 3*t**2 + 2*t**3) + fp[i+1]*(3*t**2 - 2*t**3)
+     t2 = t*t
+     t3 = t2*t
+
+     return fp[i]*(1 - 3*t2 + 2*t3) + fp[i+1]*(3*t2 - 2*t3)
 
 def akima_interp(x, xp, fp):
      """Akima-inspired interpolation with reduced overshoot characteristics."""
@@ -33,10 +37,12 @@ def akima_interp(x, xp, fp):
 
      # Quintic polynomial to reduce overshoot
      t2 = t*t
-     t4 = t2*t2
      t3 = t2*t
-     return (fp[i]*(1 - 10*t3 + 15*t4 - 6*t3*t2)
-             + fp[i+1]*(10*t3 - 15*t4 + 6*t3*t2))
+     t4 = t2*t2
+     t5 = t3*t2
+
+     return (fp[i]*(1 - 10*t3 + 15*t4 - 6*t5) + fp[i+1]*(10*t3 - 15*t4 + 6*t5))
+
 
 from openpilot.selfdrive.controls.lib.longitudinal_planner import A_CRUISE_MIN, get_max_accel
 
