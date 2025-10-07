@@ -92,10 +92,11 @@ class LongControl:
     self.CP = CP
     self.long_control_state = LongCtrlState.off
     self.experimental_mode = False
+    pos_p_limit = 0.0 # if params("NoPositivePResponse") else None # put parameter-based control here
     self.pid = PIDController((CP.longitudinalTuning.kpBP, CP.longitudinalTuning.kpV),
                              (CP.longitudinalTuning.kiBP, CP.longitudinalTuning.kiV),
                              k_f=CP.longitudinalTuning.kf, rate=1 / DT_CTRL,
-                             pos_p_limit=None)
+                             pos_p_limit=pos_p_limit)
     self.v_pid = 0.0
     self._mode_setup()
     self.last_output_accel = 0.0
@@ -104,7 +105,7 @@ class LongControl:
 
   def update_mpc_mode(self, experimental_mode):
     new_mode = 'blended' if experimental_mode else 'acc'
-   
+
     if self.transitioning and self.prev_mode == 'blended' and self.current_mode == 'acc':
       self.mode_transition_timer = 0.0
 
@@ -160,7 +161,7 @@ class LongControl:
       self.update_mpc_mode(self.experimental_mode)
       raw_output_accel = self.pid.update(error, speed=CS.vEgo, feedforward=a_target)
 
-     
+
       if self.transitioning and self.prev_mode == 'acc' and self.current_mode == 'blended':
         if raw_output_accel < 0 and raw_output_accel < self.last_output_accel:
           progress = min(1.0, self.mode_transition_timer / self.mode_transition_duration)
@@ -171,9 +172,9 @@ class LongControl:
           blend_factor = 1.0 - (1.0 - progress) * (1.0 - urgency_smooth)
           output_accel = self.last_output_accel + (raw_output_accel - self.last_output_accel) * blend_factor
         else:
-          output_accel = raw_output_accel 
+          output_accel = raw_output_accel
       else:
-        output_accel = raw_output_accel 
+        output_accel = raw_output_accel
 
     self.last_output_accel = clip(output_accel, accel_limits[0], accel_limits[1])
     return self.last_output_accel
