@@ -276,7 +276,7 @@ class CarInterface(CarInterfaceBase):
       ret.stoppingControl = True
       ret.autoResumeSng = True
 
-      if candidate in CC_ONLY_CAR or (candidate in CAMERA_ACC_CAR and ret.enableGasInterceptor): #pedal interceptor tuning
+      if candidate in CC_ONLY_CAR: #pedal interceptor tuning
         ret.flags |= GMFlags.PEDAL_LONG.value
         ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_PEDAL_LONG
         # Note: Low speed, stop and go not tested. Should be fairly smooth on highway
