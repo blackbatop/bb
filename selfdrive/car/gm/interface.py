@@ -327,14 +327,13 @@ class CarInterface(CarInterfaceBase):
       ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
       ret.pcmCruise = False
 
-      ret.stoppingDecelRate = 11.18  # == 25 mph/s (.04 rate)
+      ret.stoppingDecelRate = 11.18
 
       if candidate not in (CAR.CHEVROLET_BOLT_CC, CAR.CHEVROLET_MALIBU_HYBRID_CC):
-        ret.longitudinalTuning.kiBP = [10.7, 10.8, 28.]
-        ret.longitudinalTuning.kiV = [0., 20., 20.]  # set lower end to 0 since we can't drive below that speed
-      else:
+        ret.longitudinalTuning.kpBP = [10.7, 10.8, 28.]  # 10.7 m/s == 24 mph
+        ret.longitudinalTuning.kpV = [0., 5., 2.]  # set lower end to 0 since we can't drive below that speed
         ret.longitudinalTuning.deadzoneBP = [0., 1.]
-        ret.longitudinalTuning.deadzoneV = [0.56, 0.56]  # == 2 km/h/s, 1.25 mph/s
+        ret.longitudinalTuning.deadzoneV = [0.9, 0.9]  # == 2 km/h/s, 1.25 mph/s
         ret.longitudinalActuatorDelay = 1.  # TODO: measure this
 
         ret.longitudinalTuning.kpBP = [10.7, 10.8, 28.]  # 10.7 m/s == 24 mph

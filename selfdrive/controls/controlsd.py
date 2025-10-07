@@ -205,6 +205,8 @@ class Controls:
 
     self.frogpilot_toggles = get_frogpilot_toggles()
 
+    self.frogpilot_toggles.is_metric = self.is_metric
+
   def set_initial_state(self):
     if REPLAY:
       controls_state = self.params.get("ReplayControlsState")
