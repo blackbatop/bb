@@ -342,16 +342,6 @@ class CarController(CarControllerBase):
         at_full_stop = CC.longActive and CS.out.standstill
         near_stop = CC.longActive and (CS.out.vEgo < self.params.NEAR_STOP_BRAKE_PHASE)
         interceptor_gas_cmd = 0
-        # --- Regen scaling for ACC-only cars ---
-        # For ACC-only cars, simulate maximum paddle hold regen
-        if not self.CP.enableGasInterceptor and self.CP.carFingerprint in CC_REGEN_PADDLE_CAR:
-          # use regen table gain to compute effective accel
-          _, press_regen_paddle = self.calc_pedal_command(actuators.accel, True, CS.out.vEgo)
-          # if simulated paddle pressed, treat as stronger regen
-          use_regen = press_regen_paddle
-        else:
-          use_regen = False
-        # --- End regen scaling insert ---
         if not CC.longActive:
           # ASCM sends max regen when not enabled
           self.apply_gas = self.params.INACTIVE_REGEN
@@ -372,14 +362,6 @@ class CarController(CarControllerBase):
           torque = self.tireRadius * ((self.mass*accel) + (0.5*self.coeffDrag*self.frontalArea*self.airDensity*CS.out.vEgo**2))
           
           scaled_torque = torque + self.params.ZERO_GAS
-          # --- Regen torque scaling for ACC-only cars ---
-          # apply full paddle regen curve when simulated regen is active
-          if use_regen:
-            min_regen = self.params.GAS_LOOKUP_V[0]  # max regen from lookup
-          else:
-            min_regen = self.params.MAX_ACC_REGEN
-          apply_gas_torque = clip(scaled_torque, min_regen, gas_max)
-          # --- End regen torque scaling ---
           apply_gas_torque = clip(scaled_torque, self.params.MAX_ACC_REGEN, gas_max)
           BRAKE_SWITCH = int(round(interp(CS.out.vEgo, self.params.BRAKE_SWITCH_LOOKUP_BP, self.params.BRAKE_SWITCH_LOOKUP_V)))
           brake_accel = min((scaled_torque - BRAKE_SWITCH)/(self.tireRadius*self.mass), 0)
