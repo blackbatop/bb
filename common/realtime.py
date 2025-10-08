@@ -6,6 +6,7 @@ from collections import deque
 
 from setproctitle import getproctitle
 
+from openpilot.common.swaglog import cloudlog
 from openpilot.system.hardware import PC
 
 
@@ -34,7 +35,17 @@ def set_realtime_priority(level: int) -> None:
 
 def set_core_affinity(cores: list[int]) -> None:
   if not PC:
-    os.sched_setaffinity(0, cores)
+    for attempt in range(3):  # Retry up to 3 times
+      try:
+        os.sched_setaffinity(0, cores)
+        return
+      except OSError as e:
+        if e.errno == 22:  # EINVAL
+          time.sleep(0.1)  # Brief delay before retry
+        else:
+          raise  # Re-raise other errors
+    # If all retries fail, log and continue without affinity
+    cloudlog.error(f"Failed to set core affinity after retries: {cores}")
 
 
 def config_realtime_process(cores: int | list[int], priority: int) -> None:
