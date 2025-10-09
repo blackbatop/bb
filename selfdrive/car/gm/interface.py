@@ -332,8 +332,8 @@ class CarInterface(CarInterfaceBase):
         ret.longitudinalTuning.kiBP = [10.7, 10.8, 28.]
         ret.longitudinalTuning.kiV = [0., 20., 20.]  # set lower end to 0 since we can't drive below that speed
       else:
-        ret.longitudinalTuning.deadzoneBP = [0.]
-        ret.longitudinalTuning.deadzoneV = [0.56]  # == 2 km/h/s, 1.25 mph/s
+        ret.longitudinalTuning.deadzoneBP = [0., 1.]
+        ret.longitudinalTuning.deadzoneV = [0.56, 0.56]  # == 2 km/h/s, 1.25 mph/s
         ret.longitudinalActuatorDelay = 1.  # TODO: measure this
 
         ret.longitudinalTuning.kpBP = [10.7, 10.8, 28.]  # 10.7 m/s == 24 mph
