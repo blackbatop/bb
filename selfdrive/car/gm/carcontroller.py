@@ -444,11 +444,8 @@ class CarController(CarControllerBase):
       ) and CS.out.cruiseState.enabled:
         if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
           self.last_button_frame = self.frame
-          # Send cancel to appropriate bus based on car type (match stock longitudinal logic)
-          if self.CP.carFingerprint in SDGM_CAR:
-            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.CANCEL))
-          else:
-            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.CAMERA, (CS.buttons_counter + 1) % 4, CruiseButtons.CANCEL))
+          # Always send cancel on POWERTRAIN bus for pedal/CC-long paths
+          can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.CANCEL))
 
     else:
       # While car is braking, cancel button causes ECM to enter a soft disable state with a fault status.
