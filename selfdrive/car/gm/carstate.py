@@ -165,9 +165,9 @@ class CarState(CarStateBase):
       ret.cruiseState.speed = pt_cp.vl["ECMCruiseControl"]["CruiseSetSpeed"] * CV.KPH_TO_MS
       # Try ASCM first for cars that might have it (like misfingerprinted Bolts), fall back to ECM
       try:
-        ret.cruiseState.enabled = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCmdActive"] != 0
-      except:
         ret.cruiseState.enabled = pt_cp.vl["ECMCruiseControl"]["CruiseActive"] != 0
+      except:
+        ret.cruiseState.enabled = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCmdActive"] != 0
 
     if self.CP.enableBsm:
       if self.CP.carFingerprint not in SDGM_CAR:
