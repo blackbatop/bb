@@ -1,14 +1,13 @@
 import numpy as np
 from abc import abstractmethod, ABC
 
-from openpilot.common.realtime import DT_CTRL
-
 MIN_LATERAL_CONTROL_SPEED = 0.3  # m/s
 
 
 class LatControl(ABC):
-  def __init__(self, CP, CI):
-    self.sat_count_rate = 1.0 * DT_CTRL
+  def __init__(self, CP, CI, dt):
+    self.dt = dt
+    self.sat_count_rate = 1.0 * self.dt
     self.sat_limit = CP.steerLimitTimer
     self.sat_count = 0.
     self.sat_check_min_speed = 10.
@@ -17,7 +16,7 @@ class LatControl(ABC):
     self.steer_max = 1.0
 
   @abstractmethod
-  def update(self, active, CS, VM, params, steer_limited_by_safety, desired_curvature, curvature_limited, llk, model_data, frogpilot_toggles):
+  def update(self, active: bool, CS, VM, params, steer_limited_by_safety: bool, desired_curvature: float, curvature_limited: bool, lat_delay: float, llk, model_data, frogpilot_toggles):
     pass
 
   def reset(self):
