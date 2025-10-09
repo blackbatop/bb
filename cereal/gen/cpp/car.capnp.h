@@ -626,7 +626,7 @@ struct CarParams::LateralTorqueTuning {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(80366e0e804ecc1d, 4, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(80366e0e804ecc1d, 5, 0)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -3148,6 +3148,8 @@ public:
 
   inline float getLatAccelOffset() const;
 
+  inline float getKd() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -3199,6 +3201,9 @@ public:
 
   inline float getLatAccelOffset();
   inline void setLatAccelOffset(float value);
+
+  inline float getKd();
+  inline void setKd(float value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -7845,6 +7850,20 @@ inline float CarParams::LateralTorqueTuning::Builder::getLatAccelOffset() {
 inline void CarParams::LateralTorqueTuning::Builder::setLatAccelOffset(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<7>() * ::capnp::ELEMENTS, value);
+}
+
+inline float CarParams::LateralTorqueTuning::Reader::getKd() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<8>() * ::capnp::ELEMENTS);
+}
+
+inline float CarParams::LateralTorqueTuning::Builder::getKd() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<8>() * ::capnp::ELEMENTS);
+}
+inline void CarParams::LateralTorqueTuning::Builder::setKd(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<8>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool CarParams::LongitudinalPIDTuning::Reader::hasKpBP() const {
