@@ -97,6 +97,19 @@ def get_city_center(latitude, longitude):
     print(f"Falling back to (0, 0) for {latitude}, {longitude}")
     return float(0.0), float(0.0), "N/A", "N/A", "N/A"
 
+def update_branch_commits(now):
+  points = []
+  for branch in ["FrogPilot", "FrogPilot-Staging", "FrogPilot-Testing"]:
+    try:
+      response = requests.get(f"https://api.github.com/repos/FrogAi/FrogPilot/commits/{branch}")
+      response.raise_for_status()
+      sha = response.json()["sha"]
+      points.append(Point("branch_commits").field("commit", sha).tag("branch", branch).time(now))
+    except Exception as e:
+      print(f"Failed to fetch commit for {branch}: {e}")
+
+  return points
+
 def is_up_to_date(build_metadata):
   remote_commit = run_cmd(["git", "ls-remote", "origin", build_metadata.channel], f"Fetched remote commit", "Failed to fetch remote commit", report=False)
 
@@ -144,7 +157,10 @@ def send_stats():
 
     selected_theme = random.choice([item for item, count in most_common if count == max_count]).replace("-user_created", "").replace("_", " ")
 
-    point = (Point("user_stats")
+    now = datetime.now(timezone.utc)
+
+    user_point = (
+      Point("user_stats")
       .field("blocked_user", frogpilot_toggles.block_user)
       .field("car_make", "GM" if frogpilot_toggles.car_make == "gm" else frogpilot_toggles.car_make.title())
       .field("car_model", frogpilot_toggles.car_model)
@@ -180,10 +196,13 @@ def send_stats():
       .tag("branch", build_metadata.channel)
       .tag("dongle_id", params.get("FrogPilotDongleId", encoding="utf-8"))
 
-      .time(datetime.now(timezone.utc))
+      .time(now)
     )
 
-    InfluxDBClient(org=org_ID, token=token, url=url).write_api(write_options=SYNCHRONOUS).write(bucket=bucket, org=org_ID, record=point)
+    all_points = [user_point] + update_branch_commits(now)
+
+    client = InfluxDBClient(org=org_ID, token=token, url=url)
+    client.write_api(write_options=SYNCHRONOUS).write(bucket=bucket, org=org_ID, record=all_points)
     print("Successfully sent FrogPilot stats!")
   except Exception as exception:
     print(f"Failed to send FrogPilot stats: {exception}")
