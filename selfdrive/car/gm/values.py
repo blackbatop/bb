@@ -42,8 +42,8 @@ class CarControllerParams:
     self.MAX_BRAKE = 400  # ~ -4.0 m/s^2 with regen
 
     if CP.carFingerprint in CAMERA_ACC_CAR and CP.carFingerprint not in CC_ONLY_CAR:
-      self.MAX_GAS = 8848
-      self.MAX_GAS_PLUS = 8848
+      self.MAX_GAS = 7496
+      self.MAX_GAS_PLUS = 7496
       self.MAX_ACC_REGEN = 5610
       self.INACTIVE_REGEN = 5650
       # Camera ACC vehicles have no regen while enabled.
@@ -52,17 +52,17 @@ class CarControllerParams:
       self.BRAKE_SWITCH_MAX = self.MAX_ACC_REGEN if CP.carFingerprint in EV_CAR else self.ZERO_GAS
 
     elif CP.carFingerprint in SDGM_CAR:
-      self.MAX_GAS = 7496
-      self.MAX_GAS_PLUS = 7496
-      self.MAX_ACC_REGEN = 5610
-      self.INACTIVE_REGEN = 5650
+      self.MAX_GAS = 7168
+      self.MAX_GAS_PLUS = 7168
+      self.MAX_ACC_REGEN = 5500
+      self.INACTIVE_REGEN = 5500
       max_regen_acceleration = 0.
       self.BRAKE_SWITCH = self.ZERO_GAS
 
     else:
-      self.MAX_GAS = 8191  # Safety limit, not ACC max. Stock ACC >8192 from standstill.
-      self.MAX_GAS_PLUS = 8191 # 8292 uses new bit, possible but not tested. Matches Twilsonco tw-main max
-      self.MAX_ACC_REGEN = 7110  # Max ACC regen is slightly less than max paddle regen
+      self.MAX_GAS = 7168  # Safety limit, not ACC max. Stock ACC >8192 from standstill.
+      self.MAX_GAS_PLUS = 7168 # 8292 uses new bit, possible but not tested. Matches Twilsonco tw-main max
+      self.MAX_ACC_REGEN = 5500  # Max ACC regen is slightly less than max paddle regen
       self.INACTIVE_REGEN = 5500
       # ICE has much less engine braking force compared to regen in EVs,
       # lower threshold removes some braking deadzone
