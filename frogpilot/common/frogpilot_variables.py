@@ -245,7 +245,6 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("HolidayThemes", "1", 0, "0"),
   ("HumanAcceleration", "0", 2, "0"),
   ("HumanFollowing", "0", 2, "0"),
-  ("HumanLaneChanges", "0", 0, "0"),
   ("IncreasedStoppedDistance", "0", 1, "0"),
   ("IncreaseThermalLimits", "0", 2, "0"),
   ("IsLdwEnabled", "0", 0, "0"),
@@ -789,7 +788,6 @@ class FrogPilotVariables:
     toggle.current_holiday_theme = holiday_theme if toggle.holiday_themes else "stock"
 
     toggle.lane_changes = params.get_bool("LaneChanges") if tuning_level >= level["LaneChanges"] else default.get_bool("LaneChanges")
-    toggle.human_lane_changes = params.get_bool("HumanLaneChanges") if tuning_level >= level["HumanLaneChanges"] else default.get_bool("HumanLaneChanges")
     toggle.lane_change_delay = params.get_float("LaneChangeTime") if toggle.lane_changes and tuning_level >= level["LaneChangeTime"] else default.get_float("LaneChangeTime")
     toggle.lane_detection_width = params.get_float("LaneDetectionWidth") * distance_conversion if toggle.lane_changes and tuning_level >= level["LaneDetectionWidth"] else default.get_float("LaneDetectionWidth") * CV.FOOT_TO_METER
     toggle.lane_detection = toggle.lane_detection_width > 0
