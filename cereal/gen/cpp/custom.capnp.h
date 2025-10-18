@@ -1557,6 +1557,8 @@ public:
 
   inline  ::int64_t getDesiredFollowDistance() const;
 
+  inline bool getDisableThrottle() const;
+
   inline bool getExperimentalMode() const;
 
   inline bool getForcingStop() const;
@@ -1663,6 +1665,9 @@ public:
 
   inline  ::int64_t getDesiredFollowDistance();
   inline void setDesiredFollowDistance( ::int64_t value);
+
+  inline bool getDisableThrottle();
+  inline void setDisableThrottle(bool value);
 
   inline bool getExperimentalMode();
   inline void setExperimentalMode(bool value);
@@ -3036,32 +3041,46 @@ inline void FrogPilotPlan::Builder::setDesiredFollowDistance( ::int64_t value) {
       ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool FrogPilotPlan::Reader::getExperimentalMode() const {
+inline bool FrogPilotPlan::Reader::getDisableThrottle() const {
   return _reader.getDataField<bool>(
       ::capnp::bounded<66>() * ::capnp::ELEMENTS);
 }
 
-inline bool FrogPilotPlan::Builder::getExperimentalMode() {
+inline bool FrogPilotPlan::Builder::getDisableThrottle() {
   return _builder.getDataField<bool>(
       ::capnp::bounded<66>() * ::capnp::ELEMENTS);
 }
-inline void FrogPilotPlan::Builder::setExperimentalMode(bool value) {
+inline void FrogPilotPlan::Builder::setDisableThrottle(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<66>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool FrogPilotPlan::Reader::getForcingStop() const {
+inline bool FrogPilotPlan::Reader::getExperimentalMode() const {
   return _reader.getDataField<bool>(
       ::capnp::bounded<67>() * ::capnp::ELEMENTS);
 }
 
-inline bool FrogPilotPlan::Builder::getForcingStop() {
+inline bool FrogPilotPlan::Builder::getExperimentalMode() {
   return _builder.getDataField<bool>(
       ::capnp::bounded<67>() * ::capnp::ELEMENTS);
 }
-inline void FrogPilotPlan::Builder::setForcingStop(bool value) {
+inline void FrogPilotPlan::Builder::setExperimentalMode(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<67>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool FrogPilotPlan::Reader::getForcingStop() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<68>() * ::capnp::ELEMENTS);
+}
+
+inline bool FrogPilotPlan::Builder::getForcingStop() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<68>() * ::capnp::ELEMENTS);
+}
+inline void FrogPilotPlan::Builder::setForcingStop(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<68>() * ::capnp::ELEMENTS, value);
 }
 
 inline float FrogPilotPlan::Reader::getForcingStopLength() const {
@@ -3128,16 +3147,16 @@ inline void FrogPilotPlan::Builder::setIncreasedStoppedDistance(float value) {
 
 inline bool FrogPilotPlan::Reader::getLateralCheck() const {
   return _reader.getDataField<bool>(
-      ::capnp::bounded<68>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<69>() * ::capnp::ELEMENTS);
 }
 
 inline bool FrogPilotPlan::Builder::getLateralCheck() {
   return _builder.getDataField<bool>(
-      ::capnp::bounded<68>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<69>() * ::capnp::ELEMENTS);
 }
 inline void FrogPilotPlan::Builder::setLateralCheck(bool value) {
   _builder.setDataField<bool>(
-      ::capnp::bounded<68>() * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<69>() * ::capnp::ELEMENTS, value);
 }
 
 inline float FrogPilotPlan::Reader::getLaneWidthLeft() const {
@@ -3198,16 +3217,16 @@ inline void FrogPilotPlan::Builder::setMinAcceleration(float value) {
 
 inline bool FrogPilotPlan::Reader::getRedLight() const {
   return _reader.getDataField<bool>(
-      ::capnp::bounded<69>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<70>() * ::capnp::ELEMENTS);
 }
 
 inline bool FrogPilotPlan::Builder::getRedLight() {
   return _builder.getDataField<bool>(
-      ::capnp::bounded<69>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<70>() * ::capnp::ELEMENTS);
 }
 inline void FrogPilotPlan::Builder::setRedLight(bool value) {
   _builder.setDataField<bool>(
-      ::capnp::bounded<69>() * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<70>() * ::capnp::ELEMENTS, value);
 }
 
 inline float FrogPilotPlan::Reader::getRoadCurvature() const {
@@ -3372,16 +3391,16 @@ inline void FrogPilotPlan::Builder::setSpeedJerkStock(float value) {
 
 inline bool FrogPilotPlan::Reader::getSpeedLimitChanged() const {
   return _reader.getDataField<bool>(
-      ::capnp::bounded<70>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<71>() * ::capnp::ELEMENTS);
 }
 
 inline bool FrogPilotPlan::Builder::getSpeedLimitChanged() {
   return _builder.getDataField<bool>(
-      ::capnp::bounded<70>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<71>() * ::capnp::ELEMENTS);
 }
 inline void FrogPilotPlan::Builder::setSpeedLimitChanged(bool value) {
   _builder.setDataField<bool>(
-      ::capnp::bounded<70>() * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<71>() * ::capnp::ELEMENTS, value);
 }
 
 inline float FrogPilotPlan::Reader::getTFollow() const {
@@ -3400,44 +3419,44 @@ inline void FrogPilotPlan::Builder::setTFollow(float value) {
 
 inline bool FrogPilotPlan::Reader::getThemeUpdated() const {
   return _reader.getDataField<bool>(
-      ::capnp::bounded<71>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<72>() * ::capnp::ELEMENTS);
 }
 
 inline bool FrogPilotPlan::Builder::getThemeUpdated() {
   return _builder.getDataField<bool>(
-      ::capnp::bounded<71>() * ::capnp::ELEMENTS);
+      ::capnp::bounded<72>() * ::capnp::ELEMENTS);
 }
 inline void FrogPilotPlan::Builder::setThemeUpdated(bool value) {
-  _builder.setDataField<bool>(
-      ::capnp::bounded<71>() * ::capnp::ELEMENTS, value);
-}
-
-inline bool FrogPilotPlan::Reader::getTogglesUpdated() const {
-  return _reader.getDataField<bool>(
-      ::capnp::bounded<72>() * ::capnp::ELEMENTS);
-}
-
-inline bool FrogPilotPlan::Builder::getTogglesUpdated() {
-  return _builder.getDataField<bool>(
-      ::capnp::bounded<72>() * ::capnp::ELEMENTS);
-}
-inline void FrogPilotPlan::Builder::setTogglesUpdated(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<72>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool FrogPilotPlan::Reader::getTrackingLead() const {
+inline bool FrogPilotPlan::Reader::getTogglesUpdated() const {
   return _reader.getDataField<bool>(
       ::capnp::bounded<73>() * ::capnp::ELEMENTS);
 }
 
-inline bool FrogPilotPlan::Builder::getTrackingLead() {
+inline bool FrogPilotPlan::Builder::getTogglesUpdated() {
   return _builder.getDataField<bool>(
       ::capnp::bounded<73>() * ::capnp::ELEMENTS);
 }
-inline void FrogPilotPlan::Builder::setTrackingLead(bool value) {
+inline void FrogPilotPlan::Builder::setTogglesUpdated(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<73>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool FrogPilotPlan::Reader::getTrackingLead() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<74>() * ::capnp::ELEMENTS);
+}
+
+inline bool FrogPilotPlan::Builder::getTrackingLead() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<74>() * ::capnp::ELEMENTS);
+}
+inline void FrogPilotPlan::Builder::setTrackingLead(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<74>() * ::capnp::ELEMENTS, value);
 }
 
 inline float FrogPilotPlan::Reader::getUnconfirmedSlcSpeedLimit() const {
