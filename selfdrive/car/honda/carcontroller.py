@@ -130,8 +130,8 @@ class CarController(CarControllerBase):
     self.last_steer = 0.0
     self.pitch = 0.0
     self.gasonly_pid = PIDController(k_p=([0,], [0,]),
-                                     k_i=([0., 5., 35.], [1.2, 0.8, 0.5]),
-                                     k_f=1, rate=1 / DT_CTRL / 2)
+                                      k_i=([0., 5., 35.], [1.2, 0.8, 0.5]),
+                                      rate=1 / DT_CTRL / 2)
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     actuators = CC.actuators
