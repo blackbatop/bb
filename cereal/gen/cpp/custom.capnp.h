@@ -84,7 +84,6 @@ enum class EventName_aedffd8f31e7b55d: uint16_t {
 CAPNP_DECLARE_ENUM(EventName, aedffd8f31e7b55d);
 CAPNP_DECLARE_SCHEMA(f35cc4560bbf6ec2);
 CAPNP_DECLARE_SCHEMA(8d65dd40bad40951);
-CAPNP_DECLARE_SCHEMA(fcc949d2cbea7649);
 CAPNP_DECLARE_SCHEMA(da96579883444c35);
 CAPNP_DECLARE_SCHEMA(ccb4d6b0dc102d40);
 CAPNP_DECLARE_SCHEMA(8033e8e60d6a0edb);
@@ -185,10 +184,9 @@ struct FrogPilotCarParams {
   class Builder;
   class Pipeline;
   struct SafetyConfig;
-  struct LateralTuning;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(f35cc4560bbf6ec2, 1, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(f35cc4560bbf6ec2, 1, 1)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -204,25 +202,6 @@ struct FrogPilotCarParams::SafetyConfig {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(8d65dd40bad40951, 1, 0)
-    #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
-    #endif  // !CAPNP_LITE
-  };
-};
-
-struct FrogPilotCarParams::LateralTuning {
-  LateralTuning() = delete;
-
-  class Reader;
-  class Builder;
-  class Pipeline;
-  enum Which: uint16_t {
-    PID,
-    TORQUE,
-  };
-
-  struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(fcc949d2cbea7649, 1, 2)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -690,8 +669,6 @@ public:
   inline bool hasSafetyConfigs() const;
   inline  ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>::Reader getSafetyConfigs() const;
 
-  inline typename LateralTuning::Reader getLateralTuning() const;
-
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -742,9 +719,6 @@ public:
   inline void adoptSafetyConfigs(::capnp::Orphan< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>>&& value);
   inline ::capnp::Orphan< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>> disownSafetyConfigs();
 
-  inline typename LateralTuning::Builder getLateralTuning();
-  inline typename LateralTuning::Builder initLateralTuning();
-
 private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -763,7 +737,6 @@ public:
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
-  inline typename LateralTuning::Pipeline getLateralTuning();
 private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -835,103 +808,6 @@ private:
 class FrogPilotCarParams::SafetyConfig::Pipeline {
 public:
   typedef SafetyConfig Pipelines;
-
-  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
-      : _typeless(kj::mv(typeless)) {}
-
-private:
-  ::capnp::AnyPointer::Pipeline _typeless;
-  friend class ::capnp::PipelineHook;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-};
-#endif  // !CAPNP_LITE
-
-class FrogPilotCarParams::LateralTuning::Reader {
-public:
-  typedef LateralTuning Reads;
-
-  Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
-
-  inline ::capnp::MessageSize totalSize() const {
-    return _reader.totalSize().asPublic();
-  }
-
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
-  }
-#endif  // !CAPNP_LITE
-
-  inline Which which() const;
-  inline bool isPid() const;
-  inline bool hasPid() const;
-  inline  ::cereal::CarParams::LateralPIDTuning::Reader getPid() const;
-
-  inline bool isTorque() const;
-  inline bool hasTorque() const;
-  inline  ::cereal::CarParams::LateralTorqueTuning::Reader getTorque() const;
-
-private:
-  ::capnp::_::StructReader _reader;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::List;
-  friend class ::capnp::MessageBuilder;
-  friend class ::capnp::Orphanage;
-};
-
-class FrogPilotCarParams::LateralTuning::Builder {
-public:
-  typedef LateralTuning Builds;
-
-  Builder() = delete;  // Deleted to discourage incorrect usage.
-                       // You can explicitly initialize to nullptr instead.
-  inline Builder(decltype(nullptr)) {}
-  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
-  inline operator Reader() const { return Reader(_builder.asReader()); }
-  inline Reader asReader() const { return *this; }
-
-  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const { return asReader().toString(); }
-#endif  // !CAPNP_LITE
-
-  inline Which which();
-  inline bool isPid();
-  inline bool hasPid();
-  inline  ::cereal::CarParams::LateralPIDTuning::Builder getPid();
-  inline void setPid( ::cereal::CarParams::LateralPIDTuning::Reader value);
-  inline  ::cereal::CarParams::LateralPIDTuning::Builder initPid();
-  inline void adoptPid(::capnp::Orphan< ::cereal::CarParams::LateralPIDTuning>&& value);
-  inline ::capnp::Orphan< ::cereal::CarParams::LateralPIDTuning> disownPid();
-
-  inline bool isTorque();
-  inline bool hasTorque();
-  inline  ::cereal::CarParams::LateralTorqueTuning::Builder getTorque();
-  inline void setTorque( ::cereal::CarParams::LateralTorqueTuning::Reader value);
-  inline  ::cereal::CarParams::LateralTorqueTuning::Builder initTorque();
-  inline void adoptTorque(::capnp::Orphan< ::cereal::CarParams::LateralTorqueTuning>&& value);
-  inline ::capnp::Orphan< ::cereal::CarParams::LateralTorqueTuning> disownTorque();
-
-private:
-  ::capnp::_::StructBuilder _builder;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  friend class ::capnp::Orphanage;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-};
-
-#if !CAPNP_LITE
-class FrogPilotCarParams::LateralTuning::Pipeline {
-public:
-  typedef LateralTuning Pipelines;
 
   inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
@@ -2344,22 +2220,6 @@ inline ::capnp::Orphan< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfi
       ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline typename FrogPilotCarParams::LateralTuning::Reader FrogPilotCarParams::Reader::getLateralTuning() const {
-  return typename FrogPilotCarParams::LateralTuning::Reader(_reader);
-}
-inline typename FrogPilotCarParams::LateralTuning::Builder FrogPilotCarParams::Builder::getLateralTuning() {
-  return typename FrogPilotCarParams::LateralTuning::Builder(_builder);
-}
-#if !CAPNP_LITE
-inline typename FrogPilotCarParams::LateralTuning::Pipeline FrogPilotCarParams::Pipeline::getLateralTuning() {
-  return typename FrogPilotCarParams::LateralTuning::Pipeline(_typeless.noop());
-}
-#endif  // !CAPNP_LITE
-inline typename FrogPilotCarParams::LateralTuning::Builder FrogPilotCarParams::Builder::initLateralTuning() {
-  _builder.setDataField< ::uint16_t>(::capnp::bounded<1>() * ::capnp::ELEMENTS, 0);
-  _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS).clear();
-  return typename FrogPilotCarParams::LateralTuning::Builder(_builder);
-}
 inline  ::uint16_t FrogPilotCarParams::SafetyConfig::Reader::getSafetyParam() const {
   return _reader.getDataField< ::uint16_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
@@ -2372,123 +2232,6 @@ inline  ::uint16_t FrogPilotCarParams::SafetyConfig::Builder::getSafetyParam() {
 inline void FrogPilotCarParams::SafetyConfig::Builder::setSafetyParam( ::uint16_t value) {
   _builder.setDataField< ::uint16_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline  ::cereal::FrogPilotCarParams::LateralTuning::Which FrogPilotCarParams::LateralTuning::Reader::which() const {
-  return _reader.getDataField<Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-inline  ::cereal::FrogPilotCarParams::LateralTuning::Which FrogPilotCarParams::LateralTuning::Builder::which() {
-  return _builder.getDataField<Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-
-inline bool FrogPilotCarParams::LateralTuning::Reader::isPid() const {
-  return which() == FrogPilotCarParams::LateralTuning::PID;
-}
-inline bool FrogPilotCarParams::LateralTuning::Builder::isPid() {
-  return which() == FrogPilotCarParams::LateralTuning::PID;
-}
-inline bool FrogPilotCarParams::LateralTuning::Reader::hasPid() const {
-  if (which() != FrogPilotCarParams::LateralTuning::PID) return false;
-  return !_reader.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
-}
-inline bool FrogPilotCarParams::LateralTuning::Builder::hasPid() {
-  if (which() != FrogPilotCarParams::LateralTuning::PID) return false;
-  return !_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
-}
-inline  ::cereal::CarParams::LateralPIDTuning::Reader FrogPilotCarParams::LateralTuning::Reader::getPid() const {
-  KJ_IREQUIRE((which() == FrogPilotCarParams::LateralTuning::PID),
-              "Must check which() before get()ing a union member.");
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralPIDTuning>::get(_reader.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline  ::cereal::CarParams::LateralPIDTuning::Builder FrogPilotCarParams::LateralTuning::Builder::getPid() {
-  KJ_IREQUIRE((which() == FrogPilotCarParams::LateralTuning::PID),
-              "Must check which() before get()ing a union member.");
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralPIDTuning>::get(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline void FrogPilotCarParams::LateralTuning::Builder::setPid( ::cereal::CarParams::LateralPIDTuning::Reader value) {
-  _builder.setDataField<FrogPilotCarParams::LateralTuning::Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, FrogPilotCarParams::LateralTuning::PID);
-  ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralPIDTuning>::set(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
-}
-inline  ::cereal::CarParams::LateralPIDTuning::Builder FrogPilotCarParams::LateralTuning::Builder::initPid() {
-  _builder.setDataField<FrogPilotCarParams::LateralTuning::Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, FrogPilotCarParams::LateralTuning::PID);
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralPIDTuning>::init(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline void FrogPilotCarParams::LateralTuning::Builder::adoptPid(
-    ::capnp::Orphan< ::cereal::CarParams::LateralPIDTuning>&& value) {
-  _builder.setDataField<FrogPilotCarParams::LateralTuning::Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, FrogPilotCarParams::LateralTuning::PID);
-  ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralPIDTuning>::adopt(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
-}
-inline ::capnp::Orphan< ::cereal::CarParams::LateralPIDTuning> FrogPilotCarParams::LateralTuning::Builder::disownPid() {
-  KJ_IREQUIRE((which() == FrogPilotCarParams::LateralTuning::PID),
-              "Must check which() before get()ing a union member.");
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralPIDTuning>::disown(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-
-inline bool FrogPilotCarParams::LateralTuning::Reader::isTorque() const {
-  return which() == FrogPilotCarParams::LateralTuning::TORQUE;
-}
-inline bool FrogPilotCarParams::LateralTuning::Builder::isTorque() {
-  return which() == FrogPilotCarParams::LateralTuning::TORQUE;
-}
-inline bool FrogPilotCarParams::LateralTuning::Reader::hasTorque() const {
-  if (which() != FrogPilotCarParams::LateralTuning::TORQUE) return false;
-  return !_reader.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
-}
-inline bool FrogPilotCarParams::LateralTuning::Builder::hasTorque() {
-  if (which() != FrogPilotCarParams::LateralTuning::TORQUE) return false;
-  return !_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
-}
-inline  ::cereal::CarParams::LateralTorqueTuning::Reader FrogPilotCarParams::LateralTuning::Reader::getTorque() const {
-  KJ_IREQUIRE((which() == FrogPilotCarParams::LateralTuning::TORQUE),
-              "Must check which() before get()ing a union member.");
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralTorqueTuning>::get(_reader.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline  ::cereal::CarParams::LateralTorqueTuning::Builder FrogPilotCarParams::LateralTuning::Builder::getTorque() {
-  KJ_IREQUIRE((which() == FrogPilotCarParams::LateralTuning::TORQUE),
-              "Must check which() before get()ing a union member.");
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralTorqueTuning>::get(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline void FrogPilotCarParams::LateralTuning::Builder::setTorque( ::cereal::CarParams::LateralTorqueTuning::Reader value) {
-  _builder.setDataField<FrogPilotCarParams::LateralTuning::Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, FrogPilotCarParams::LateralTuning::TORQUE);
-  ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralTorqueTuning>::set(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
-}
-inline  ::cereal::CarParams::LateralTorqueTuning::Builder FrogPilotCarParams::LateralTuning::Builder::initTorque() {
-  _builder.setDataField<FrogPilotCarParams::LateralTuning::Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, FrogPilotCarParams::LateralTuning::TORQUE);
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralTorqueTuning>::init(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline void FrogPilotCarParams::LateralTuning::Builder::adoptTorque(
-    ::capnp::Orphan< ::cereal::CarParams::LateralTorqueTuning>&& value) {
-  _builder.setDataField<FrogPilotCarParams::LateralTuning::Which>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, FrogPilotCarParams::LateralTuning::TORQUE);
-  ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralTorqueTuning>::adopt(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
-}
-inline ::capnp::Orphan< ::cereal::CarParams::LateralTorqueTuning> FrogPilotCarParams::LateralTuning::Builder::disownTorque() {
-  KJ_IREQUIRE((which() == FrogPilotCarParams::LateralTuning::TORQUE),
-              "Must check which() before get()ing a union member.");
-  return ::capnp::_::PointerHelpers< ::cereal::CarParams::LateralTorqueTuning>::disown(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool FrogPilotCarState::Reader::getAccelPressed() const {
