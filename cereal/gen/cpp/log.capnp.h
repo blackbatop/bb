@@ -1076,7 +1076,7 @@ struct ControlsState::LateralTorqueState {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e774a050cbf689a4, 5, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(e774a050cbf689a4, 6, 0)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -7531,6 +7531,10 @@ public:
 
   inline float getDesiredLateralAccel() const;
 
+  inline float getDesiredLateralJerk() const;
+
+  inline  ::int32_t getVersion() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -7591,6 +7595,12 @@ public:
 
   inline float getDesiredLateralAccel();
   inline void setDesiredLateralAccel(float value);
+
+  inline float getDesiredLateralJerk();
+  inline void setDesiredLateralJerk(float value);
+
+  inline  ::int32_t getVersion();
+  inline void setVersion( ::int32_t value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -30062,6 +30072,34 @@ inline float ControlsState::LateralTorqueState::Builder::getDesiredLateralAccel(
 inline void ControlsState::LateralTorqueState::Builder::setDesiredLateralAccel(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<9>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ControlsState::LateralTorqueState::Reader::getDesiredLateralJerk() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<10>() * ::capnp::ELEMENTS);
+}
+
+inline float ControlsState::LateralTorqueState::Builder::getDesiredLateralJerk() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<10>() * ::capnp::ELEMENTS);
+}
+inline void ControlsState::LateralTorqueState::Builder::setDesiredLateralJerk(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<10>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::int32_t ControlsState::LateralTorqueState::Reader::getVersion() const {
+  return _reader.getDataField< ::int32_t>(
+      ::capnp::bounded<11>() * ::capnp::ELEMENTS);
+}
+
+inline  ::int32_t ControlsState::LateralTorqueState::Builder::getVersion() {
+  return _builder.getDataField< ::int32_t>(
+      ::capnp::bounded<11>() * ::capnp::ELEMENTS);
+}
+inline void ControlsState::LateralTorqueState::Builder::setVersion( ::int32_t value) {
+  _builder.setDataField< ::int32_t>(
+      ::capnp::bounded<11>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ControlsState::LateralLQRState::Reader::getActive() const {

@@ -9,7 +9,7 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.controls.lib.drive_helpers import V_CRUISE_MAX
-from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import A_CHANGE_COST, DANGER_ZONE_COST, J_EGO_COST
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import A_CHANGE_COST, COMFORT_BRAKE, DANGER_ZONE_COST, J_EGO_COST
 
 from openpilot.frogpilot.common.frogpilot_utilities import calculate_lane_width, calculate_road_curvature
 from openpilot.frogpilot.common.frogpilot_variables import CRUISING_SPEED, MINIMUM_LATERAL_ACCELERATION, PLANNER_TIME, THRESHOLD, params, params_memory
@@ -64,6 +64,8 @@ class FrogPilotPlanner:
     else:
       self.cem.curve_detected = False
       self.cem.stop_sign_and_light(v_ego, sm, PLANNER_TIME - 2)
+
+
 
     self.driving_in_curve = abs(self.lateral_acceleration) >= MINIMUM_LATERAL_ACCELERATION
 
@@ -139,6 +141,8 @@ class FrogPilotPlanner:
     frogpilotPlan.cscTraining = self.frogpilot_vcruise.csc.enable_training
 
     frogpilotPlan.desiredFollowDistance = self.frogpilot_following.desired_follow_distance
+
+    frogpilotPlan.disableThrottle = self.frogpilot_following.disable_throttle
 
     frogpilotPlan.experimentalMode = self.cem.experimental_mode or self.frogpilot_vcruise.slc.experimental_mode
 
