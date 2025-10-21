@@ -362,7 +362,7 @@ class LongitudinalMpc:
 
   def set_weights(self, acceleration_jerk=1.0, danger_jerk=1.0, speed_jerk=1.0, prev_accel_constraint=True,
                   personality=log.LongitudinalPersonality.standard, v_ego=0.0, lead_dist=50.0,
-                  uncertainty=0.0, accel_reengage=False):
+                  uncertainty=0.0, accel_reengage=False, panic_bypass=False):
     # Update parameters based on current speed with interpolation for smooth scaling
     speed_mph = v_ego * CV.MS_TO_MPH  # Convert m/s to mph
 
@@ -406,6 +406,10 @@ class LongitudinalMpc:
 
     if accel_reengage:
       tgt_factor = min(tgt_factor, 0.5)
+
+    # Hard bypass of smoothing when approaching fast or magnitude trips
+    if panic_bypass:
+      tgt_factor = 0.0
 
     # Slew-limit changes to avoid step-wise filter jumps
     max_step = self.slew_per_sec * self.dt

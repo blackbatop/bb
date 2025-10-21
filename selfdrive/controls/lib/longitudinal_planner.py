@@ -24,6 +24,10 @@ CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
 ALLOW_THROTTLE_THRESHOLD = 0.5
 MIN_ALLOW_THROTTLE_SPEED = 2.5
 
+# Uncertainty-based filter disable thresholds
+UNCERT_SLOPE_TRIG = 0.12  # per second
+UNCERT_MAG_TRIG = 0.50
+
 # Lookup table for turns
 _A_TOTAL_MAX_V = [1.7, 3.2]
 _A_TOTAL_MAX_BP = [20., 40.]
@@ -127,6 +131,10 @@ class LongitudinalPlanner:
     self._t_arm = 0.0
     self._t_disarm = 0.0
     self.lead_dist_f = None
+
+    # Uncertainty slope tracking
+    self._uncert_last = 0.0
+    self._uncert_last_t = None
 
   @property
   def mlsim(self):
@@ -313,7 +321,26 @@ class LongitudinalPlanner:
       self.uncert_fast.update(raw_uncertainty)
       # Use a more permissive track for accel decisions
       uncertainty = self.uncert_slow.x
-      uncertainty_accel = min(self.uncert_slow.x, self.uncert_fast.x)
+    uncertainty_accel = min(self.uncert_slow.x, self.uncert_fast.x)
+
+    # --- Slope-based panic bypass ---
+    if self._uncert_last_t is None:
+      uncert_slope = 0.0
+    else:
+      dt_u = max(1e-3, now_t - self._uncert_last_t)
+      uncert_slope = (uncertainty - self._uncert_last) / dt_u
+    self._uncert_last = uncertainty
+    self._uncert_last_t = now_t
+
+    closing_fast = (self.lead_one.status and (v_ego - self.lead_one.vLead) > 0.5)
+    # Trigger if either slope is high or magnitude is high; require a valid lead and closing
+    panic_bypass = closing_fast and (uncert_slope > UNCERT_SLOPE_TRIG or uncertainty >= UNCERT_MAG_TRIG)
+
+    if panic_bypass:
+      try:
+        cloudlog.error(f"LON_SLOPE; slope={uncert_slope:.3f}/s; uncertainty={uncertainty:.3f}; v_ego={v_ego:.2f}; v_rel={(v_ego - self.lead_one.vLead) if self.lead_one.status else 0.0:.2f}; lead_dist={self.lead_dist_f if self.lead_dist_f is not None else -1:.2f}; trigger=True")
+      except Exception:
+        pass
 
     # now_t defined earlier
     over = uncertainty > 1.0
@@ -368,7 +395,8 @@ class LongitudinalPlanner:
                          v_ego=v_ego,
                          lead_dist=self.lead_dist_f if self.lead_dist_f is not None else lead_dist,
                          uncertainty=uncertainty,
-                         accel_reengage=self.accel_gate)
+                         accel_reengage=self.accel_gate,
+                         panic_bypass=panic_bypass)
     self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
     # After deciding the MPC mode via get_mpc_mode(), ensure MPC uses that mode when not mlsim
