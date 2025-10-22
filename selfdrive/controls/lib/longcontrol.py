@@ -95,7 +95,7 @@ class LongControl:
     pos_p_limit = 0.0 # if params("NoPositivePResponse") else None # put parameter-based control here
     self.pid = PIDController((CP.longitudinalTuning.kpBP, CP.longitudinalTuning.kpV),
                              (CP.longitudinalTuning.kiBP, CP.longitudinalTuning.kiV),
-                             k_f=CP.longitudinalTuning.kf, rate=1 / DT_CTRL,
+                             rate=1 / DT_CTRL,
                              pos_p_limit=pos_p_limit)
     self.v_pid = 0.0
     self._mode_setup()
