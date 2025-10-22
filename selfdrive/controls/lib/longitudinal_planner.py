@@ -446,6 +446,32 @@ class LongitudinalPlanner:
     if now_t < self.accel_nudge_until and self.a_desired > -0.1:
       self.a_desired = float(min(self.a_desired + 0.12, get_max_accel(v_ego)))
 
+    # --- Gap clamp (minimize rubber-banding when we drift too far behind) ---
+    # If we are following a valid lead and our actual gap exceeds the desired by +0.2s,
+    # add a small accel bias to gently close the gap. This only applies when we're not braking.
+    if self.lead_one.status and v_ego > 1.0 and self.a_desired > -0.1:
+      # Desired headway from current setting
+      t_follow_goal = float(sm['frogpilotPlan'].tFollow)
+      desired_gap_m = t_follow_goal * v_ego
+      # Use filtered lead distance if available
+      actual_gap_m = float(self.lead_dist_f if self.lead_dist_f is not None else self.lead_one.dRel)
+      # Allow +0.2s slack before biasing acceleration
+      slack_m = 0.2 * v_ego
+      gap_err_m = actual_gap_m - (desired_gap_m + slack_m)
+
+      if gap_err_m > 0.0:
+        # Convert extra meters into a small accel bias.
+        # k_gap chosen conservatively to avoid dramatic behavior.
+        k_gap = 0.005  # (m/s^2) per meter of extra gap
+        accel_bias = k_gap * gap_err_m
+        # Cap the bias tightly so it only trims long gaps, not cause surging
+        accel_bias = float(clip(accel_bias, 0.0, 0.18))
+        self.a_desired = float(min(self.a_desired + accel_bias, get_max_accel(v_ego)))
+        try:
+          cloudlog.error(f"LON_GAPCLAMP; v_ego={v_ego:.2f}; desired_gap={desired_gap_m:.2f}; actual_gap={actual_gap_m:.2f}; bias={accel_bias:.3f}")
+        except Exception:
+          pass
+
     # Small deadzone around zero accel to kill micro-dithers
     if -0.05 < self.a_desired < 0.05:
       self.a_desired = 0.0
