@@ -5,12 +5,13 @@ from openpilot.common.numpy_fast import clip, interp
 
 
 class PIDController:
-  def __init__(self, k_p, k_i, k_d=0., 
+  def __init__(self, k_p, k_i, k_f=0., k_d=0.,
               pos_limit=1e308, neg_limit=-1e308, rate=100,
               pos_p_limit=None, neg_p_limit=None):
     self._k_p = k_p
     self._k_i = k_i
     self._k_d = k_d
+    self.k_f = k_f   # feedforward gain
     if isinstance(self._k_p, Number):
       self._k_p = [[0], [self._k_p]]
     if isinstance(self._k_i, Number):
@@ -66,7 +67,7 @@ class PIDController:
     elif self.neg_p_limit is not None and self.p < self.neg_p_limit:
       self.p = self.neg_p_limit
     self.d = self.k_d * error_rate
-    self.f = feedforward
+    self.f = self.k_f * feedforward
 
     if override:
       self.i -= self.i_unwind_rate * float(np.sign(self.i))
