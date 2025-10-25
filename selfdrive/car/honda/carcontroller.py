@@ -286,11 +286,11 @@ class CarController(CarControllerBase):
           self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
     new_actuators = actuators.as_builder()
-    new_actuators.speed = self.speed
-    new_actuators.accel = self.accel
-    new_actuators.gas = self.gas
-    new_actuators.brake = self.brake
-    new_actuators.steer = self.last_steer
+    new_actuators.speed = float(self.speed)
+    new_actuators.accel = float(self.accel)
+    new_actuators.gas = float(self.gas)
+    new_actuators.brake = float(self.brake)
+    new_actuators.steer = float(self.last_steer)
     new_actuators.steerOutputCan = apply_steer
 
     self.frame += 1
