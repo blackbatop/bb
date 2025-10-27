@@ -110,6 +110,14 @@ def manager_init() -> None:
     with open(nnfflite_migration_flag_file, "w") as f:
       f.write("migrated")
 
+  # One-time migration for NNFF to on
+  nnff_migration_flag_file = "/data/media/0/frogpilot_nnff_migrated.flag"
+  if not os.path.exists(nnff_migration_flag_file):
+    if params.get_bool("NNFF"):
+      params.put_bool("NNFF", True)
+    with open(nnff_migration_flag_file, "w") as f:
+      f.write("migrated")
+
   # One-time migration for CEM settings
   cem_migration_flag_file = "/data/media/0/frogpilot_cem_migrated.flag"
   if not os.path.exists(cem_migration_flag_file):
