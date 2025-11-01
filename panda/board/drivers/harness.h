@@ -123,6 +123,9 @@ void harness_init(void) {
     print("detected car harness with orientation "); puth2(harness.status); print("\n");
   } else {
     print("failed to detect car harness!\n");
+    // Forcing flip to test OBD2C device from Konik, assumes flipped if HARNESS_STATUS_NC, normal handling otherwise
+    harness.status = HARNESS_STATUS_FLIPPED;
+    print("Forcing flipped orientation\n");
   }
 
   // keep buses connected by default
