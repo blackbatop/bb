@@ -434,12 +434,36 @@
 <context>
     <name>ExpandableMultiOptionDialog</name>
     <message>
+        <source>Sort by:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Alphabetical</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Date (Newest)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Date (Oldest)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites First</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Select</source>
         <translation type="unfinished">Be pickin'</translation>
     </message>
     <message>
         <source>Cancel</source>
         <translation type="unfinished">Belay</translation>
+    </message>
+    <message>
+        <source>%1 (Community Fav)</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2524,6 +2548,10 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Custom Series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>There are no more models to blacklist! The only available model is "%1"!</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3713,6 +3741,14 @@ Developer - Highly customizable riggin’s fer seasoned enthusiasts</translation
     <message>
         <source>comma Pedal Support</source>
         <translation type="gpt-5-generated">comma Pedal Support, arrr</translation>
+    </message>
+    <message>
+        <source>Use Pedal for Longitudinal Control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use the pedal interceptor for longitudinal control&lt;/b&gt; instead of camera ACC/Redneck when available.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
