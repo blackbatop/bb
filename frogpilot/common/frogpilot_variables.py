@@ -148,6 +148,8 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("AvailableModelNames", "", 1, ""),
   ("AvailableModelSeries", "", 1, ""),
   ("AvailableModels", "", 1, ""),
+  ("CommunityFavorites", "", 1, ""),
+  ("UserFavorites", "", 0, ""),
   ("BigMap", "0", 2, "0"),
   ("BlacklistedModels", "", 2, ""),
   ("BlindSpotMetrics", "1", 3, "0"),
@@ -229,6 +231,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("FrogsGoMoosTweak", "1", 2, "0"),
   ("FullMap", "0", 2, "0"),
   ("GasRegenCmd", "1", 2, "0"),
+  ("GMPedalLongitudinal", "1", 2, "1"),
   ("GithubSshKeys", "", 0, ""),
   ("GithubUsername", "", 0, ""),
   ("GoatScream", "0", 1, "0"),
@@ -283,8 +286,10 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("Model", DEFAULT_MODEL, 1, DEFAULT_MODEL),
   ("ModelDrivesAndScores", "", 2, ""),
   ("ModelRandomizer", "0", 2, "0"),
+  ("ModelReleasedDates", "", 1, ""),
   ("ModelUI", "1", 2, "0"),
   ("ModelVersions", "", 2, ""),
+  ("SortModelsByDate", "0", 2, "0"),
   ("NavigationUI", "1", 1, "0"),
   ("NavSettingLeftSide", "0", 0, "0"),
   ("NavSettingTime24h", "0", 0, "0"),
@@ -827,8 +832,11 @@ class FrogPilotVariables:
     toggle.available_models = params.get("AvailableModels", encoding="utf-8") or ""
     toggle.available_model_names = params.get("AvailableModelNames", encoding="utf-8") or ""
     toggle.available_model_series = params.get("AvailableModelSeries", encoding="utf-8") or ""
+    toggle.community_favorites = params.get("CommunityFavorites", encoding="utf-8") or ""
+    toggle.model_released_dates = params.get("ModelReleasedDates", encoding="utf-8") or ""
     toggle.model_versions = params.get("ModelVersions", encoding="utf-8") or ""
-    toggle.available_model_series = params.get("AvailableModelSeries", encoding="utf-8") or ""
+    toggle.sort_models_by_date = params.get_bool("SortModelsByDate") if tuning_level >= level["SortModelsByDate"] else default.get_bool("SortModelsByDate")
+    toggle.user_favorites = params.get("UserFavorites", encoding="utf-8") or ""
     downloaded_models = [model for model in toggle.available_models.split(",") if any(MODELS_PATH.glob(f"{model}*"))]
     toggle.model_randomizer = downloaded_models and (params.get_bool("ModelRandomizer") if tuning_level >= level["ModelRandomizer"] else default.get_bool("ModelRandomizer"))
     if toggle.available_models and toggle.available_model_names and downloaded_models and toggle.model_versions:
@@ -973,6 +981,8 @@ class FrogPilotVariables:
     toggle.unlock_doors = toyota_doors and (params.get_bool("UnlockDoors") if tuning_level >= level["UnlockDoors"] else default.get_bool("UnlockDoors"))
 
     toggle.volt_sng = toggle.car_model == "CHEVROLET_VOLT" and (params.get_bool("VoltSNG") if tuning_level >= level["VoltSNG"] else default.get_bool("VoltSNG"))
+
+    toggle.gm_pedal_longitudinal = params.get_bool("GMPedalLongitudinal") if tuning_level >= level["GMPedalLongitudinal"] else default.get_bool("GMPedalLongitudinal")
 
     params_memory.put("FrogPilotToggles", json.dumps(toggle.__dict__))
     params_memory.remove("FrogPilotTogglesUpdated")
