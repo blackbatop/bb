@@ -292,7 +292,7 @@ class CarInterface(CarInterfaceBase):
         ret.minEnableSpeed = -1.  # engage speed is decided by pcm
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
-    if ret.enableGasInterceptor:
+    if ret.enableGasInterceptor and frogpilot_toggles.gm_pedal_longitudinal:
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
       ret.minEnableSpeed = -1
