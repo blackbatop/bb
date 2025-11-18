@@ -3134,9 +3134,9 @@ public:
 
   inline bool getUseSteeringAngle() const;
 
-  inline float getKpDEPRECATED() const;
+  inline float getKp() const;
 
-  inline float getKiDEPRECATED() const;
+  inline float getKi() const;
 
   inline float getFriction() const;
 
@@ -3148,7 +3148,7 @@ public:
 
   inline float getLatAccelOffset() const;
 
-  inline float getKdDEPRECATED() const;
+  inline float getKd() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -3181,11 +3181,11 @@ public:
   inline bool getUseSteeringAngle();
   inline void setUseSteeringAngle(bool value);
 
-  inline float getKpDEPRECATED();
-  inline void setKpDEPRECATED(float value);
+  inline float getKp();
+  inline void setKp(float value);
 
-  inline float getKiDEPRECATED();
-  inline void setKiDEPRECATED(float value);
+  inline float getKi();
+  inline void setKi(float value);
 
   inline float getFriction();
   inline void setFriction(float value);
@@ -3202,8 +3202,8 @@ public:
   inline float getLatAccelOffset();
   inline void setLatAccelOffset(float value);
 
-  inline float getKdDEPRECATED();
-  inline void setKdDEPRECATED(float value);
+  inline float getKd();
+  inline void setKd(float value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -7754,30 +7754,30 @@ inline void CarParams::LateralTorqueTuning::Builder::setUseSteeringAngle(bool va
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline float CarParams::LateralTorqueTuning::Reader::getKpDEPRECATED() const {
+inline float CarParams::LateralTorqueTuning::Reader::getKp() const {
   return _reader.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline float CarParams::LateralTorqueTuning::Builder::getKpDEPRECATED() {
+inline float CarParams::LateralTorqueTuning::Builder::getKp() {
   return _builder.getDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void CarParams::LateralTorqueTuning::Builder::setKpDEPRECATED(float value) {
+inline void CarParams::LateralTorqueTuning::Builder::setKp(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline float CarParams::LateralTorqueTuning::Reader::getKiDEPRECATED() const {
+inline float CarParams::LateralTorqueTuning::Reader::getKi() const {
   return _reader.getDataField<float>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 
-inline float CarParams::LateralTorqueTuning::Builder::getKiDEPRECATED() {
+inline float CarParams::LateralTorqueTuning::Builder::getKi() {
   return _builder.getDataField<float>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
-inline void CarParams::LateralTorqueTuning::Builder::setKiDEPRECATED(float value) {
+inline void CarParams::LateralTorqueTuning::Builder::setKi(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
@@ -7852,16 +7852,16 @@ inline void CarParams::LateralTorqueTuning::Builder::setLatAccelOffset(float val
       ::capnp::bounded<7>() * ::capnp::ELEMENTS, value);
 }
 
-inline float CarParams::LateralTorqueTuning::Reader::getKdDEPRECATED() const {
+inline float CarParams::LateralTorqueTuning::Reader::getKd() const {
   return _reader.getDataField<float>(
       ::capnp::bounded<8>() * ::capnp::ELEMENTS);
 }
 
-inline float CarParams::LateralTorqueTuning::Builder::getKdDEPRECATED() {
+inline float CarParams::LateralTorqueTuning::Builder::getKd() {
   return _builder.getDataField<float>(
       ::capnp::bounded<8>() * ::capnp::ELEMENTS);
 }
-inline void CarParams::LateralTorqueTuning::Builder::setKdDEPRECATED(float value) {
+inline void CarParams::LateralTorqueTuning::Builder::setKd(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<8>() * ::capnp::ELEMENTS, value);
 }
