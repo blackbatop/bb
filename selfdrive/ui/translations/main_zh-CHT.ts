@@ -2110,6 +2110,22 @@
         <source>&lt;b&gt;Following behavior that mimics human drivers&lt;/b&gt; by closing gaps behind faster vehicles for quicker takeoffs and dynamically adjusting the desired following distance for gentler, more efficient braking.</source>
         <translation type="gpt-5-generated">&lt;b&gt;模仿人類駕駛的跟車行為&lt;/b&gt;，在後方有更快車輛時縮小間距以更快起步，並動態調整期望跟車距離，以實現更柔順且更高效的制動。</translation>
     </message>
+    <message>
+        <source>High Speed Following Distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Aggressive" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.25 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Standard" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.45 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Relaxed" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.75 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotManageControl</name>
