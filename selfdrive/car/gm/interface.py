@@ -270,6 +270,9 @@ class CarInterface(CarInterfaceBase):
         ret.minEnableSpeed = -1.  # engage speed is decided by pcm
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
+    elif candidate == CAR.CHEVROLET_BLAZER:
+      ret.minEnableSpeed = 5 * CV.KPH_TO_MS
+
     elif candidate == CAR.BUICK_BABYENCLAVE:
       ret.steerActuatorDelay = 0.2
       if not ret.openpilotLongitudinalControl:
