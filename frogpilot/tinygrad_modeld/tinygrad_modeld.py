@@ -33,7 +33,7 @@ from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
 
 PROCESS_NAME = "frogpilot.tinygrad_modeld.tinygrad_modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
-RECOVERY_POWER = 1.2 # The higher this number the more aggressively the model will recover to lanecenter, too high and it will ping-pong
+RECOVERY_POWER = 1.0 # The higher this number the more aggressively the model will recover to lanecenter, too high and it will ping-pong
 
 
 LAT_SMOOTH_SECONDS = 0.1
