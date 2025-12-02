@@ -2544,6 +2544,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Recovery Power</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Adjust the strength of planplus lane recovery corrections (0.5 to 2.0).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Stop Distance</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2596,12 +2604,16 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Are you sure you want to reset your &lt;b&gt;Stop Distance&lt;/b&gt; to the default of 6 meters?</source>
+        <source>Are you sure you want to reset your &lt;b&gt;Recovery Power&lt;/b&gt; to the default of 1.0?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Reset</source>
         <translation type="unfinished">リセット</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset your &lt;b&gt;Stop Distance&lt;/b&gt; to the default of 6 meters?</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
