@@ -587,6 +587,7 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"WheelIcon", PERSISTENT},
     {"WheelSpeed", PERSISTENT},
     {"StopDistance", PERSISTENT},
+    {"RecoveryPower", PERSISTENT},
     {"WheelToDownload", CLEAR_ON_MANAGER_START},
 };
 
