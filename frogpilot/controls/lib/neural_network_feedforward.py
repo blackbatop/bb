@@ -215,6 +215,7 @@ class LatControlNNFF(LatControl):
 
   def update(self, active, CS, VM, params, steer_limited_by_safety, desired_curvature, curvature_limited, lat_delay, llk, model_data, frogpilot_toggles):
     pid_log = log.ControlsState.LateralTorqueState.new_message()
+    pid_log.error = 0.0
     if not active:
       output_torque = 0.0
       pid_log.active = False
@@ -300,7 +301,7 @@ class LatControlNNFF(LatControl):
           torque_from_setpoint = self.lat_torque_nn_model.evaluate(nnff_setpoint_input)
           torque_from_measurement = self.lat_torque_nn_model.evaluate(nnff_measurement_input)
 
-          pid_log.error = torque_from_setpoint - torque_from_measurement
+          pid_log.error = float(torque_from_setpoint - torque_from_measurement)
 
           error_blend = interp(abs(desired_lateral_accel), [1.0, 2.0], [0.0, 1.0])
           if error_blend > 0.0:  # blend in stronger error response when in high lat accel
@@ -316,7 +317,7 @@ class LatControlNNFF(LatControl):
 
           # apply friction override for cars with low NN friction response
           if self.nn_friction_override:
-            pid_log.error += self.torque_from_lateral_accel(0.0, self.torque_params)
+            pid_log.error += float(self.torque_from_lateral_accel(0.0, self.torque_params))
         else:
           torque_from_measurement = self.torque_from_lateral_accel(measurement, self.torque_params)
           torque_from_setpoint = self.torque_from_lateral_accel(setpoint, self.torque_params)
