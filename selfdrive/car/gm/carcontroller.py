@@ -174,7 +174,12 @@ class CarController(CarControllerBase):
             self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
             self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
 
-          if self.is_volt and self.apply_brake > 0 and self.apply_gas > self.params.ZERO_GAS:
+          # Clamp within message-valid ranges to avoid ASCM faults from overshoot or rounding
+          self.apply_gas = int(round(clip(self.apply_gas, self.params.MAX_ACC_REGEN, self.params.MAX_GAS)))
+          self.apply_brake = int(round(clip(self.apply_brake, 0, self.params.MAX_BRAKE)))
+
+          if self.is_volt and self.apply_brake > 0:
+            # Volt should never present positive torque alongside friction braking
             self.apply_gas = self.params.INACTIVE_REGEN
           # Don't allow any gas above inactive regen while stopping
           # FIXME: brakes aren't applied immediately when enabling at a stop
