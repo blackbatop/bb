@@ -2111,6 +2111,14 @@
         <translation type="gpt-5-generated">&lt;b&gt;사람 운전자와 유사한 추종 동작&lt;/b&gt;으로, 더 빠른 차량 뒤 간격을 좁혀 신속한 출발을 돕고 원하는 추종 거리를 동적으로 조절해 더욱 부드럽고 효율적인 제동을 수행합니다.</translation>
     </message>
     <message>
+        <source>EV Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use acceleration profiles tuned for EVs.&lt;/b&gt; Defaults to the vehicle's detected powertrain type but can be overridden if the automatic choice doesn't match.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>High Speed Following Distance</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2124,6 +2132,18 @@
     </message>
     <message>
         <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Relaxed" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.75 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Trailer Load</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Increase the vehicle mass to account for towing.&lt;/b&gt; Adjust in 500 lb steps up to 15,000 lbs to fine-tune gas and brake behavior when pulling a trailer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> lbs</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
