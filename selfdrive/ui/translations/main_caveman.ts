@@ -2113,6 +2113,14 @@
         <translation type="gpt-5-generated">&lt;b&gt;Make car follow like human&lt;/b&gt;. Close gap behind fast car for quick takeoff. Change follow distance on the fly for soft, smart brake.</translation>
     </message>
     <message>
+        <source>EV Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use acceleration profiles tuned for EVs.&lt;/b&gt; Defaults to the vehicle's detected powertrain type but can be overridden if the automatic choice doesn't match.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>High Speed Following Distance</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2126,6 +2134,18 @@
     </message>
     <message>
         <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Relaxed" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.75 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Trailer Load</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Increase the vehicle mass to account for towing.&lt;/b&gt; Adjust in 500 lb steps up to 15,000 lbs to fine-tune gas and brake behavior when pulling a trailer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> lbs</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
