@@ -1,3 +1,5 @@
+import math
+
 from cereal import car
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import FirstOrderFilter
@@ -7,7 +9,7 @@ from openpilot.common.params_pyx import Params
 from opendbc.can.packer import CANPacker
 from openpilot.selfdrive.car import apply_driver_steer_torque_limits, create_gas_interceptor_command
 from openpilot.selfdrive.car.gm import gmcan
-from openpilot.selfdrive.car.gm.values import DBC, AccState, CanBus, CarControllerParams, CruiseButtons, GMFlags, CC_ONLY_CAR, SDGM_CAR, EV_CAR
+from openpilot.selfdrive.car.gm.values import DBC, AccState, CanBus, CarControllerParams, CruiseButtons, GMFlags, CC_ONLY_CAR, SDGM_CAR, EV_CAR, CAR
 from openpilot.selfdrive.car.interfaces import CarControllerBase
 from openpilot.selfdrive.controls.lib.drive_helpers import apply_deadzone
 from openpilot.selfdrive.controls.lib.vehicle_model import ACCELERATION_DUE_TO_GRAVITY
@@ -46,6 +48,13 @@ class CarController(CarControllerBase):
     self.lka_icon_status_last = (False, False)
 
     self.params = CarControllerParams(self.CP)
+    self.is_volt = self.CP.carFingerprint in (CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC)
+    if self.is_volt:
+      self.mass = CP.mass
+      self.tireRadius = 0.075 * CP.wheelbase + 0.1453
+      self.frontalArea = 1.05 * CP.wheelbase + 0.0679
+      self.coeffDrag = 0.30
+      self.airDensity = 1.225
     self.params_ = Params()
 
     self.packer_pt = CANPacker(DBC[self.CP.carFingerprint]['pt'])
@@ -127,7 +136,7 @@ class CarController(CarControllerBase):
 
         # Pitch compensated acceleration;
         # TODO: include future pitch (sm['modelDataV2'].orientation.y) to account for long actuator delay
-        if frogpilot_toggles.long_pitch and len(CC.orientationNED) > 1:
+        if frogpilot_toggles.long_pitch and len(CC.orientationNED) > 1 and not self.is_volt:
           self.pitch.update(CC.orientationNED[1])
           self.accel_g = ACCELERATION_DUE_TO_GRAVITY * apply_deadzone(self.pitch.x, PITCH_DEADZONE) # driving uphill is positive pitch
           accel += self.accel_g
@@ -145,6 +154,18 @@ class CarController(CarControllerBase):
           self.apply_brake = int(min(-100 * frogpilot_toggles.stopAccel, self.params.MAX_BRAKE))
         else:
           # Normal operation
+          if self.is_volt:
+            if len(CC.orientationNED) == 3 and CS.out.vEgo > self.CP.vEgoStopping:
+              volt_pitch_accel = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY
+            else:
+              volt_pitch_accel = 0.0
+
+            aero_drag_accel = (0.5 * self.coeffDrag * self.frontalArea * self.airDensity * CS.out.vEgo ** 2) / self.mass
+            accel += aero_drag_accel + volt_pitch_accel
+            brake_accel = actuators.accel + aero_drag_accel + volt_pitch_accel * interp(CS.out.vEgo, BRAKE_PITCH_FACTOR_BP, BRAKE_PITCH_FACTOR_V)
+            accel = clip(accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+            brake_accel = clip(brake_accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+
           if self.CP.carFingerprint in EV_CAR:
             self.params.update_ev_gas_brake_threshold(CS.out.vEgo)
             self.apply_gas = int(round(interp(accel, self.params.EV_GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
@@ -152,6 +173,9 @@ class CarController(CarControllerBase):
           else:
             self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
             self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+
+          if self.is_volt and self.apply_brake > 0 and self.apply_gas > self.params.ZERO_GAS:
+            self.apply_gas = self.params.INACTIVE_REGEN
           # Don't allow any gas above inactive regen while stopping
           # FIXME: brakes aren't applied immediately when enabling at a stop
           if stopping:
