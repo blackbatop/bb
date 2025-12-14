@@ -38,9 +38,8 @@ class CarControllerParams:
 
   def __init__(self, CP):
     # Gas/brake lookups
-    self.ZERO_GAS = 6144  # Coasting
+    self.ZERO_GAS = 6150  # Coasting
     self.MAX_BRAKE = 400  # ~ -4.0 m/s^2 with regen
-    self.BRAKE_SWITCH_MAX = self.ZERO_GAS
 
     if CP.carFingerprint in (CAMERA_ACC_CAR | SDGM_CAR) and CP.carFingerprint not in CC_ONLY_CAR and CP.carFingerprint != CAR.CHEVROLET_BOLT_EUV:
       self.MAX_GAS = 7496
@@ -60,12 +59,8 @@ class CarControllerParams:
       # lower threshold removes some braking deadzone
       self.max_regen_acceleration = -1. if CP.carFingerprint in EV_CAR else -0.1
 
-    if CP.carFingerprint in (CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC):
-      self.ZERO_GAS = 6150
-      self.BRAKE_SWITCH_MAX = self.MAX_ACC_REGEN if CP.carFingerprint in EV_CAR else self.ZERO_GAS
-      self.BRAKE_LOOKUP_BP = [self.ACCEL_MIN, 0.]
-    else:
-      self.BRAKE_LOOKUP_BP = [self.ACCEL_MIN, self.max_regen_acceleration]
+    self.BRAKE_SWITCH_MAX = self.MAX_ACC_REGEN if CP.carFingerprint in EV_CAR else self.ZERO_GAS
+    self.BRAKE_LOOKUP_BP = [self.ACCEL_MIN, 0.]
 
     self.GAS_LOOKUP_BP = [self.max_regen_acceleration, 0., self.ACCEL_MAX]
     self.GAS_LOOKUP_BP_PLUS = [self.max_regen_acceleration, 0., self.ACCEL_MAX_PLUS]
