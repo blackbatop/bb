@@ -148,12 +148,12 @@ class CarInterface(CarInterfaceBase):
         ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
 
       # Tuning for experimental long
-      ret.longitudinalTuning.kiV = [1.0, 1.0]
+      ret.longitudinalTuning.kiV = [0.5, 0.5]
 
       ret.stoppingDecelRate = 1.0  # reach brake quickly after enabling
       ret.vEgoStopping = 0.25
       ret.vEgoStarting = 0.25
-      ret.stopAccel = -0.20
+      ret.stopAccel = -0.25
 
       if ret.experimentalLongitudinalAvailable and experimental_long:
         ret.pcmCruise = False
