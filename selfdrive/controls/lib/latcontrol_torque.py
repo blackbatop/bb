@@ -3,11 +3,10 @@ import numpy as np
 from collections import deque
 
 from cereal import log
-from openpilot.common.conversions import Conversions as CV
 from openpilot.selfdrive.car.interfaces import FRICTION_THRESHOLD, get_friction_threshold
 from openpilot.selfdrive.controls.lib.drive_helpers import MIN_SPEED, get_friction
 from openpilot.common.filter_simple import FirstOrderFilter
-from openpilot.selfdrive.controls.lib.latcontrol import LatControl
+from openpilot.selfdrive.controls.lib.latcontrol import LatControl, MIN_LATERAL_CONTROL_SPEED
 from openpilot.selfdrive.controls.lib.pid import PIDController
 from openpilot.selfdrive.controls.lib.vehicle_model import ACCELERATION_DUE_TO_GRAVITY
 
@@ -53,7 +52,7 @@ class LatControlTorque(LatControl):
     self.jerk_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * LP_FILTER_CUTOFF_HZ), self.dt)
     self.previous_measurement = 0.0
     self.measurement_rate_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * (MAX_LAT_JERK_UP - 0.5)), self.dt)
-    self.low_speed_reset_threshold = 7 * CV.MPH_TO_MS
+    self.low_speed_reset_threshold = max(CP.minSteerSpeed, MIN_LATERAL_CONTROL_SPEED)
 
   def update_live_torque_params(self, latAccelFactor, latAccelOffset, friction):
     self.torque_params.latAccelFactor = latAccelFactor
