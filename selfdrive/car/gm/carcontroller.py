@@ -49,12 +49,11 @@ class CarController(CarControllerBase):
 
     self.params = CarControllerParams(self.CP)
     self.is_volt = self.CP.carFingerprint in (CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC)
-    if self.is_volt:
-      self.mass = CP.mass
-      self.tireRadius = 0.075 * CP.wheelbase + 0.1453
-      self.frontalArea = 1.05 * CP.wheelbase + 0.0679
-      self.coeffDrag = 0.30
-      self.airDensity = 1.225
+    self.mass = CP.mass
+    self.tireRadius = 0.075 * CP.wheelbase + 0.1453
+    self.frontalArea = 1.05 * CP.wheelbase + 0.0679
+    self.coeffDrag = 0.30
+    self.airDensity = 1.225
     self.params_ = Params()
 
     self.packer_pt = CANPacker(DBC[self.CP.carFingerprint]['pt'])
@@ -166,21 +165,46 @@ class CarController(CarControllerBase):
             accel = clip(accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
             brake_accel = clip(brake_accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
-          if self.CP.carFingerprint in EV_CAR:
-            self.params.update_ev_gas_brake_threshold(CS.out.vEgo)
-            self.apply_gas = int(round(interp(accel, self.params.EV_GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
-            self.apply_brake = int(round(interp(brake_accel, self.params.EV_BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+            if self.CP.carFingerprint in EV_CAR:
+              self.params.update_ev_gas_brake_threshold(CS.out.vEgo)
+              self.apply_gas = int(round(interp(accel, self.params.EV_GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
+              self.apply_brake = int(round(interp(brake_accel, self.params.EV_BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+            else:
+              self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
+              self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
+
+            # Clamp within message-valid ranges to avoid ASCM faults from overshoot or rounding
+            self.apply_gas = int(round(clip(self.apply_gas, self.params.MAX_ACC_REGEN, self.params.MAX_GAS)))
+            self.apply_brake = int(round(clip(self.apply_brake, 0, self.params.MAX_BRAKE)))
+
+            if self.apply_brake > 0:
+              # Volt should never present positive torque alongside friction braking
+              self.apply_gas = self.params.INACTIVE_REGEN
           else:
-            self.apply_gas = int(round(interp(accel, self.params.GAS_LOOKUP_BP, self.params.GAS_LOOKUP_V)))
+            if len(CC.orientationNED) == 3 and CS.out.vEgo > self.CP.vEgoStopping:
+              accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY
+            else:
+              accel_due_to_pitch = 0.0
+
+            gas_max = self.params.MAX_GAS
+            accel_max = self.params.ACCEL_MAX
+
+            accel = clip(actuators.accel + accel_due_to_pitch, self.params.ACCEL_MIN, accel_max)
+            torque = self.tireRadius * ((self.mass * accel) + (0.5 * self.coeffDrag * self.frontalArea * self.airDensity * CS.out.vEgo ** 2))
+
+            scaled_torque = torque + self.params.ZERO_GAS
+            apply_gas_torque = clip(scaled_torque, self.params.MAX_ACC_REGEN, gas_max)
+            BRAKE_SWITCH = int(round(interp(CS.out.vEgo, self.params.BRAKE_SWITCH_LOOKUP_BP, self.params.BRAKE_SWITCH_LOOKUP_V)))
+            brake_accel = min((scaled_torque - BRAKE_SWITCH) / (self.tireRadius * self.mass), 0)
+            self.apply_gas = int(round(apply_gas_torque))
             self.apply_brake = int(round(interp(brake_accel, self.params.BRAKE_LOOKUP_BP, self.params.BRAKE_LOOKUP_V)))
 
-          # Clamp within message-valid ranges to avoid ASCM faults from overshoot or rounding
-          self.apply_gas = int(round(clip(self.apply_gas, self.params.MAX_ACC_REGEN, self.params.MAX_GAS)))
-          self.apply_brake = int(round(clip(self.apply_brake, 0, self.params.MAX_BRAKE)))
+            # Clamp within message-valid ranges to avoid ASCM faults from overshoot or rounding
+            self.apply_gas = int(round(clip(self.apply_gas, self.params.MAX_ACC_REGEN, self.params.MAX_GAS)))
+            self.apply_brake = int(round(clip(self.apply_brake, 0, self.params.MAX_BRAKE)))
 
-          if self.is_volt and self.apply_brake > 0:
-            # Volt should never present positive torque alongside friction braking
-            self.apply_gas = self.params.INACTIVE_REGEN
+            if self.apply_brake > 0 and self.apply_gas > self.params.INACTIVE_REGEN:
+              self.apply_gas = self.params.INACTIVE_REGEN
           # Don't allow any gas above inactive regen while stopping
           # FIXME: brakes aren't applied immediately when enabling at a stop
           if stopping:
