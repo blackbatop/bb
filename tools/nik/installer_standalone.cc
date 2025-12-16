@@ -293,7 +293,7 @@ void Installer::readProgress() {
   auto line = QString(proc.readAllStandardError());
 
   int base = 0;
-  for (const QPair kv : stages) {
+  for (const QPair<QString, int> kv : stages) {
     if (line.startsWith(kv.first)) {
       auto perc = line.split(kv.first)[1].split("%")[0];
       int p = base + int(perc.toFloat() / 100. * kv.second);
