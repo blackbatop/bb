@@ -1002,6 +1002,7 @@ class FrogPilotVariables:
 
     volt_models = {
       "CHEVROLET_VOLT",
+      "CHEVROLET_VOLT_2019",
       "CHEVROLET_VOLT_ASCM",
       "CHEVROLET_VOLT_CAMERA",
     }
