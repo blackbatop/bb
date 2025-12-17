@@ -110,13 +110,15 @@ def manager_init() -> None:
     with open(nnfflite_migration_flag_file, "w") as f:
       f.write("migrated")
 
-  # One-time migration for NNFF to on
-  nnff_migration_flag_file = "/data/media/0/frogpilot_nnff_migrated.flag"
-  if not os.path.exists(nnff_migration_flag_file):
+  # One-time migration to force NNFF + NNFFLite off
+  nnff_reset_flag_file = "/data/media/0/frogpilot_nnff_reset.flag"
+  if not os.path.exists(nnff_reset_flag_file):
     if params.get_bool("NNFF"):
-      params.put_bool("NNFF", True)
-    with open(nnff_migration_flag_file, "w") as f:
-      f.write("migrated")
+      params.put_bool("NNFF", False)
+    if params.get_bool("NNFFLite"):
+      params.put_bool("NNFFLite", False)
+    with open(nnff_reset_flag_file, "w") as f:
+      f.write("reset")
 
   # One-time migration for CEM settings
   cem_migration_flag_file = "/data/media/0/frogpilot_cem_migrated.flag"
@@ -132,14 +134,6 @@ def manager_init() -> None:
     if params.get_bool("CECurves"):
       params.put_bool("CECurves", False)
     with open(cem_migration_flag_file, "w") as f:
-      f.write("migrated")
-
-  # One-time migration for NNFF to off
-  nnff_migration_flag_file = "/data/media/0/frogpilot_nnff_migrated.flag"
-  if not os.path.exists(nnff_migration_flag_file):
-    if params.get_bool("NNFF"):
-      params.put_bool("NNFF", False)
-    with open(nnff_migration_flag_file, "w") as f:
       f.write("migrated")
 
   # set dongle id
