@@ -69,6 +69,17 @@ def manager_init() -> None:
   params.put_bool("IsReleaseSpBranch", build_metadata.release_sp_channel)
   params.put("HardwareSerial", serial)
 
+  bolt_platform_bundle = {
+    "platform": "CHEVROLET_BOLT_NON_ACC_1ST_GEN",
+    "make": "Chevrolet",
+    "brand": "gm",
+    "model": "Bolt EV Non-ACC",
+    "year": ["2018", "2019", "2020", "2021"],
+    "package": "Adaptive Cruise Control (ACC)",
+    "name": "Chevrolet Bolt EV Non-ACC 2018-21",
+  }
+  params.put("CarPlatformBundle", bolt_platform_bundle)
+
   # set dongle id
   reg_res = register(show_spinner=True)
   if reg_res:
