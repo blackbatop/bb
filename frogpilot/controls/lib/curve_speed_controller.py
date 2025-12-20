@@ -93,14 +93,10 @@ class CurveSpeedController:
 
     if self.target_set:
       csc_speed = (lateral_acceleration / abs(self.frogpilot_planner.road_curvature))**0.5
-
-      # Apply deceleration rate reduction factor (20% reduction) for smoother curve entry
-      raw_decel_rate = (v_ego - csc_speed) / max(self.frogpilot_planner.time_to_curve, 0.5)
-      decel_rate = raw_decel_rate * 0.8  # 20% reduction in deceleration rate
+      decel_rate = (v_ego - csc_speed) / self.frogpilot_planner.time_to_curve
 
       self.target -= decel_rate * DT_MDL
-      # Slightly lower minimum speed threshold for smoother transition
-      self.target = float(np.clip(self.target, CRUISING_SPEED * 0.9, csc_speed))
+      self.target = float(np.clip(self.target, CRUISING_SPEED, csc_speed))
     else:
       self.target_set = True
 
