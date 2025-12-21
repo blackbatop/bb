@@ -12,5 +12,5 @@ class GMFlagsSP(IntFlag):
   NON_ACC = 1
 
 
-class GMSafetyFlagsSP(IntFlag):
+class GMSafetyFlagsSP:
   NON_ACC = 1
