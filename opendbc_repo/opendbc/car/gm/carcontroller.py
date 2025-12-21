@@ -6,7 +6,6 @@ from opendbc.car.gm import gmcan
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.gm.values import DBC, CanBus, CarControllerParams, CruiseButtons
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.sunnypilot.car.gm.values_ext import GMFlagsSP
 from opendbc.sunnypilot.car.gm.icbm import IntelligentCruiseButtonManagementInterface
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
@@ -39,7 +38,6 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
     self.packer_obj = CANPacker(DBC[self.CP.carFingerprint][Bus.radar])
     self.packer_ch = CANPacker(DBC[self.CP.carFingerprint][Bus.chassis])
 
-    GasInterceptorCarController.__init__(self, CP, CP_SP)
     IntelligentCruiseButtonManagementInterface.__init__(self, CP, CP_SP)
 
   def update(self, CC, CC_SP, CS, now_nanos):
@@ -113,14 +111,9 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
           at_full_stop = at_full_stop and stopping
           friction_brake_bus = CanBus.POWERTRAIN
 
-        pedal_interceptor_active = self.CP.enableGasInterceptorDEPRECATED and (self.CP_SP.flags & GMFlagsSP.NON_ACC)
-        if pedal_interceptor_active:
-          self.apply_brake = 0
-
         # GasRegenCmdActive needs to reflect whether openpilot is actually commanding longitudinal torque
         gas_regen_active = CC.longActive and CC.enabled
-        if not pedal_interceptor_active:
-          can_sends.append(gmcan.create_gas_regen_command(self.packer_pt, CanBus.POWERTRAIN, self.apply_gas, idx, gas_regen_active, at_full_stop))
+        can_sends.append(gmcan.create_gas_regen_command(self.packer_pt, CanBus.POWERTRAIN, self.apply_gas, idx, gas_regen_active, at_full_stop))
         can_sends.append(gmcan.create_friction_brake_command(self.packer_ch, friction_brake_bus, self.apply_brake,
                                                              idx, CC.enabled, near_stop, at_full_stop, self.CP))
 
@@ -174,9 +167,6 @@ class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterfac
     new_actuators.torqueOutputCan = self.apply_torque_last
     new_actuators.gas = self.apply_gas
     new_actuators.brake = self.apply_brake
-
-    # sunnypilot gas interceptor / NON_ACC extensions
-    self.extend_with_interceptor(CC, CS, new_actuators, can_sends)
 
     self.frame += 1
     return new_actuators, can_sends
