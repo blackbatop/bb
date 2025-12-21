@@ -14,6 +14,8 @@ from opendbc.sunnypilot.car.gm.values_ext import GMFlagsSP, GMSafetyFlagsSP
 
 TransmissionType = structs.CarParams.TransmissionType
 NetworkLocation = structs.CarParams.NetworkLocation
+
+PEDAL_MSG = 0x201
 NON_ACC_ICBM_CARS = {
   CAR.CHEVROLET_BOLT_NON_ACC,
   CAR.CHEVROLET_BOLT_NON_ACC_1ST_GEN,
@@ -111,6 +113,9 @@ class CarInterface(CarInterfaceBase):
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.gm)]
     ret.autoResumeSng = False
     ret.enableBsm = 0x142 in fingerprint[CanBus.POWERTRAIN]
+    if PEDAL_MSG in fingerprint[0]:
+      ret.enableGasInterceptorDEPRECATED = True
+
     if candidate in EV_CAR:
       ret.transmissionType = TransmissionType.direct
       ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.EV.value
