@@ -6,6 +6,7 @@ from opendbc.car.gm import gmcan
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.gm.values import DBC, CanBus, CarControllerParams, CruiseButtons
 from opendbc.car.interfaces import CarControllerBase
+from opendbc.sunnypilot.car.gm.carcontroller_ext import GasInterceptorCarController
 from opendbc.sunnypilot.car.gm.values_ext import GMFlagsSP
 from opendbc.sunnypilot.car.gm.icbm import IntelligentCruiseButtonManagementInterface
 
@@ -19,7 +20,7 @@ CAMERA_CANCEL_DELAY_FRAMES = 10
 MIN_STEER_MSG_INTERVAL_MS = 15
 
 
-class CarController(CarControllerBase, IntelligentCruiseButtonManagementInterface):
+class CarController(CarControllerBase, GasInterceptorCarController, IntelligentCruiseButtonManagementInterface):
   def __init__(self, dbc_names, CP, CP_SP):
     super().__init__(dbc_names, CP, CP_SP)
     self.start_time = 0.
