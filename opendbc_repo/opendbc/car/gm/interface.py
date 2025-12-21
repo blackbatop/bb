@@ -247,21 +247,6 @@ class CarInterface(CarInterfaceBase):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
       ret.dashcamOnly = True  # Needs steerRatio, tireStiffness, and lat accel factor tuning
 
-    if ret.enableGasInterceptorDEPRECATED:
-      ret.networkLocation = NetworkLocation.fwdCamera
-      ret.alphaLongitudinalAvailable = True
-      ret.minEnableSpeed = -1
-      ret.pcmCruise = False
-      ret.openpilotLongitudinalControl = True
-      ret.autoResumeSng = True
-      ret.safetyConfigs[0].safetyParam |= GMSafetyFlagsSP.GAS_INTERCEPTOR.value
-      ret.safetyConfigs[0].safetyParam |= GMSafetyFlagsSP.PEDAL_LONG.value
-
-      # Pedal interceptor tuning
-      ret.longitudinalTuning.kiBP = [0., 3., 6., 35.]
-      ret.longitudinalTuning.kiV = [0.125, 0.175, 0.225, 0.33]
-      ret.stoppingDecelRate = 0.8
-
     return ret
 
   @staticmethod
@@ -274,7 +259,7 @@ class CarInterface(CarInterfaceBase):
     elif candidate in (CAR.CHEVROLET_EQUINOX_NON_ACC_3RD_GEN, ):
       CarInterfaceBase.configure_torque_tune(candidate, stock_cp.lateralTuning)
 
-    # NON_ACC vehicles should use camera car speed thresholds
+    # NON_ACC vehicles should use camera car speed thresholds; no pedal long support on this branch
     if ret.flags & GMFlagsSP.NON_ACC:
       stock_cp.dashcamOnly = False
       stock_cp.networkLocation = NetworkLocation.fwdCamera
@@ -282,23 +267,9 @@ class CarInterface(CarInterfaceBase):
       ret.safetyParam |= GMSafetyFlagsSP.NON_ACC.value
       stock_cp.minEnableSpeed = 24 * CV.MPH_TO_MS  # 24 mph
       stock_cp.minSteerSpeed = 3.0   # ~6 mph
-
-      # Check if pedal interceptor is present
-      has_pedal = PEDAL_MSG in fingerprint[0]
-
-      if has_pedal:
-        # With pedal interceptor: enable alpha long, disable PCM cruise
-        stock_cp.alphaLongitudinalAvailable = True
-        stock_cp.openpilotLongitudinalControl = True
-        stock_cp.pcmCruise = False
-        stock_cp.minEnableSpeed = -1.
-        ret.safetyParam |= GMSafetyFlagsSP.GAS_INTERCEPTOR.value
-        ret.safetyParam |= GMSafetyFlagsSP.PEDAL_LONG.value
-      else:
-        # Without pedal interceptor: disable longitudinal
-        stock_cp.alphaLongitudinalAvailable = False
-        stock_cp.openpilotLongitudinalControl = False
-        stock_cp.pcmCruise = True
+      stock_cp.alphaLongitudinalAvailable = False
+      stock_cp.openpilotLongitudinalControl = False
+      stock_cp.pcmCruise = True
 
     # dashcamOnly platforms: untested platforms, need user validations
     if candidate in (CAR.CHEVROLET_BOLT_NON_ACC_2ND_GEN, CAR.CHEVROLET_EQUINOX_NON_ACC_3RD_GEN,
