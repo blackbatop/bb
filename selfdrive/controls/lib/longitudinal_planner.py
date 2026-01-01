@@ -18,6 +18,18 @@ from openpilot.common.swaglog import cloudlog
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MIN = -1.0
+PEDAL_DECEL_BP = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+  30, 31, 32, 33, 34,
+]
+PEDAL_DECEL_V = [
+  -1.379, -1.855, -2.167, -2.311, -2.411, -2.455, -2.493, -2.500, -2.500,
+  -2.530, -2.366, -2.151, -1.955, -1.839, -1.777, -1.741,
+  -1.705, -1.670, -1.652, -1.661, -1.679, -1.696, -1.696, -1.679,
+  -1.652, -1.634, -1.652, -1.670, -1.696, -1.696, -1.696, -1.598,
+  -1.518, -1.471, -1.4,
+]
 A_CRUISE_MAX_BP = [0.0, 5., 10., 15., 20., 25., 40.]
 A_CRUISE_MAX_VALS = [1.125, 1.125, 1.125, 1.125, 1.25, 1.25, 1.5]
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
@@ -52,6 +64,12 @@ def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   a_x_allowed = math.sqrt(max(a_total_max ** 2 - a_y ** 2, 0.))
 
   return [a_target[0], min(a_target[1], a_x_allowed)]
+
+
+def get_min_accel(CP, v_ego):
+  if CP.enableGasInterceptor:
+    return float(interp(v_ego, PEDAL_DECEL_BP, PEDAL_DECEL_V))
+  return A_CRUISE_MIN
 
 
 def get_accel_from_plan_classic(CP, speeds, accels, vEgoStopping):
@@ -178,6 +196,20 @@ class LongitudinalPlanner:
       throttle_prob = 1.0
     return x, v, a, j, throttle_prob
 
+  def _expected_decel_profile(self, v_start):
+    t_diffs = np.diff(T_IDXS_MPC, prepend=[0.0])
+    profile = np.zeros_like(T_IDXS_MPC)
+    v = float(v_start)
+    for i in range(len(T_IDXS_MPC)):
+      a_exp = get_min_accel(self.CP, v)
+      speed_mph = v * CV.MS_TO_MPH
+      factor = interp(speed_mph, [0.0, 30.0, 300.0], [0.75, 0.75, 0.9])
+      a_scaled = a_exp * factor
+      profile[i] = a_scaled
+      if i < len(T_IDXS_MPC) - 1:
+        v = max(0.0, v + a_scaled * t_diffs[i + 1])
+    return profile
+
   def update(self, tinygrad_model, sm, frogpilot_toggles):
     self.generation = frogpilot_toggles.model_version
     if tinygrad_model:
@@ -194,6 +226,8 @@ class LongitudinalPlanner:
       accel_coast = ACCEL_MAX
 
     v_ego = max(sm['carState'].vEgo, sm['carState'].vEgoCluster)
+    expected_min_accel_profile = self._expected_decel_profile(v_ego)
+    expected_min_accel = float(expected_min_accel_profile[0])
     v_cruise = sm['frogpilotPlan'].vCruise
     v_cruise_initialized = sm['controlsState'].vCruise != V_CRUISE_UNSET
 
@@ -397,6 +431,7 @@ class LongitudinalPlanner:
                          uncertainty=uncertainty,
                          accel_reengage=self.accel_gate,
                          panic_bypass=panic_bypass)
+    self.mpc.set_expected_min_accel(expected_min_accel, expected_min_accel_profile)
     self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
     # After deciding the MPC mode via get_mpc_mode(), ensure MPC uses that mode when not mlsim
