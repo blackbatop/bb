@@ -310,9 +310,8 @@ class LongitudinalMpc:
     self.current_j_ego_cost = J_EGO_COSTS[0]
     self.current_a_change_cost = A_CHANGE_COSTS[0]
     self.current_dist_adapt = DIST_ADAPTS[0]
+    # Initialize acceleration limits to prevent AttributeError
     self.cruise_min_a = ACCEL_MIN
-    self.expected_min_a = ACCEL_MIN
-    self.expected_min_a_profile = np.full(N+1, ACCEL_MIN)
     self.max_a = 1.2  # Default max acceleration
     self.reset()
 
@@ -333,7 +332,6 @@ class LongitudinalMpc:
     self.params = np.zeros((N+1, PARAM_DIM))
     for i in range(N+1):
       self.solver.set(i, 'x', np.zeros(X_DIM))
-    self.expected_min_a_profile = np.full(N+1, self.expected_min_a)
     self.last_cloudlog_t = 0
     self.status = False
     self.crash_cnt = 0.0
@@ -497,9 +495,8 @@ class LongitudinalMpc:
       a_lead_tau = LEAD_ACCEL_TAU
 
     # MPC will not converge if immediate crash is expected
-    # Clip lead distance to what is still possible to brake for using the current decel limit
-    decel_capable = max(-self.expected_min_a, 0.1)
-    min_x_lead = ((v_ego + v_lead)/2) * (v_ego - v_lead) / (decel_capable * 2)
+    # Clip lead distance to what is still possible to brake for
+    min_x_lead = ((v_ego + v_lead)/2) * (v_ego - v_lead) / (-ACCEL_MIN * 2)
     x_lead = clip(x_lead, min_x_lead, 1e8)
     v_lead = clip(v_lead, 0.0, 1e8)
     a_lead = clip(a_lead, -10., 5.)
@@ -510,13 +507,6 @@ class LongitudinalMpc:
     v_lead = self.lead_v_filter.x
     lead_xv = self.extrapolate_lead(x_lead, v_lead, a_lead, a_lead_tau, v_ego)
     return lead_xv
-
-  def set_expected_min_accel(self, min_a, profile=None):
-    self.expected_min_a = min_a
-    if profile is not None and len(profile) == N+1:
-      self.expected_min_a_profile = np.asarray(profile, dtype=float)
-    else:
-      self.expected_min_a_profile = np.full(N+1, min_a)
 
   def set_accel_limits(self, min_a, max_a):
     # TODO this sets a max accel limit, but the minimum limit is only for cruise decel
@@ -537,7 +527,7 @@ class LongitudinalMpc:
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
 
-    self.params[:,0] = self.cruise_min_a
+    self.params[:,0] = ACCEL_MIN
     # negative accel constraint causes problems because negative speed is not allowed
     self.params[:,1] = max(0.0, self.max_a)
 
@@ -545,8 +535,9 @@ class LongitudinalMpc:
     if self.mode == 'acc':
       self.params[:,5] = LEAD_DANGER_FACTOR
 
-      v_lower = v_ego + np.cumsum(T_DIFFS * self.expected_min_a_profile * 1.05)
-      v_lower = np.clip(v_lower, 0.0, 1e8)
+      # Fake an obstacle for cruise, this ensures smooth acceleration to set speed
+      # when the leads are no factor.
+      v_lower = v_ego + (T_IDXS * self.cruise_min_a * 1.05)
       # TODO does this make sense when max_a is negative?
       v_upper = v_ego + (T_IDXS * self.max_a * 1.05)
       v_cruise_clipped = np.clip(v_cruise * np.ones(N+1),
