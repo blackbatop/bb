@@ -500,6 +500,11 @@ class LongitudinalMpc:
     x_lead = clip(x_lead, min_x_lead, 1e8)
     v_lead = clip(v_lead, 0.0, 1e8)
     a_lead = clip(a_lead, -10., 5.)
+    # Apply smoothing filters with interp scaling
+    self.lead_a_filter.update(a_lead)
+    self.lead_v_filter.update(v_lead)
+    a_lead = self.lead_a_filter.x
+    v_lead = self.lead_v_filter.x
     lead_xv = self.extrapolate_lead(x_lead, v_lead, a_lead, a_lead_tau, v_ego)
     return lead_xv
 

@@ -7,8 +7,7 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import COMFO
 from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT
 
 TRAFFIC_MODE_BP = [0., CITY_SPEED_LIMIT]
-# Delay blending to the high-speed following value until much higher speeds (was ~55 mph)
-PERSONALITY_BP = [20. * CV.KPH_TO_MS, 100. * CV.MPH_TO_MS]
+PERSONALITY_BP = [20. * CV.KPH_TO_MS, 90. * CV.KPH_TO_MS]
 
 class FrogPilotFollowing:
   def __init__(self, FrogPilotPlanner):
