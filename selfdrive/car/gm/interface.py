@@ -201,6 +201,8 @@ class CarInterface(CarInterfaceBase):
     if candidate in VOLT_LIKE_CARS:
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
       ret.steerActuatorDelay = 0.2
+      if candidate == CAR.CHEVROLET_MALIBU_HYBRID_CC and ret.enableGasInterceptor:
+        ret.flags |= GMFlags.PEDAL_LONG.value
 
     elif candidate == CAR.GMC_ACADIA:
       ret.minEnableSpeed = -1.  # engage speed is decided by pcm
