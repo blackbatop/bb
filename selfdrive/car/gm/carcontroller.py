@@ -57,6 +57,7 @@ class CarController(CarControllerBase):
     self.coeffDrag = 0.30
     self.airDensity = 1.225
     self.params_ = Params()
+    self.malibu_cancel_phase = 0
 
     self.packer_pt = CANPacker(DBC[self.CP.carFingerprint]['pt'])
     self.packer_obj = CANPacker(DBC[self.CP.carFingerprint]['radar'])
@@ -229,7 +230,10 @@ class CarController(CarControllerBase):
             # Using extend instead of append since the message is only sent intermittently
             can_sends.extend(gmcan.create_gm_cc_spam_command(self.packer_pt, self, CS, actuators, frogpilot_toggles))
           elif CC.enabled and self.frame % 52 == 0 and CS.cruise_buttons == CruiseButtons.UNPRESS and CS.out.gasPressed and CS.out.cruiseState.speed < CS.out.vEgo < hud_v_cruise:
-            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.DECEL_SET))
+            if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+              can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, 0, CruiseButtons.DECEL_SET))
+            else:
+              can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.DECEL_SET))
         if self.CP.enableGasInterceptor:
           can_sends.append(create_gas_interceptor_command(self.packer_pt, interceptor_gas_cmd, idx))
         if self.CP.carFingerprint not in CC_ONLY_CAR:
@@ -288,9 +292,15 @@ class CarController(CarControllerBase):
           (self.CP.flags & GMFlags.PEDAL_LONG.value)  # Always cancel stock CC when using pedal interceptor
           or (self.CP.flags & GMFlags.CC_LONG.value and not CC.enabled)  # Cancel stock CC if OP is not active
       ) and CS.out.cruiseState.enabled:
-        if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
+        cancel_interval = 0.03 if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC else 0.04
+        if (self.frame - self.last_button_frame) * DT_CTRL > cancel_interval:
           self.last_button_frame = self.frame
-          can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.CANCEL))
+          if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+            # Match the car's 33 Hz button cadence to keep checksum phase aligned.
+            self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
+            can_sends.append(gmcan.create_buttons_malibu_cancel(CanBus.POWERTRAIN, self.malibu_cancel_phase))
+          else:
+            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.CANCEL))
 
     else:
       # While car is braking, cancel button causes ECM to enter a soft disable state with a fault status.
@@ -301,7 +311,10 @@ class CarController(CarControllerBase):
       if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
         if self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
           self.last_button_frame = self.frame
-          can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.CAMERA, CS.buttons_counter, CruiseButtons.CANCEL))
+          if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, 0, CruiseButtons.CANCEL))
+          else:
+            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.CAMERA, CS.buttons_counter, CruiseButtons.CANCEL))
 
     if self.CP.networkLocation == NetworkLocation.fwdCamera:
       # Silence "Take Steering" alert sent by camera, forward PSCMStatus with HandsOffSWlDetectionStatus=1
