@@ -49,6 +49,8 @@ class CarController(CarControllerBase):
 
     self.params = CarControllerParams(self.CP)
     self.is_volt = self.CP.carFingerprint in (CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC)
+    # Malibu Hybrid CC pedal voltages are slightly higher than Bolt; scale down
+    self.pedal_scale = 0.96 if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC else 1.0
     self.mass = CP.mass
     self.tireRadius = 0.075 * CP.wheelbase + 0.1453
     self.frontalArea = 1.05 * CP.wheelbase + 0.0679
@@ -212,6 +214,7 @@ class CarController(CarControllerBase):
           if self.CP.carFingerprint in CC_ONLY_CAR:
             # gas interceptor only used for full long control on cars without ACC
             interceptor_gas_cmd = self.calc_pedal_command(actuators.accel, CC.longActive)
+            interceptor_gas_cmd = clip(interceptor_gas_cmd * self.pedal_scale, 0., 1.)
 
         if self.CP.enableGasInterceptor and self.apply_gas > self.params.INACTIVE_REGEN and CS.out.cruiseState.standstill:
           # "Tap" the accelerator pedal to re-engage ACC
