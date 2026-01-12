@@ -38,6 +38,9 @@ PADDLE_TARGET_HZ        = 42.0        # desired paddle rate (Hz) when regen acti
 BRAKE_PITCH_FACTOR_BP = [5., 10.]  # [m/s] smoothly revert to planned accel at low speeds
 BRAKE_PITCH_FACTOR_V = [0., 1.]  # [unitless in [0,1]]; don't touch
 PITCH_DEADZONE = 0.01  # [radians] 0.01 ≈ 1% grade
+# Pedal interceptor coast behavior
+COAST_ACCEL_DEADZONE = 0.05  # Near zero accel is neutral
+COAST_PEDAL = 0.25  # Pedal coast value (25%)
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_name, CP, VM):
@@ -119,14 +122,17 @@ class CarController(CarControllerBase):
 
     gain = interp(car_velocity, speed_mps, regen_gain_ratio)
     pedaloffset = interp(car_velocity, [0., 3, 6, 30], [0.10, 0.175, 0.240, 0.240])
-
-    # Compute raw pedal gas
-    raw_pedal_gas = clip((pedaloffset + (accel / gain) * 0.6), 0.0, 1.0) if press_regen_paddle else clip((pedaloffset + accel * 0.6), 0.0, 1.0)
-
-    # --- Immediate application of raw pedal gas, no blending ---
-    pedal_gas = raw_pedal_gas
     # Safety cap: ramp from 22% at 0 m/s to 37.25% at 10 mph (4.47 m/s), then allow full throttle
     pedal_gas_max = interp(car_velocity, [0.0, 4.47, 4.48], [0.22, 0.3725, 1.0])
+
+    if not press_regen_paddle and abs(accel) <= COAST_ACCEL_DEADZONE:
+      pedal_gas = max(pedaloffset, COAST_PEDAL)
+    else:
+      # Compute raw pedal gas
+      raw_pedal_gas = clip((pedaloffset + (accel / gain) * 0.6), 0.0, 1.0) if press_regen_paddle else clip((pedaloffset + accel * 0.6), 0.0, 1.0)
+      # --- Immediate application of raw pedal gas, no blending ---
+      pedal_gas = raw_pedal_gas
+
     pedal_gas = clip(pedal_gas, 0.0, pedal_gas_max)
     return pedal_gas, press_regen_paddle
 
