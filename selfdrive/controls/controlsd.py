@@ -44,7 +44,7 @@ CAMERA_OFFSET = 0.04
 REPLAY = "REPLAY" in os.environ
 SIMULATION = "SIMULATION" in os.environ
 TESTING_CLOSET = "TESTING_CLOSET" in os.environ
-IGNORE_PROCESSES = {"loggerd", "encoderd", "statsd"}
+IGNORE_PROCESSES = {"loggerd", "encoderd", "statsd", "micd", "soundd"}
 
 ThermalStatus = log.DeviceState.ThermalStatus
 State = log.ControlsState.OpenpilotState
@@ -117,9 +117,6 @@ class Controls:
     self.is_metric = self.params.get_bool("IsMetric")
     self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
 
-    # detect sound card presence and ensure successful init
-    sounds_available = HARDWARE.get_sound_card_online()
-
     car_recognized = self.CP.carName != 'mock'
 
     # cleanup old params
@@ -173,8 +170,6 @@ class Controls:
     else:
       self.startup_event = get_startup_event(car_recognized, not self.CP.passive, len(self.CP.carFw) > 0)
 
-    if not sounds_available:
-      self.events.add(EventName.soundsUnavailable, static=True)
     if not car_recognized:
       self.events.add(EventName.carUnrecognized, static=True)
       if len(self.CP.carFw) > 0:
