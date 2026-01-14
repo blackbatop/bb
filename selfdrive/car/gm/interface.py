@@ -27,10 +27,22 @@ CAM_MSG = 0x320  # AEBCmd
 ACCELERATOR_POS_MSG = 0xbe
 
 NON_LINEAR_TORQUE_PARAMS = {
-  CAR.CHEVROLET_BOLT_EUV: [2.6531724862969748, 1.0, 0.1919764879840985, 0.009054123646805178],
-  CAR.CHEVROLET_BOLT_CC: [2.6531724862969748, 1.0, 0.1919764879840985, 0.009054123646805178],
-  CAR.GMC_ACADIA: [4.78003305, 1.0, 0.3122, 0.05591772],
-  CAR.CHEVROLET_SILVERADO: [3.29974374, 1.0, 0.25571356, 0.0465122]
+  CAR.CHEVROLET_BOLT_EUV: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.6531724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
+  CAR.CHEVROLET_BOLT_CC: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.6531724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
+  CAR.GMC_ACADIA: {
+    "left": [4.78003305, 1.0, 0.3122, 0.05591772],
+    "right": [4.78003305, 1.0, 0.3122, 0.05591772],
+  },
+  CAR.CHEVROLET_SILVERADO: {
+    "left": [3.29974374, 1.0, 0.25571356, 0.0465122],
+    "right": [3.29974374, 1.0, 0.25571356, 0.0465122],
+  },
 }
 
 
@@ -60,7 +72,9 @@ class CarInterface(CarInterfaceBase):
       # This has big effect on the stability about 0 (noise when going straight)
       non_linear_torque_params = NON_LINEAR_TORQUE_PARAMS.get(self.CP.carFingerprint)
       assert non_linear_torque_params, "The params are not defined"
-      a, b, c, d = non_linear_torque_params
+      # Left is positive
+      side_key = "left" if lateral_acceleration >= 0 else "right"
+      a, b, c, d = non_linear_torque_params[side_key]
       sig_input = a * lateral_acceleration
       sig = np.sign(sig_input) * (1 / (1 + exp(-fabs(sig_input))) - 0.5)
       steer_torque = (sig * b) + (lateral_acceleration * c) + d
