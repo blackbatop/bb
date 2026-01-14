@@ -27,10 +27,22 @@ CAM_MSG = 0x320  # AEBCmd
 ACCELERATOR_POS_MSG = 0xbe
 
 NON_LINEAR_TORQUE_PARAMS = {
-  CAR.CHEVROLET_BOLT_EUV: [2.6531724862969748, 1.0, 0.1919764879840985, 0.009054123646805178],
-  CAR.CHEVROLET_BOLT_CC: [2.6531724862969748, 1.0, 0.1919764879840985, 0.009054123646805178],
-  CAR.GMC_ACADIA: [4.78003305, 1.0, 0.3122, 0.05591772],
-  CAR.CHEVROLET_SILVERADO: [3.29974374, 1.0, 0.25571356, 0.0465122]
+  CAR.CHEVROLET_BOLT_EUV: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
+  CAR.CHEVROLET_BOLT_CC: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
+  CAR.GMC_ACADIA: {
+    "left": [4.78003305, 1.0, 0.3122, 0.05591772],
+    "right": [4.78003305, 1.0, 0.3122, 0.05591772],
+  },
+  CAR.CHEVROLET_SILVERADO: {
+    "left": [3.29974374, 1.1, 0.25571356, 0.0],
+    "right": [3.34974374, 1.0, 0.21071356, 0.0],
+  },
 }
 
 
@@ -60,7 +72,9 @@ class CarInterface(CarInterfaceBase):
       # This has big effect on the stability about 0 (noise when going straight)
       non_linear_torque_params = NON_LINEAR_TORQUE_PARAMS.get(self.CP.carFingerprint)
       assert non_linear_torque_params, "The params are not defined"
-      a, b, c, d = non_linear_torque_params
+      # Left is positive
+      side_key = "left" if lateral_acceleration >= 0 else "right"
+      a, b, c, d = non_linear_torque_params[side_key]
       sig_input = a * lateral_acceleration
       sig = np.sign(sig_input) * (1 / (1 + exp(-fabs(sig_input))) - 0.5)
       steer_torque = (sig * b) + (lateral_acceleration * c) + d
@@ -116,11 +130,12 @@ class CarInterface(CarInterfaceBase):
     ret.longitudinalTuning.kiBP = [5., 35., 60.]
 
     if candidate in CAMERA_ACC_CAR:
-      ret.experimentalLongitudinalAvailable = candidate not in CC_ONLY_CAR
+      # For ACC models with pedal interceptor, behave like CC_ONLY_CAR
+      ret.experimentalLongitudinalAvailable = (candidate not in CC_ONLY_CAR) and not ret.enableGasInterceptor
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.radarUnavailable = True  # no radar
-      # Use pcmCruise by default; this may be overridden below if a pedal interceptor is detected
-      ret.pcmCruise = True
+      # Only use pcmCruise if no pedal interceptor (bolt_cc style behavior)
+      ret.pcmCruise = not ret.enableGasInterceptor
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
       # Use default minEnableSpeed for ACC models (will be overridden by pedal interceptor section if present)
       ret.minEnableSpeed = 5 * CV.KPH_TO_MS
@@ -215,17 +230,32 @@ class CarInterface(CarInterfaceBase):
       ret.steerActuatorDelay = 0.2
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
-      if ret.enableGasInterceptor:
-        # ACC Bolts use pedal for full longitudinal control, not just sng
-        ret.flags |= GMFlags.PEDAL_LONG.value
+      # Bolt-only lateral tuning overrides
+      ret.lateralTuning.torque.kp = 1.03
+      ret.lateralTuning.torque.ki = 1.07
+      ret.lateralTuning.torque.kd = 0.93
+      ret.lateralTuning.torque.kfDEPRECATED = 0.02
 
-    if candidate == CAR.CHEVROLET_SILVERADO:
+    # Enable pedal interceptor for ACC models when detected
+    if candidate in CAMERA_ACC_CAR and ret.enableGasInterceptor:
+      # ACC models with pedal interceptor get full pedal longitudinal control
+      ret.flags |= GMFlags.PEDAL_LONG.value
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_NO_ACC
+
+    elif candidate == CAR.CHEVROLET_SILVERADO:
       # On the Bolt, the ECM and camera independently check that you are either above 5 kph or at a stop
       # with foot on brake to allow engagement, but this platform only has that check in the camera.
       # TODO: check if this is split by EV/ICE with more platforms in the future
       if ret.openpilotLongitudinalControl:
         ret.minEnableSpeed = -1.
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
+      # Silverado torque lateral tuning overrides (stored in unused torque fields).
+      ret.lateralTuning.torque.kp = 1.03  # torque_ff_scale_pos
+      ret.lateralTuning.torque.ki = 1.07  # torque_ff_scale_neg
+      ret.lateralTuning.torque.kd = 0.93  # torque_ki_mult
+      ret.lateralTuning.torque.kfDEPRECATED = 0.02  # torque_deadzone_boost_neg (lat accel)
+      # Silverado-only: reduce base friction for left bias 
+      ret.lateralTuning.torque.friction *= 0.93
 
     elif candidate in (CAR.CHEVROLET_EQUINOX, CAR.CHEVROLET_EQUINOX_CC):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
@@ -279,7 +309,7 @@ class CarInterface(CarInterfaceBase):
       ret.stoppingControl = True
       ret.autoResumeSng = True
 
-      if candidate in CC_ONLY_CAR: #pedal interceptor tuning
+      if candidate in CC_ONLY_CAR or (candidate in CAMERA_ACC_CAR and ret.enableGasInterceptor): #pedal interceptor tuning
         ret.flags |= GMFlags.PEDAL_LONG.value
         ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_PEDAL_LONG
         # Note: Low speed, stop and go not tested. Should be fairly smooth on highway
