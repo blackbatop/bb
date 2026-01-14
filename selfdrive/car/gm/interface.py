@@ -352,8 +352,9 @@ class CarInterface(CarInterfaceBase):
     if ret.vEgo < self.CP.minSteerSpeed:
       events.add(EventName.belowSteerSpeed)
 
-    if (self.CP.flags & GMFlags.CC_LONG.value) and ret.vEgo < self.CP.minEnableSpeed and ret.cruiseState.enabled:
-      events.add(EventName.speedTooLow)
+    if (self.CP.flags & GMFlags.CC_LONG.value) and ret.vEgo < self.CP.minEnableSpeed:
+      if ret.cruiseState.enabled or self.CS.out.cruiseState.enabled:
+        events.add(EventName.speedTooLow)
 
     if (self.CP.flags & GMFlags.PEDAL_LONG.value) and \
       self.CP.transmissionType == TransmissionType.direct and \
