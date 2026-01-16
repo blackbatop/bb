@@ -166,7 +166,7 @@ class CarController(CarControllerBase):
         idx = (self.frame // 4) % 4
 
         if self.CP.flags & GMFlags.CC_LONG.value:
-          if CC.longActive and CS.out.vEgo > self.CP.minEnableSpeed:
+          if CC.longActive and CS.out.cruiseState.enabled and CS.out.vEgo > self.CP.minEnableSpeed:
             # Using extend instead of append since the message is only sent intermittently
             can_sends.extend(gmcan.create_gm_cc_spam_command(self.packer_pt, self, CS, actuators))
         if self.CP.enableGasInterceptor:
