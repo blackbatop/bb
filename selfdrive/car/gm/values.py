@@ -258,7 +258,7 @@ class CAR(Platforms):
   )
   CHEVROLET_MALIBU_CC = GMPlatformConfig(
     [GMCarDocs("Chevrolet Malibu 2023 - No-ACC")],
-    CarSpecs(mass=1450, wheelbase=2.8, steerRatio=15.8, centerToFrontRatio=0.4),
+    CarSpecs(mass=1450, wheelbase=2.8, steerRatio=18.25, centerToFrontRatio=0.4, tireStiffnessFactor=0.997),
   )
   CHEVROLET_MALIBU_HYBRID_CC = GMPlatformConfig(
     [GMCarDocs("Chevrolet Malibu Hybrid 2017 - No-ACC")],
