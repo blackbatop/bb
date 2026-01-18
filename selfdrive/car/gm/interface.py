@@ -222,6 +222,12 @@ class CarInterface(CarInterfaceBase):
       ret.steerActuatorDelay = 0.2
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
+      # Bolt-only lateral tuning overrides
+      ret.lateralTuning.torque.kp = 1.03
+      ret.lateralTuning.torque.ki = 1.07
+      ret.lateralTuning.torque.kd = 0.93
+      ret.lateralTuning.torque.kfDEPRECATED = 0.02
+
       if ret.enableGasInterceptor:
         # ACC Bolts use pedal for full longitudinal control, not just sng
         ret.flags |= GMFlags.PEDAL_LONG.value
