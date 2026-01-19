@@ -669,6 +669,8 @@ public:
   inline bool hasSafetyConfigs() const;
   inline  ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>::Reader getSafetyConfigs() const;
 
+  inline bool getCanUseSASCM() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -718,6 +720,9 @@ public:
   inline  ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>::Builder initSafetyConfigs(unsigned int size);
   inline void adoptSafetyConfigs(::capnp::Orphan< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>>&& value);
   inline ::capnp::Orphan< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>> disownSafetyConfigs();
+
+  inline bool getCanUseSASCM();
+  inline void setCanUseSASCM(bool value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -2218,6 +2223,20 @@ inline void FrogPilotCarParams::Builder::adoptSafetyConfigs(
 inline ::capnp::Orphan< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>> FrogPilotCarParams::Builder::disownSafetyConfigs() {
   return ::capnp::_::PointerHelpers< ::capnp::List< ::cereal::FrogPilotCarParams::SafetyConfig,  ::capnp::Kind::STRUCT>>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool FrogPilotCarParams::Reader::getCanUseSASCM() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline bool FrogPilotCarParams::Builder::getCanUseSASCM() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void FrogPilotCarParams::Builder::setCanUseSASCM(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint16_t FrogPilotCarParams::SafetyConfig::Reader::getSafetyParam() const {
