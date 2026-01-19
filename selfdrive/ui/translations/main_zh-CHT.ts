@@ -3798,6 +3798,14 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
         <source>&lt;b&gt;Use the pedal interceptor for longitudinal control&lt;/b&gt; instead of camera ACC/Redneck when available.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>SASCM Support</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Does your vehicle support "SASCMs"?&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotVisualsPanel</name>
