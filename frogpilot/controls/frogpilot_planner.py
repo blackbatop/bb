@@ -127,7 +127,19 @@ class FrogPilotPlanner:
 
   def publish(self, theme_updated, sm, pm, frogpilot_toggles):
     frogpilot_plan_send = messaging.new_message("frogpilotPlan")
-    frogpilot_plan_send.valid = sm.all_checks(service_list=["carState", "controlsState", "selfdriveState", "radarState"])
+    check_services = ["carState", "controlsState", "selfdriveState", "radarState"]
+    frogpilot_plan_send.valid = sm.all_checks(service_list=check_services)
+
+    # Debug: log which services are failing
+    if not frogpilot_plan_send.valid:
+      try:
+        with open("/data/frogpilot_planner_debug.log", "a") as f:
+          f.write(f"=== all_checks failed ===\n")
+          for svc in check_services:
+            f.write(f"  {svc}: valid={sm.valid.get(svc)}, alive={sm.alive.get(svc)}, freq_ok={sm.freq_ok.get(svc)}\n")
+          f.write("\n")
+      except:
+        pass
     frogpilotPlan = frogpilot_plan_send.frogpilotPlan
 
     frogpilotPlan.accelerationJerk = float(A_CHANGE_COST * self.frogpilot_following.acceleration_jerk)
