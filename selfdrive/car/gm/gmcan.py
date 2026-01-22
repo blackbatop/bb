@@ -24,10 +24,10 @@ def create_buttons(packer, bus, idx, button):
   return packer.make_can_msg("ASCMSteeringButton", bus, values)
 
 
-def create_buttons_malibu_cancel(bus, phase):
+def create_buttons_malibu_cancel(bus, phase, prefix=0x41):
   # Malibu Hybrid CC cancel frames use a 4-value pattern in the last 2 bytes.
   data = bytearray(7)
-  data[3] = 0x41  # ACCAlwaysOne
+  data[3] = prefix & 0xFF
   data[4] = 0x00
   cancel_bytes = (0x60, 0xAF, 0x65, 0x9E, 0x6A, 0x8D, 0x6F, 0x7C)
   idx = (phase % 4) * 2

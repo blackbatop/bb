@@ -304,7 +304,8 @@ class CarController(CarControllerBase):
               self.malibu_cancel_phase = (phase_map[CS.steering_button_checksum] + 1) % 4
             else:
               self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
-            can_sends.append(gmcan.create_buttons_malibu_cancel(CanBus.POWERTRAIN, self.malibu_cancel_phase))
+            can_sends.append(gmcan.create_buttons_malibu_cancel(
+              CanBus.POWERTRAIN, self.malibu_cancel_phase, CS.steering_button_prefix))
           self.malibu_cancel_frame += 1
         else:
           if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
@@ -325,7 +326,8 @@ class CarController(CarControllerBase):
               self.malibu_cancel_phase = (phase_map[CS.steering_button_checksum] + 1) % 4
             else:
               self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
-            can_sends.append(gmcan.create_buttons_malibu_cancel(CanBus.POWERTRAIN, self.malibu_cancel_phase))
+            can_sends.append(gmcan.create_buttons_malibu_cancel(
+              CanBus.POWERTRAIN, self.malibu_cancel_phase, CS.steering_button_prefix))
           self.malibu_cancel_frame += 1
         else:
           if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
