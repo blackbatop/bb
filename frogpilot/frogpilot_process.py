@@ -89,10 +89,11 @@ def frogpilot_thread():
   config_realtime_process(5, Priority.CTRL_LOW)
 
   pm = messaging.PubMaster(["frogpilotPlan"])
+  # TEMP: removed "mapdOut" to test if it's causing carState timing issues
   sm = messaging.SubMaster(["carControl", "carState", "controlsState", "deviceState", "driverMonitoringState",
                             "gpsLocation", "gpsLocationExternal", "liveParameters", "managerState", "modelV2",
                             "onroadEvents", "pandaStates", "radarState", "selfdriveState", "frogpilotCarState",
-                            "frogpilotSelfdriveState", "frogpilotModelV2", "frogpilotOnroadEvents", "mapdOut"],
+                            "frogpilotSelfdriveState", "frogpilotModelV2", "frogpilotOnroadEvents"],
                             poll="modelV2")
 
   params = Params(return_defaults=True)
