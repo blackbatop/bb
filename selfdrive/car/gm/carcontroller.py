@@ -60,7 +60,6 @@ class CarController(CarControllerBase):
     self.malibu_cancel_phase = 0
     self.malibu_cancel_last_ts = 0.0
     self.malibu_cancel_frame = 0
-    self.malibu_button_phase = 0
 
     self.packer_pt = CANPacker(DBC[self.CP.carFingerprint]['pt'])
     self.packer_obj = CANPacker(DBC[self.CP.carFingerprint]['radar'])
@@ -236,14 +235,7 @@ class CarController(CarControllerBase):
           elif (CS.out.cruiseState.enabled and CC.enabled and self.frame % 52 == 0 and
                 CS.cruise_buttons == CruiseButtons.UNPRESS and CS.out.gasPressed and CS.out.cruiseState.speed < CS.out.vEgo < hud_v_cruise):
             if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
-              phase_map = gmcan.malibu_phase_map_for_button(CruiseButtons.DECEL_SET)
-              if phase_map and CS.steering_button_checksum in phase_map:
-                self.malibu_button_phase = (phase_map[CS.steering_button_checksum] + 1) % 4
-              else:
-                self.malibu_button_phase = (self.malibu_button_phase + 1) % 4
-              can_sends.append(gmcan.create_buttons_malibu(
-                self.packer_pt, CanBus.POWERTRAIN, CruiseButtons.DECEL_SET,
-                self.malibu_button_phase, CS.steering_button_prefix))
+              can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, 0, CruiseButtons.DECEL_SET))
             else:
               can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.DECEL_SET))
         if self.CP.enableGasInterceptor:
