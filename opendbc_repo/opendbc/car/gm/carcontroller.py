@@ -4,7 +4,7 @@ from opendbc.car import Bus, DT_CTRL, structs
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.gm import gmcan
 from opendbc.car.common.conversions import Conversions as CV
-from opendbc.car.gm.values import DBC, CanBus, CarControllerParams, CruiseButtons, SDGM_CAR
+from opendbc.car.gm.values import DBC, CanBus, CarControllerParams, CruiseButtons, SDGM_CAR, ASCM_INT
 from opendbc.car.interfaces import CarControllerBase
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
@@ -122,7 +122,7 @@ class CarController(CarControllerBase):
 
       # Radar needs to know current speed and yaw rate (50hz),
       # and that ADAS is alive (10hz)
-      if not self.CP.radarUnavailable and self.CP.carFingerprint not in SDGM_CAR:
+      if not self.CP.radarUnavailable and self.CP.carFingerprint not in (SDGM_CAR|ASCM_INT):
         tt = self.frame * DT_CTRL
         time_and_headlights_step = 10
         if self.frame % time_and_headlights_step == 0:

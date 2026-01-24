@@ -109,6 +109,7 @@ class CarInterface(CarInterfaceBase):
       ret.minSteerSpeed = 10 * CV.KPH_TO_MS
       if candidate in ASCM_INT:
         ret.minSteerSpeed = 7 * CV.KPH_TO_MS
+        ret.minEnableSpeed = 18 * CV.MPH_TO_MS
 
       # Tuning for experimental long
       ret.longitudinalTuning.kiV = [2.0, 1.5]
