@@ -7,6 +7,51 @@ from openpilot.selfdrive.car import make_can_msg
 from openpilot.selfdrive.car.gm.values import CAR, CruiseButtons, CanBus
 
 
+MALIBU_BUTTON_TABLE = {
+  0: [0x15EE, 0x1FCC, 0x2FBC, 0x25DE],
+  1: [0x6F7C, 0x659E, 0x55AE, 0x5F8C],
+  4: [0x1ADD, 0x10FF, 0x2ACD, 0x20EF],
+  5: [0x60AF, 0x6A8D, 0x50BF, 0x5A9D],
+}
+
+MALIBU_BUTTON_MAP = {
+  CruiseButtons.UNPRESS: 0,
+  CruiseButtons.RES_ACCEL: 1,
+  CruiseButtons.MAIN: 4,
+  CruiseButtons.CANCEL: 5,
+}
+
+
+def malibu_phase_map_for_button(button):
+  key = MALIBU_BUTTON_MAP.get(button, None)
+  if key is None or key not in MALIBU_BUTTON_TABLE:
+    return None
+  return {v: i for i, v in enumerate(MALIBU_BUTTON_TABLE[key])}
+
+
+def create_buttons_malibu(packer, bus, button, phase, prefix=0x41):
+  key = MALIBU_BUTTON_MAP.get(button, None)
+  if key is None or key not in MALIBU_BUTTON_TABLE:
+    # fallback to standard checksum for unsupported buttons
+    return create_buttons(packer, bus, 0, button)
+
+  values = {
+    "ACCButtons": button,
+    "RollingCounter": 0,
+    "ACCAlwaysOne": 1,
+    "DistanceButton": 0,
+  }
+  dat = packer.make_can_msg("ASCMSteeringButton", bus, values)[2]
+  data = bytearray(dat)
+  data[3] = prefix & 0xFF
+
+  seq = MALIBU_BUTTON_TABLE[key]
+  val = seq[phase % len(seq)]
+  data[5] = (val >> 8) & 0xFF
+  data[6] = val & 0xFF
+  return make_can_msg(0x1e1, bytes(data), bus)
+
+
 def create_buttons(packer, bus, idx, button):
   values = {
     "ACCButtons": button,
@@ -227,6 +272,15 @@ def create_gm_cc_spam_command(packer, controller, CS, actuators, frogpilot_toggl
   # TODO: Cleanup the timing - normal is every 30ms...
   if (cruiseBtn != CruiseButtons.INIT) and ((controller.frame - controller.last_button_frame) * DT_CTRL > rate):
     controller.last_button_frame = controller.frame
+    if CS.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+      phase_map = malibu_phase_map_for_button(cruiseBtn)
+      if phase_map:
+        if CS.steering_button_checksum in phase_map:
+          controller.malibu_button_phase = (phase_map[CS.steering_button_checksum] + 1) % 4
+        else:
+          controller.malibu_button_phase = (controller.malibu_button_phase + 1) % 4
+        return [create_buttons_malibu(packer, CanBus.POWERTRAIN, cruiseBtn, controller.malibu_button_phase,
+                                      CS.steering_button_prefix)]
     idx = (CS.buttons_counter + 1) % 4  # Need to predict the next idx for '22-23 EUV
     return [create_buttons(packer, CanBus.POWERTRAIN, idx, cruiseBtn)]
   else:
