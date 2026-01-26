@@ -29,6 +29,13 @@ def malibu_phase_map_for_button(button):
   return {v: i for i, v in enumerate(MALIBU_BUTTON_TABLE[key])}
 
 
+def malibu_phase_map_for_acc(acc_value):
+  seq = MALIBU_BUTTON_TABLE.get(acc_value)
+  if not seq:
+    return None
+  return {v: i for i, v in enumerate(seq)}
+
+
 def create_buttons_malibu(packer, bus, button, phase, prefix=0x41):
   key = MALIBU_BUTTON_MAP.get(button, None)
   if key is None or key not in MALIBU_BUTTON_TABLE:
@@ -275,12 +282,10 @@ def create_gm_cc_spam_command(packer, controller, CS, actuators, frogpilot_toggl
     if CS.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
       phase_map = malibu_phase_map_for_button(cruiseBtn)
       if phase_map:
-        if CS.steering_button_checksum in phase_map:
-          controller.malibu_button_phase = (phase_map[CS.steering_button_checksum] + 1) % 4
-        else:
-          controller.malibu_button_phase = (controller.malibu_button_phase + 1) % 4
-        return [create_buttons_malibu(packer, CanBus.POWERTRAIN, cruiseBtn, controller.malibu_button_phase,
+        msgs = [create_buttons_malibu(packer, CanBus.POWERTRAIN, cruiseBtn, controller.malibu_button_phase,
                                       CS.steering_button_prefix)]
+        controller.malibu_button_phase = (controller.malibu_button_phase + 1) % 4
+        return msgs
     idx = (CS.buttons_counter + 1) % 4  # Need to predict the next idx for '22-23 EUV
     return [create_buttons(packer, CanBus.POWERTRAIN, idx, cruiseBtn)]
   else:
