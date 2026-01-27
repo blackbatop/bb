@@ -26,7 +26,6 @@ typedef enum {
 static GmHardware gm_hw = GM_ASCM;
 static bool gm_pcm_cruise = false;
 static bool gm_sdgm = false;
-static bool gm_ascm_int = false;
 
 static void gm_rx_hook(const CANPacket_t *msg) {
   const int GM_STANDSTILL_THRSLD = 10;  // 0.311kph
@@ -159,7 +158,6 @@ static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_EV = 4;
   const uint16_t GM_PARAM_HW_SDGM = 8;
   const uint16_t GM_PARAM_HW_ASCM_INT = 16;
-  gm_ascm_int = GET_FLAG(param, GM_PARAM_HW_ASCM_INT);
 
   // common safety checks assume unscaled integer values
   static const int GM_GAS_TO_CAN = 8;  // 1 / 0.125
@@ -202,9 +200,9 @@ static safety_config gm_init(uint16_t param) {
 
   if (GET_FLAG(param, GM_PARAM_HW_CAM)) {
     gm_hw = GM_CAM;
-    if gm_ascm_int {
+    if (GET_FLAG(param, GM_PARAM_HW_ASCM_INT)) {
       gm_long_limits = &GM_ASCM_LONG_LIMITS;
-    } else{
+    } else {
       gm_long_limits = &GM_CAM_LONG_LIMITS;
     }
   } else {
