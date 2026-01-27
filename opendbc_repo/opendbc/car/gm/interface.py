@@ -110,6 +110,7 @@ class CarInterface(CarInterfaceBase):
       if candidate in ASCM_INT:
         ret.minSteerSpeed = 7 * CV.KPH_TO_MS
         ret.minEnableSpeed = 18 * CV.MPH_TO_MS
+        ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.HW_ASCM_INT.value
 
       # Tuning for experimental long
       ret.longitudinalTuning.kiV = [2.0, 1.5]

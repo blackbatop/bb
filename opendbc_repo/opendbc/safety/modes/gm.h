@@ -4,14 +4,15 @@
 
 // TODO: do checksum and counter checks. Add correct timestep, 0.1s for now.
 #define GM_COMMON_RX_CHECKS \
-    {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
-    {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
-    {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
+    {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }, { 0 }}}, \
+    {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }, { 0 }}}, \
+    {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }, { 0 }}}, \
     {.msg = {{0xBE, 0, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},    /* Volt, Silverado, Acadia Denali */ \
              {0xBE, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},    /* Bolt EUV */ \
-             {0xBE, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}}},  /* Escalade */ \
-    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
-    {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
+             {0xBE, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},    /* Escalade */ \
+             {0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}}},  /* Volt ASCM */ \
+    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }, { 0 }}}, \
+    {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }, { 0 }}}, \
 
 static const LongitudinalLimits *gm_long_limits;
 
@@ -160,6 +161,8 @@ static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_HW_CAM = 1;
   const uint16_t GM_PARAM_EV = 4;
   const uint16_t GM_PARAM_HW_SDGM = 8;
+  const uint16_t GM_PARAM_HW_ASCM_INT = 16;
+  gm_ascm_int = GET_FLAG(param, GM_PARAM_HW_ASCM_INT);
 
   // common safety checks assume unscaled integer values
   static const int GM_GAS_TO_CAN = 8;  // 1 / 0.125
@@ -202,7 +205,11 @@ static safety_config gm_init(uint16_t param) {
 
   if (GET_FLAG(param, GM_PARAM_HW_CAM)) {
     gm_hw = GM_CAM;
-    gm_long_limits = &GM_CAM_LONG_LIMITS;
+    if gm_ascm_int {
+      gm_long_limits = &GM_ASCM_LONG_LIMITS;
+    } else{
+      gm_long_limits = &GM_CAM_LONG_LIMITS;
+    }
   } else {
     gm_hw = GM_ASCM;
     gm_long_limits = &GM_ASCM_LONG_LIMITS;
