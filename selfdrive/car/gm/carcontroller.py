@@ -102,8 +102,7 @@ class CarController(CarControllerBase):
     if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
       phase_map = gmcan.malibu_phase_map_for_acc(CS.cruise_buttons)
       if phase_map and CS.steering_button_checksum in phase_map:
-        # Malibu appears to need a larger lead to stay in phase with the camera.
-        phase = (phase_map[CS.steering_button_checksum] + 2) % 4
+        phase = (phase_map[CS.steering_button_checksum] + 1) % 4
         self.malibu_cancel_phase = phase
         self.malibu_button_phase = phase
 
