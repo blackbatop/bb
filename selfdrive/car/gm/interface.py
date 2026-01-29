@@ -335,7 +335,7 @@ class CarInterface(CarInterfaceBase):
       ret.flags |= GMFlags.PEDAL_LONG.value
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_PEDAL_LONG
       ret.longitudinalTuning.kiBP = [0.0, 5., 35.]
-      ret.longitudinalTuning.kiV = [0.0, 0.35, 0.5]
+      ret.longitudinalTuning.kiV = [0.0, 0.18, 0.25]
       ret.longitudinalTuning.kfDEPRECATED = 0.15
       ret.stoppingDecelRate = 0.8
       ret.minEnableSpeed = -1
