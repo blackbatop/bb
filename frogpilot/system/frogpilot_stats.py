@@ -150,11 +150,9 @@ def send_stats():
     if frogpilot_toggles.car_make == "mock":
       return
 
-    bucket = os.environ.get("STATS_BUCKET", "")
-    org_ID = os.environ.get("STATS_ORG_ID", "")
-    token = os.environ.get("STATS_TOKEN", "")
-    url = os.environ.get("STATS_URL", "")
-
+    bucket = "StarPilot"
+    org_ID = "StarPilot"
+    url = "https://stats.firestar.link"
     frogpilot_stats = json.loads(params.get("FrogPilotStats") or "{}")
 
     location = json.loads(params.get("LastGPSPosition") or "{}")
@@ -223,7 +221,7 @@ def send_stats():
 
     all_points = [user_point] + update_branch_commits(now)
 
-    client = InfluxDBClient(org=org_ID, token=token, url=url)
+    client = InfluxDBClient(org=org_ID, token=org_ID, url=url)
     client.write_api(write_options=SYNCHRONOUS).write(bucket=bucket, org=org_ID, record=all_points)
     print("Successfully sent FrogPilot stats!")
   except Exception as exception:
