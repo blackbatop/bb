@@ -52,8 +52,6 @@ SILVERADO_KI_POS_MULT = 0.70
 SILVERADO_KI_NEG_MULT = 0.50
 SILVERADO_KP_LOW_SPEED_BP = [0.0, 15.0 * CV.MPH_TO_MS, 35.0 * CV.MPH_TO_MS]
 SILVERADO_KP_LOW_SPEED_V = [0.92, 0.96, 1.0]
-SILVERADO_KP_HI_SPEED_BP = [35.0 * CV.MPH_TO_MS, 70.0 * CV.MPH_TO_MS]
-SILVERADO_KP_HI_SPEED_V = [1.00, 1.04]
 SILVERADO_KI_GAIN = 1.25
 SILVERADO_LSF_MULT_MAX = 1.6
 SILVERADO_KP_FLOOR = 0.08
@@ -160,9 +158,7 @@ class LatControlTorque(LatControl):
         # Silverado-only split tuning to reduce left bias, wander, and low-lat oscillations.
         base_kp_mult = SILVERADO_KP_POS_MULT if leftward else SILVERADO_KP_NEG_MULT
         low_speed_kp_mult = np.interp(CS.vEgo, SILVERADO_KP_LOW_SPEED_BP, SILVERADO_KP_LOW_SPEED_V)
-        hi_speed_kp_mult = np.interp(CS.vEgo, SILVERADO_KP_HI_SPEED_BP, SILVERADO_KP_HI_SPEED_V)
         kp_mult = base_kp_mult * low_speed_kp_mult * ((1.0 - SILVERADO_LEFT_P_REDUCTION) if leftward else 1.0)
-        kp_mult *= hi_speed_kp_mult
         ki_mult = (SILVERADO_KI_POS_MULT if leftward else SILVERADO_KI_NEG_MULT) * SILVERADO_KI_GAIN
         self.pid._k_p = [self.base_kp[0], [k * kp_mult for k in self.base_kp[1]]]
         self.pid._k_i = [self.base_ki[0], [k * ki_mult for k in self.base_ki[1]]]
