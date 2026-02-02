@@ -42,16 +42,7 @@ FF_SCALE_BLEND_LAT_ACCEL = 0.05
 DEADZONE_BOOST_LAT_ACCEL = 0.08
 UNWIND_D_DES_THRESHOLD = -1.0
 UNWIND_LAT_ACCEL_NEAR_ZERO = 0.3
-SILVERADO_FRICTION_POS_MULT = 1.03
-SILVERADO_FRICTION_NEG_MULT = 0.95
-SILVERADO_KP_POS_MULT = 0.95
-SILVERADO_KP_NEG_MULT = 1.07
-SILVERADO_KI_POS_MULT = 0.70
-SILVERADO_KI_NEG_MULT = 0.50
-SILVERADO_I_LATACCEL_MIN = 0.20
-SILVERADO_I_ERR_MIN = 0.08
-
-BOLT_CARS = (GM_CAR.CHEVROLET_BOLT_EUV, GM_CAR.CHEVROLET_BOLT_CC, GM_CAR.CHEVROLET_SILVERADO)
+BOLT_CARS = (GM_CAR.CHEVROLET_BOLT_EUV, GM_CAR.CHEVROLET_BOLT_CC)
 
 class LatControlTorque(LatControl):
   def __init__(self, CP, CI, dt):
@@ -73,7 +64,6 @@ class LatControlTorque(LatControl):
     self.prev_desired_lateral_accel = 0.0
 
     self.is_bolt = CP.carFingerprint in BOLT_CARS
-    self.is_silverado = CP.carFingerprint == GM_CAR.CHEVROLET_SILVERADO
     self.torque_ff_scale_pos = 1.0
     self.torque_ff_scale_neg = 1.0
     self.torque_deadzone_boost_neg = 0.0
@@ -85,8 +75,6 @@ class LatControlTorque(LatControl):
       self.torque_deadzone_boost_neg = float(getattr(self.torque_params, "kfDEPRECATED", 0.0))
       if self.torque_ki_mult > 0.0 and self.torque_ki_mult != 1.0:
         self.pid._k_i = [self.pid._k_i[0], [k * self.torque_ki_mult for k in self.pid._k_i[1]]]
-    self.base_kp = [self.pid._k_p[0][:], self.pid._k_p[1][:]]
-    self.base_ki = [self.pid._k_i[0][:], self.pid._k_i[1][:]]
 
   def update_live_torque_params(self, latAccelFactor, latAccelOffset, friction):
     self.torque_params.latAccelFactor = latAccelFactor
@@ -135,12 +123,6 @@ class LatControlTorque(LatControl):
       self.previous_measurement = measurement
 
       low_speed_factor = (np.interp(CS.vEgo, LOW_SPEED_X, LOW_SPEED_Y) / max(CS.vEgo, MIN_SPEED)) ** 2
-      if self.is_silverado:
-        # Silverado-only split tuning to reduce left bias, wander, and low-lat oscillations.
-        kp_mult = SILVERADO_KP_POS_MULT if setpoint >= 0.0 else SILVERADO_KP_NEG_MULT
-        ki_mult = SILVERADO_KI_POS_MULT if setpoint >= 0.0 else SILVERADO_KI_NEG_MULT
-        self.pid._k_p = [self.base_kp[0], [k * kp_mult for k in self.base_kp[1]]]
-        self.pid._k_i = [self.base_ki[0], [k * ki_mult for k in self.base_ki[1]]]
       current_kp = np.interp(CS.vEgo, self.pid._k_p[0], self.pid._k_p[1])
       error = setpoint - measurement
       error_with_lsf = error * (1 + low_speed_factor / max(current_kp, 1e-3))
@@ -157,8 +139,6 @@ class LatControlTorque(LatControl):
         ff *= ff_scale
       friction = get_friction(error_with_lsf + JERK_GAIN * desired_lateral_jerk, lateral_accel_deadzone,
                               get_friction_threshold(CS.vEgo), self.torque_params)
-      if self.is_silverado:
-        friction *= SILVERADO_FRICTION_POS_MULT if setpoint >= 0.0 else SILVERADO_FRICTION_NEG_MULT
       ff += friction
       deadzone_boost_active = False
       if self.is_bolt and self.torque_deadzone_boost_neg > 0.0 and gravity_adjusted_future_lateral_accel < 0.0:
@@ -171,8 +151,6 @@ class LatControlTorque(LatControl):
         self.pid.reset()
       freeze_integrator = (steer_limited_by_safety or CS.steeringPressed or
                            CS.vEgo < self.low_speed_reset_threshold or unwind_detected)
-      if self.is_silverado and abs(setpoint) < SILVERADO_I_LATACCEL_MIN and abs(error) < SILVERADO_I_ERR_MIN:
-        freeze_integrator = True
       output_lataccel = self.pid.update(pid_log.error, error_rate=-measurement_rate, speed=CS.vEgo, feedforward=ff, freeze_integrator=freeze_integrator)
       output_torque = self.torque_from_lateral_accel(output_lataccel, self.torque_params)
 
