@@ -254,8 +254,8 @@ class CarInterface(CarInterfaceBase):
       ret.lateralTuning.torque.ki = 1.07  # torque_ff_scale_neg
       ret.lateralTuning.torque.kd = 0.93  # torque_ki_mult
       ret.lateralTuning.torque.kfDEPRECATED = 0.02  # torque_deadzone_boost_neg (lat accel)
-      ret.lateralTuning.torque.latAccelFactor = 0.78
-      ret.lateralTuning.torque.friction = 0.155
+      # Silverado-only: reduce base friction for left bias 
+      ret.lateralTuning.torque.friction *= 0.93
 
     elif candidate in (CAR.CHEVROLET_EQUINOX, CAR.CHEVROLET_EQUINOX_CC):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
