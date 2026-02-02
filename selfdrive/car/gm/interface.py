@@ -242,20 +242,13 @@ class CarInterface(CarInterfaceBase):
       ret.flags |= GMFlags.PEDAL_LONG.value
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_NO_ACC
 
-    elif candidate == CAR.CHEVROLET_SILVERADO:
+    if candidate == CAR.CHEVROLET_SILVERADO:
       # On the Bolt, the ECM and camera independently check that you are either above 5 kph or at a stop
       # with foot on brake to allow engagement, but this platform only has that check in the camera.
       # TODO: check if this is split by EV/ICE with more platforms in the future
       if ret.openpilotLongitudinalControl:
         ret.minEnableSpeed = -1.
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
-      # Silverado torque lateral tuning overrides (stored in unused torque fields).
-      ret.lateralTuning.torque.kp = 1.03  # torque_ff_scale_pos
-      ret.lateralTuning.torque.ki = 1.07  # torque_ff_scale_neg
-      ret.lateralTuning.torque.kd = 0.93  # torque_ki_mult
-      ret.lateralTuning.torque.kfDEPRECATED = 0.02  # torque_deadzone_boost_neg (lat accel)
-      # Silverado-only: reduce base friction for left bias 
-      ret.lateralTuning.torque.friction *= 0.93
 
     elif candidate in (CAR.CHEVROLET_EQUINOX, CAR.CHEVROLET_EQUINOX_CC):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
