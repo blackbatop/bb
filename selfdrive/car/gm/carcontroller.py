@@ -381,11 +381,6 @@ class CarController(CarControllerBase):
             can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, (CS.buttons_counter + 1) % 4, CruiseButtons.DECEL_SET))
         if self.CP.enableGasInterceptor:
           can_sends.append(create_gas_interceptor_command(self.packer_pt, interceptor_gas_cmd, idx))
-          # Dashboard display for PEDAL_LONG (matches BOLT_EUV behavior)
-          if self.CP.flags & GMFlags.PEDAL_LONG.value:
-            send_fcw = hud_alert == VisualAlert.fcw
-            can_sends.append(gmcan.create_acc_dashboard_command(self.packer_pt, CanBus.POWERTRAIN, CC.enabled,
-                                                                hud_v_cruise * CV.MS_TO_KPH, hud_control, send_fcw))
         if self.CP.carFingerprint not in CC_ONLY_CAR:
           friction_brake_bus = CanBus.CHASSIS
           # GM Camera exceptions
