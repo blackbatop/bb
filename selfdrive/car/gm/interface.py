@@ -28,20 +28,20 @@ ACCELERATOR_POS_MSG = 0xbe
 
 NON_LINEAR_TORQUE_PARAMS = {
   CAR.CHEVROLET_BOLT_EUV: {
-    "left": [1.8, 1.1, 0.27, 0.0],
-    "right": [2.0, 1.0, 0.205, 0.0],
+    "left":  [1.85, 1.8, 0.1, 0, 0.3],
+    "right": [1.85, 1.8, 0.1, 0, 0.3],
   },
   CAR.CHEVROLET_BOLT_CC: {
-    "left": [1.8, 1.1, 0.27, 0.0],
-    "right": [2.0, 1.0, 0.205, 0.0],
+    "left": [1.85, 1.8, 0.1, 0, 0.3],
+    "right": [1.85, 1.8, 0.1, 0, 0.3],
   },
   CAR.GMC_ACADIA: {
-    "left": [4.78003305, 1.0, 0.3122, 0.05591772],
-    "right": [4.78003305, 1.0, 0.3122, 0.05591772],
+    "left": [4.78003305, 1.0, 0.3122, 0.05591772, 0.],
+    "right": [4.78003305, 1.0, 0.3122, 0.05591772, 0.],
   },
   CAR.CHEVROLET_SILVERADO: {
-    "left": [3.29974374, 1.0, 0.25571356, 0.0465122],
-    "right": [3.29974374, 1.0, 0.25571356, 0.0465122],
+    "left": [3.29974374, 1.0, 0.25571356, 0.0465122, 0.],
+    "right": [3.29974374, 1.0, 0.25571356, 0.0465122, 0.],
   },
 }
 
@@ -74,8 +74,8 @@ class CarInterface(CarInterfaceBase):
       assert non_linear_torque_params, "The params are not defined"
       # Left is positive
       side_key = "left" if lateral_acceleration >= 0 else "right"
-      a, b, c, d = non_linear_torque_params[side_key]
-      sig_input = a * lateral_acceleration
+      a, b, c, d, e = non_linear_torque_params[side_key]
+      sig_input = a * lateral_acceleration + e
       sig = np.sign(sig_input) * (1 / (1 + exp(-fabs(sig_input))) - 0.5)
       steer_torque = (sig * b) + (lateral_acceleration * c) + d
       return float(steer_torque)
