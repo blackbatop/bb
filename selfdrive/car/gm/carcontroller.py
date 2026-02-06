@@ -214,7 +214,7 @@ class CarController(CarControllerBase):
             and delta_before_ns >= gap_ns):
           # Non-blocking 1 ms spacing for paddle frames
           if now_nanos - self.last_paddle_ts_ns >= PADDLE_NONBLOCK_GAP_NS:
-            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
+            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True, self.CP))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
             self.last_paddle_ts_ns = now_nanos
           self.last_spoof_ts_ns = now_nanos
@@ -233,7 +233,7 @@ class CarController(CarControllerBase):
             and delta_before_ns >= gap_ns):
           # Non-blocking 1 ms spacing for paddle frames
           if now_nanos - self.last_paddle_ts_ns >= PADDLE_NONBLOCK_GAP_NS:
-            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True))
+            paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, True, self.CP))
             paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, True))
             self.last_paddle_ts_ns = now_nanos
           self.last_spoof_ts_ns = now_nanos
@@ -267,7 +267,7 @@ class CarController(CarControllerBase):
           if (delta_after_ns >= gap_ns and delta_before_ns >= gap_ns):
             # Non-blocking 1 ms spacing for paddle frames
             if now_nanos - self.last_paddle_ts_ns >= PADDLE_NONBLOCK_GAP_NS:
-              paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False))
+              paddle_sends.append(gmcan.create_prndl2_command(self.packer_pt, CanBus.POWERTRAIN, False, self.CP))
               paddle_sends.append(gmcan.create_regen_paddle_command(self.packer_pt, CanBus.POWERTRAIN, False))
               self.last_paddle_ts_ns = now_nanos
             self.off_sent[i] = True

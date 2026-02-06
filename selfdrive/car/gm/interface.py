@@ -27,21 +27,29 @@ CAM_MSG = 0x320  # AEBCmd
 ACCELERATOR_POS_MSG = 0xbe
 
 NON_LINEAR_TORQUE_PARAMS = {
-  CAR.CHEVROLET_BOLT_EUV: {
+  CAR.CHEVROLET_BOLT_ACC_2022_2023: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
+  CAR.CHEVROLET_BOLT_CC_2022_2023: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
+  CAR.CHEVROLET_BOLT_CC_2019_2021: {
     "left": [1.8, 1.1, 0.27, 0.0],
     "right": [2.0, 1.0, 0.205, 0.0],
   },
-  CAR.CHEVROLET_BOLT_CC: {
-    "left": [1.8, 1.1, 0.27, 0.0],
-    "right": [2.0, 1.0, 0.205, 0.0],
+  CAR.CHEVROLET_BOLT_CC_2017: {
+    "left": [2.15, 1.0, 0.21, 0.0],
+    "right": [2.15, 1.0, 0.21, 0.0],
   },
   CAR.GMC_ACADIA: {
     "left": [4.78003305, 1.0, 0.3122, 0.05591772],
     "right": [4.78003305, 1.0, 0.3122, 0.05591772],
   },
   CAR.CHEVROLET_SILVERADO: {
-    "left": [3.29974374, 1.0, 0.25571356, 0.0465122],
-    "right": [3.29974374, 1.0, 0.25571356, 0.0465122],
+    "left": [3.8, 0.81, 0.21, 0.0465122],
+    "right": [3.8, 0.81, 0.21, 0.0465122],
   },
 }
 
@@ -235,7 +243,7 @@ class CarInterface(CarInterfaceBase):
         ret.steerActuatorDelay = 0.2
         CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
-    elif candidate in (CAR.CHEVROLET_BOLT_EUV, CAR.CHEVROLET_BOLT_CC):
+    elif candidate in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_CC_2022_2023, CAR.CHEVROLET_BOLT_CC_2019_2021, CAR.CHEVROLET_BOLT_CC_2017):
       ret.steerActuatorDelay = 0.2
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
@@ -244,6 +252,9 @@ class CarInterface(CarInterfaceBase):
       ret.lateralTuning.torque.ki = 1.07
       ret.lateralTuning.torque.kd = 0.93
       ret.lateralTuning.torque.kfDEPRECATED = 0.02
+
+      if candidate == CAR.CHEVROLET_BOLT_CC_2017:
+        ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_BOLT_2017
 
       if ret.enableGasInterceptor:
         # ACC Bolts use pedal for full longitudinal control, not just sng

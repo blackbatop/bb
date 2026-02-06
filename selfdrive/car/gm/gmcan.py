@@ -81,7 +81,7 @@ def create_friction_brake_command(packer, bus, apply_brake, idx, enabled, near_s
   mode = 0x1
 
   # TODO: Understand this better. Volts and ICE Camera ACC cars are 0x1 when enabled with no brake
-  if enabled and CP.carFingerprint in (CAR.CHEVROLET_BOLT_EUV,):
+  if enabled and CP.carFingerprint in (CAR.CHEVROLET_BOLT_ACC_2022_2023,):
     mode = 0x9
 
   if apply_brake > 0:
@@ -177,8 +177,11 @@ def create_lka_icon_command(bus, active, critical, steer):
     dat = b"\x00\x00\x00"
   return make_can_msg(0x104c006c, dat, bus)
 
-def create_prndl2_command(packer, bus, press_regen_paddle):
-  prndl2_value = 7 if press_regen_paddle else 6
+def create_prndl2_command(packer, bus, press_regen_paddle, CP):
+  if CP.carFingerprint in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_CC_2022_2023):
+    prndl2_value = 5 if press_regen_paddle else 6
+  else:
+    prndl2_value = 7 if press_regen_paddle else 6
   manual_mode = 1 if press_regen_paddle else 0
   values = {
     "Byte0": 0x0C,

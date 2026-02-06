@@ -273,7 +273,10 @@ void FrogPilotSettingsWindow::updateVariables() {
     hasSNG = hasOpenpilotLongitudinal && CP.getAutoResumeSng();
     hasZSS = frogpilot_toggles.value("has_zss").toBool();
     isAngleCar = CP.getSteerControlType() == cereal::CarParams::SteerControlType::ANGLE;
-    isBolt = carFingerprint == "CHEVROLET_BOLT_CC" || carFingerprint == "CHEVROLET_BOLT_EUV";
+    isBolt = carFingerprint == "CHEVROLET_BOLT_ACC_2022_2023" ||
+             carFingerprint == "CHEVROLET_BOLT_CC_2022_2023" ||
+             carFingerprint == "CHEVROLET_BOLT_CC_2019_2021" ||
+             carFingerprint == "CHEVROLET_BOLT_CC_2017";
     isGM = carMake == "gm";
     isHKG = carMake == "hyundai";
     isHKGCanFd = isHKG && safetyModel == cereal::CarParams::SafetyModel::HYUNDAI_CANFD;

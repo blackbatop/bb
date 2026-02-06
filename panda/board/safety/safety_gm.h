@@ -9,6 +9,17 @@ const SteeringLimits GM_STEERING_LIMITS = {
   .type = TorqueDriverLimited,
 };
 
+const SteeringLimits GM_BOLT_2017_STEERING_LIMITS = {
+  .max_steer = 450,
+  .max_rate_up = 15,
+  .max_rate_down = 34,
+  .driver_torque_allowance = 78,
+  .driver_torque_factor = 6,
+  .max_rt_delta = 345,
+  .max_rt_interval = 200000,
+  .type = TorqueDriverLimited,
+};
+
 const LongitudinalLimits GM_ASCM_LONG_LIMITS = {
   .max_gas = 8191,
   .min_gas = 5500,
@@ -23,6 +34,7 @@ const LongitudinalLimits GM_CAM_LONG_LIMITS = {
   .max_brake = 400,
 };
 
+const SteeringLimits *gm_steer_limits;
 const LongitudinalLimits *gm_long_limits;
 
 const int GM_STANDSTILL_THRSLD = 10;  // 0.311kph
@@ -69,6 +81,7 @@ const uint16_t GM_PARAM_NO_CAMERA = 32;
 const uint16_t GM_PARAM_NO_ACC = 64;
 const uint16_t GM_PARAM_PEDAL_LONG = 128;  // TODO: this can be inferred
 const uint16_t GM_PARAM_PEDAL_INTERCEPTOR = 256;
+const uint16_t GM_PARAM_BOLT_2017 = 512;
 
 enum {
   GM_BTN_UNPRESS = 1,
@@ -214,7 +227,7 @@ static bool gm_tx_hook(const CANPacket_t *to_send) {
 
     bool steer_req = GET_BIT(to_send, 3U);
 
-    if (steer_torque_cmd_checks(desired_torque, steer_req, GM_STEERING_LIMITS)) {
+    if (steer_torque_cmd_checks(desired_torque, steer_req, *gm_steer_limits)) {
       tx = false;
     }
   }
@@ -311,6 +324,7 @@ static safety_config gm_init(uint16_t param) {
   }
 
   gm_force_ascm = GET_FLAG(param, GM_PARAM_HW_ASCM_LONG);
+  gm_steer_limits = GET_FLAG(param, GM_PARAM_BOLT_2017) ? &GM_BOLT_2017_STEERING_LIMITS : &GM_STEERING_LIMITS;
 
   if (gm_hw == GM_ASCM || gm_force_ascm) {
       gm_long_limits = &GM_ASCM_LONG_LIMITS;
