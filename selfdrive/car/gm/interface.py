@@ -35,6 +35,10 @@ NON_LINEAR_TORQUE_PARAMS = {
 
 
 class CarInterface(CarInterfaceBase):
+  def __init__(self, CP, FPCP, CarController, CarState):
+    super().__init__(CP, FPCP, CarController, CarState)
+    self.steer_offset = 0.0
+
   @staticmethod
   def get_pid_accel_limits(CP, current_speed, cruise_speed):
     return CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX
@@ -76,20 +80,28 @@ class CarInterface(CarInterfaceBase):
       torque_values, lataccel_values = self.get_lataccel_torque_siglin()
 
       def torque_from_lateral_accel_siglin(lateral_acceleration: float, torque_params: car.CarParams.LateralTorqueTuning):
-        return np.interp(lateral_acceleration, lataccel_values, torque_values)
+        return float(np.interp(lateral_acceleration, lataccel_values, torque_values) + self.steer_offset)
       return torque_from_lateral_accel_siglin
     else:
-      return self.torque_from_lateral_accel_linear
+      def torque_from_lateral_accel_linear(lateral_acceleration: float, torque_params: car.CarParams.LateralTorqueTuning):
+        return self.torque_from_lateral_accel_linear(lateral_acceleration, torque_params) + self.steer_offset
+      return torque_from_lateral_accel_linear
 
   def lateral_accel_from_torque(self) -> LateralAccelFromTorqueCallbackType:
     if self.CP.carFingerprint in NON_LINEAR_TORQUE_PARAMS:
       torque_values, lataccel_values = self.get_lataccel_torque_siglin()
 
       def lateral_accel_from_torque_siglin(torque: float, torque_params: car.CarParams.LateralTorqueTuning):
-        return np.interp(torque, torque_values, lataccel_values)
+        return np.interp(torque - self.steer_offset, torque_values, lataccel_values)
       return lateral_accel_from_torque_siglin
     else:
-      return self.lateral_accel_from_torque_linear
+      def lateral_accel_from_torque_linear(torque: float, torque_params: car.CarParams.LateralTorqueTuning):
+        return self.lateral_accel_from_torque_linear(torque - self.steer_offset, torque_params)
+      return lateral_accel_from_torque_linear
+
+  def update(self, c: car.CarControl, can_strings: list[bytes], frogpilot_toggles) -> car.CarState:
+    self.steer_offset = float(getattr(frogpilot_toggles, "steer_offset", 0.0))
+    return super().update(c, can_strings, frogpilot_toggles)
 
   @staticmethod
   def _get_params(ret, candidate, fingerprint, car_fw, experimental_long, docs, frogpilot_toggles):
