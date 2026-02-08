@@ -1199,6 +1199,22 @@
         <source>&lt;b&gt;Twilsonco's torque-based adjustments to smoothen out steering in curves.&lt;/b&gt;</source>
         <translation type="gpt-5-generated">&lt;b&gt;Ribbit! Twilsonco’s torque tweaks smooth steering through curves, croak.&lt;/b&gt;</translation>
     </message>
+    <message>
+        <source>Steer Offset (Default: %1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Steer Offset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Offsets steering torque to help compensate for alignment or tire issues.&lt;/b&gt; More negative pulls the car right; more positive pulls it left. Most users should not need to touch this.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset &lt;b&gt;Steer Offset&lt;/b&gt; to its default value?</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotLongitudinalPanel</name>
