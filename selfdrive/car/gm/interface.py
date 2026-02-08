@@ -48,8 +48,8 @@ NON_LINEAR_TORQUE_PARAMS = {
     "right": [4.78003305, 1.0, 0.3122, 0.05591772],
   },
   CAR.CHEVROLET_SILVERADO: {
-    "left": [3.8, 0.81, 0.21, 0.0465122],
-    "right": [3.8, 0.81, 0.21, 0.0465122],
+    "left": [3.8, 0.81, 0.24, 0.0465122],
+    "right": [3.8, 0.81, 0.24, 0.0465122],
   },
 }
 
@@ -150,11 +150,14 @@ class CarInterface(CarInterfaceBase):
     ret.longitudinalTuning.kiBP = [5., 35., 60.]
 
     if candidate in CAMERA_ACC_CAR:
-      ret.experimentalLongitudinalAvailable = candidate not in CC_ONLY_CAR
+      # For ACC models with pedal interceptor, behave like CC_ONLY_CAR
+      ret.experimentalLongitudinalAvailable = (candidate not in CC_ONLY_CAR) and not ret.enableGasInterceptor
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.radarUnavailable = True  # no radar
-      ret.pcmCruise = True
+      # Only use pcmCruise if no pedal interceptor (bolt_cc style behavior)
+      ret.pcmCruise = not ret.enableGasInterceptor
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
+      # Use default minEnableSpeed for ACC models (will be overridden by pedal interceptor section if present)
       ret.minEnableSpeed = 5 * CV.KPH_TO_MS
       ret.minSteerSpeed = 10 * CV.KPH_TO_MS
 
@@ -260,7 +263,13 @@ class CarInterface(CarInterfaceBase):
         # ACC Bolts use pedal for full longitudinal control, not just sng
         ret.flags |= GMFlags.PEDAL_LONG.value
 
-    elif candidate == CAR.CHEVROLET_SILVERADO:
+    # Enable pedal interceptor for ACC models when detected
+    if candidate in CAMERA_ACC_CAR and ret.enableGasInterceptor:
+      # ACC models with pedal interceptor get full pedal longitudinal control
+      ret.flags |= GMFlags.PEDAL_LONG.value
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_NO_ACC
+
+    if candidate == CAR.CHEVROLET_SILVERADO:
       # On the Bolt, the ECM and camera independently check that you are either above 5 kph or at a stop
       # with foot on brake to allow engagement, but this platform only has that check in the camera.
       # TODO: check if this is split by EV/ICE with more platforms in the future
@@ -320,7 +329,7 @@ class CarInterface(CarInterfaceBase):
       ret.stoppingControl = True
       ret.autoResumeSng = True
 
-      if candidate in CC_ONLY_CAR: #pedal interceptor tuning
+      if candidate in CC_ONLY_CAR or (candidate in CAMERA_ACC_CAR and ret.enableGasInterceptor): #pedal interceptor tuning
         ret.flags |= GMFlags.PEDAL_LONG.value
         ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_PEDAL_LONG
         # Note: Low speed, stop and go not tested. Should be fairly smooth on highway
@@ -346,8 +355,8 @@ class CarInterface(CarInterfaceBase):
       if not ret.enableGasInterceptor and candidate in CC_ONLY_CAR: #redneck tuning
         ret.longitudinalTuning.kpBP = [10.7, 10.8, 28.]  # 10.7 m/s == 24 mph
         ret.longitudinalTuning.kpV = [0., 5., 2.]  # set lower end to 0 since we can't drive below that speed
-        ret.longitudinalTuning.deadzoneBP = [0.]
-        ret.longitudinalTuning.deadzoneV = [0.9]  # == 2 km/h/s, 1.25 mph/s
+        ret.longitudinalTuning.deadzoneBP = [0., 1.]
+        ret.longitudinalTuning.deadzoneV = [0.9, 0.9]  # == 2 km/h/s, 1.25 mph/s
         ret.longitudinalActuatorDelay = 1.  # TODO: measure this
         ret.longitudinalTuning.kiBP = [0.]
         ret.longitudinalTuning.kiV = [0.1]
