@@ -409,6 +409,8 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("SteerDelayStock", "", 3, ""),
   ("SteerFriction", "", 3, ""),
   ("SteerFrictionStock", "", 3, ""),
+  ("SteerOffset", "", 3, ""),
+  ("SteerOffsetStock", "", 3, ""),
   ("SteerKP", "", 3, ""),
   ("SteerKPStock", "", 3, ""),
   ("SteerLatAccel", "", 3, ""),
@@ -615,6 +617,7 @@ class FrogPilotVariables:
     toggle.steerActuatorDelay = np.clip(params.get_float("SteerDelay"), 0.01, 1.0) if advanced_lateral_tuning and tuning_level >= level["SteerDelay"] else steerActuatorDelay
     toggle.use_custom_steerActuatorDelay = bool(round(toggle.steerActuatorDelay, 2) != round(steerActuatorDelay, 2))
     toggle.friction = np.clip(params.get_float("SteerFriction"), 0, 0.5) if advanced_lateral_tuning and tuning_level >= level["SteerFriction"] else friction
+    toggle.steer_offset = np.clip(params.get_float("SteerOffset"), -0.2, 0.2) if advanced_lateral_tuning and tuning_level >= level["SteerOffset"] and toggle.car_make == "gm" else 0.0
     toggle.use_custom_friction = bool(round(toggle.friction, 2) != round(friction, 2)) and is_torque_car and not toggle.force_auto_tune or toggle.force_auto_tune_off
     toggle.steerKp = [[0], [np.clip(params.get_float("SteerKP"), steerKp * 0.5, steerKp * 1.5) if advanced_lateral_tuning and is_torque_car and tuning_level >= level["SteerKP"] else steerKp]]
     toggle.latAccelFactor = np.clip(params.get_float("SteerLatAccel"), latAccelFactor * 0.75, latAccelFactor * 1.25) if advanced_lateral_tuning and tuning_level >= level["SteerLatAccel"] else latAccelFactor
