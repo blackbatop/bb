@@ -535,6 +535,8 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"SteerDelayStock", PERSISTENT},
     {"SteerFriction", PERSISTENT},
     {"SteerFrictionStock", PERSISTENT},
+    {"SteerOffset", PERSISTENT},
+    {"SteerOffsetStock", PERSISTENT},
     {"SteerLatAccel", PERSISTENT},
     {"SteerLatAccelStock", PERSISTENT},
     {"SteerKP", PERSISTENT},
