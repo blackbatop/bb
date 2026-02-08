@@ -141,6 +141,10 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_GAS_INTERCEPTOR
       # When a pedal interceptor is present, always use normal longitudinal (block stock cruise)
       experimental_long = False
+      if candidate == CAR.CHEVROLET_BOLT_ACC_2022_2023:
+        # Hard-block pedal interceptor for ACC fingerprinted Bolts
+        ret.enableGasInterceptor = False
+        ret.safetyConfigs[0].safetyParam &= ~Panda.FLAG_GM_GAS_INTERCEPTOR
 
     if candidate in EV_CAR:
       ret.transmissionType = TransmissionType.direct
@@ -149,13 +153,13 @@ class CarInterface(CarInterfaceBase):
 
     ret.longitudinalTuning.kiBP = [5., 35., 60.]
 
+    is_bolt_2022_2023_pedal = candidate == CAR.CHEVROLET_BOLT_CC_2022_2023 and ret.enableGasInterceptor
+
     if candidate in CAMERA_ACC_CAR:
-      # For ACC models with pedal interceptor, behave like CC_ONLY_CAR
-      ret.experimentalLongitudinalAvailable = (candidate not in CC_ONLY_CAR) and not ret.enableGasInterceptor
+      ret.experimentalLongitudinalAvailable = candidate not in CC_ONLY_CAR
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.radarUnavailable = True  # no radar
-      # Only use pcmCruise if no pedal interceptor (bolt_cc style behavior)
-      ret.pcmCruise = not ret.enableGasInterceptor
+      ret.pcmCruise = True
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM
       # Use default minEnableSpeed for ACC models (will be overridden by pedal interceptor section if present)
       ret.minEnableSpeed = 5 * CV.KPH_TO_MS
@@ -175,6 +179,9 @@ class CarInterface(CarInterfaceBase):
         ret.pcmCruise = False
         ret.openpilotLongitudinalControl = True
         ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
+      if is_bolt_2022_2023_pedal:
+        ret.experimentalLongitudinalAvailable = False
+        ret.pcmCruise = False
 
     elif candidate in SDGM_CAR:
       ret.longitudinalTuning.kiV = [0., 0., 0.]  # TODO: tuning
@@ -264,10 +271,10 @@ class CarInterface(CarInterfaceBase):
         ret.flags |= GMFlags.PEDAL_LONG.value
 
     # Enable pedal interceptor for ACC models when detected
-    if candidate in CAMERA_ACC_CAR and ret.enableGasInterceptor:
-      # ACC models with pedal interceptor get full pedal longitudinal control
+    if is_bolt_2022_2023_pedal:
       ret.flags |= GMFlags.PEDAL_LONG.value
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_NO_ACC
+      ret.safetyConfigs[0].safetyParam |= Panda.FLAG_GM_BOLT_2022_PEDAL
 
     if candidate == CAR.CHEVROLET_SILVERADO:
       # On the Bolt, the ECM and camera independently check that you are either above 5 kph or at a stop

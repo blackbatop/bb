@@ -465,7 +465,8 @@ class CarController(CarControllerBase):
           if self.CP.carFingerprint in SDGM_CAR:
             can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, CS.buttons_counter, CruiseButtons.CANCEL))
           else:
-            can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.CAMERA, CS.buttons_counter, CruiseButtons.CANCEL))
+            cancel_bus = CanBus.POWERTRAIN if (self.CP.enableGasInterceptor and self.CP.carFingerprint == CAR.CHEVROLET_BOLT_CC_2022_2023) else CanBus.CAMERA
+            can_sends.append(gmcan.create_buttons(self.packer_pt, cancel_bus, CS.buttons_counter, CruiseButtons.CANCEL))
 
     if self.CP.networkLocation == NetworkLocation.fwdCamera:
       # Silence "Take Steering" alert sent by camera, forward PSCMStatus with HandsOffSWlDetectionStatus=1

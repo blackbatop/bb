@@ -82,6 +82,7 @@ const uint16_t GM_PARAM_NO_ACC = 64;
 const uint16_t GM_PARAM_PEDAL_LONG = 128;  // TODO: this can be inferred
 const uint16_t GM_PARAM_PEDAL_INTERCEPTOR = 256;
 const uint16_t GM_PARAM_BOLT_2017 = 512;
+const uint16_t GM_PARAM_BOLT_2022_PEDAL = 1024;
 
 enum {
   GM_BTN_UNPRESS = 1,
@@ -103,6 +104,7 @@ bool gm_pedal_long = false;
 bool gm_cc_long = false;
 bool gm_skip_relay_check = false;
 bool gm_force_ascm = false;
+bool gm_bolt_2022_pedal = false;
 
 static void handle_gm_wheel_buttons(const CANPacket_t *to_push) {
   int button = (GET_BYTE(to_push, 5) & 0x70U) >> 4;
@@ -175,6 +177,11 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
       }
     }
 
+    // Cruise check for ACC models with pedal interceptor - block stock ACC
+    if ((addr == 0x1C4) && gm_has_acc && enable_gas_interceptor && gm_bolt_2022_pedal) {
+      cruise_engaged_prev = false;
+    }
+
     // Cruise check for CC only cars
     if ((addr == 0x3D1) && !gm_has_acc) {
       bool cruise_engaged = (GET_BYTE(to_push, 4) >> 7) != 0U;
@@ -204,6 +211,12 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
       stock_ecu_detected = true;
     }
     generic_rx_checks(stock_ecu_detected);
+  }
+
+  // Cruise check for Gen2 Bolt (ASCMActiveCruiseControlStatus on bus 2)
+  if (gm_bolt_2022_pedal && (GET_ADDR(to_push) == 0x370) && (GET_BUS(to_push) == 2U)) {
+    bool cruise_engaged = (GET_BYTE(to_push, 2) >> 7) != 0U;  // ACCCmdActive
+    cruise_engaged_prev = cruise_engaged;
   }
 }
 
@@ -259,6 +272,9 @@ static bool gm_tx_hook(const CANPacket_t *to_send) {
     int button = (GET_BYTE(to_send, 5) >> 4) & 0x7U;
 
     bool allowed_btn = (button == GM_BTN_CANCEL) && cruise_engaged_prev;
+    if (gm_hw == GM_CAM && enable_gas_interceptor && gm_bolt_2022_pedal && button == GM_BTN_CANCEL) {
+      allowed_btn = true;
+    }
     // For standard CC, allow spamming of SET / RESUME
     if (gm_cc_long) {
       allowed_btn |= cruise_engaged_prev && (button == GM_BTN_SET || button == GM_BTN_RESUME || button == GM_BTN_UNPRESS);
@@ -301,10 +317,20 @@ static int gm_fwd_hook(int bus_num, int addr) {
     }
 
     if (bus_num == 2) {
-      // block lkas message and acc messages if gm_cam_long, forward all others
       bool is_lkas_msg = (addr == 0x180);
-      bool is_acc_msg = (addr == 0x315) || (addr == 0x2CB) || (addr == 0x370);
-      bool block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long) || (addr == 0x184);
+      bool block_msg = false;
+      if (gm_bolt_2022_pedal) {
+        // Block 0x370 only for experimental long without pedal interceptor
+        bool is_acc_msg = (addr == 0x315) || (addr == 0x2CB);
+        if (gm_cam_long && !enable_gas_interceptor) {
+          is_acc_msg = is_acc_msg || (addr == 0x370);
+        }
+        block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long);
+      } else {
+        // block lkas message and acc messages if gm_cam_long, forward all others
+        bool is_acc_msg = (addr == 0x315) || (addr == 0x2CB) || (addr == 0x370);
+        block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long) || (addr == 0x184);
+      }
       if (!block_msg) {
         bus_fwd = 0;
       }
@@ -336,6 +362,10 @@ static safety_config gm_init(uint16_t param) {
   gm_pedal_long = GET_FLAG(param, GM_PARAM_PEDAL_LONG);
   gm_cc_long = GET_FLAG(param, GM_PARAM_CC_LONG);
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG) && !gm_cc_long;
+  gm_bolt_2022_pedal = GET_FLAG(param, GM_PARAM_BOLT_2022_PEDAL);
+  if (gm_hw == GM_CAM && enable_gas_interceptor && gm_bolt_2022_pedal) {
+    gm_cam_long = true;
+  }
   gm_pcm_cruise = ((gm_hw == GM_CAM) && (!gm_cam_long || gm_cc_long) && !gm_force_ascm && !gm_pedal_long) || (gm_hw == GM_SDGM);
   gm_skip_relay_check = GET_FLAG(param, GM_PARAM_NO_CAMERA);
   gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
