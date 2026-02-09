@@ -5,7 +5,7 @@ from openpilot.common.numpy_fast import mean
 from opendbc.can.can_define import CANDefine
 from opendbc.can.parser import CANParser
 from openpilot.selfdrive.car.interfaces import CarStateBase
-from openpilot.selfdrive.car.gm.values import DBC, AccState, CanBus, STEER_THRESHOLD, GMFlags, CC_ONLY_CAR, CAMERA_ACC_CAR, SDGM_CAR, CC_REGEN_PADDLE_CAR, CAR
+from openpilot.selfdrive.car.gm.values import DBC, AccState, CanBus, STEER_THRESHOLD, GMFlags, CC_ONLY_CAR, CAMERA_ACC_CAR, SDGM_CAR, CC_REGEN_PADDLE_CAR, ASCM_INT, CAR
 
 TransmissionType = car.CarParams.TransmissionType
 NetworkLocation = car.CarParams.NetworkLocation
@@ -26,6 +26,8 @@ class CarState(CarStateBase):
     self.pt_lka_steering_cmd_counter = 0
     self.cam_lka_steering_cmd_counter = 0
     self.buttons_counter = 0
+    self.steering_button_checksum = 0
+    self.steering_button_prefix = 0x01
 
     self.prev_distance_button = 0
     self.distance_button = 0
@@ -36,13 +38,19 @@ class CarState(CarStateBase):
   def update(self, pt_cp, cam_cp, loopback_cp, frogpilot_toggles):
     ret = car.CarState.new_message()
     fp_ret = custom.FrogPilotCarState.new_message()
+    volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
+    sdgm_non_volt = self.CP.carFingerprint in SDGM_CAR and self.CP.carFingerprint not in volt_like
 
     self.prev_cruise_buttons = self.cruise_buttons
     self.prev_distance_button = self.distance_button
-    if self.CP.carFingerprint not in SDGM_CAR:
+    if not sdgm_non_volt:
       self.cruise_buttons = pt_cp.vl["ASCMSteeringButton"]["ACCButtons"]
       self.distance_button = pt_cp.vl["ASCMSteeringButton"]["DistanceButton"]
       self.buttons_counter = pt_cp.vl["ASCMSteeringButton"]["RollingCounter"]
+      self.steering_button_checksum = pt_cp.vl["ASCMSteeringButton"]["SteeringButtonChecksum"]
+      acc_always_one = pt_cp.vl["ASCMSteeringButton"]["ACCAlwaysOne"]
+      acc_hidden_bit = pt_cp.vl["ASCMSteeringButton"].get("ACCHiddenBit", 0)
+      self.steering_button_prefix = (int(acc_always_one) & 1) | ((int(acc_hidden_bit) & 1) << 6)
     else:
       self.cruise_buttons = cam_cp.vl["ASCMSteeringButton"]["ACCButtons"]
       self.distance_button = cam_cp.vl["ASCMSteeringButton"]["DistanceButton"]
@@ -78,20 +86,24 @@ class CarState(CarStateBase):
     # sample rear wheel speeds, standstill=True if ECM allows engagement with brake
     ret.standstill = ret.wheelSpeeds.rl <= STANDSTILL_THRESHOLD and ret.wheelSpeeds.rr <= STANDSTILL_THRESHOLD
 
-    ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(pt_cp.vl["ECMPRDNL2"]["PRNDL2"], None))
+    if pt_cp.vl["ECMPRDNL2"]["ManualMode"] == 1:
+      ret.gearShifter = self.parse_gear_shifter("T")
+    else:
+      ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(pt_cp.vl["ECMPRDNL2"]["PRNDL2"], None))
 
     if self.CP.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value:
       ret.brake = pt_cp.vl["EBCMBrakePedalPosition"]["BrakePedalPosition"] / 0xd0
     else:
       ret.brake = pt_cp.vl["ECMAcceleratorPos"]["BrakePedalPos"]
-    if self.CP.networkLocation == NetworkLocation.fwdCamera:
+    if (self.CP.flags & GMFlags.FORCE_BRAKE_C9.value) or ((self.CP.networkLocation == NetworkLocation.fwdCamera) and (self.CP.carFingerprint != CAR.CHEVROLET_BLAZER)):
       ret.brakePressed = pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0
     else:
       # Some Volt 2016-17 have loose brake pedal push rod retainers which causes the ECM to believe
       # that the brake is being intermittently pressed without user interaction.
       # To avoid a cruise fault we need to use a conservative brake position threshold
       # https://static.nhtsa.gov/odi/tsbs/2017/MC-10137629-9999.pdf
-      ret.brakePressed = ret.brake >= 8
+      analog_thresh = 0.10 if (self.CP.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value) else 8
+      ret.brakePressed = ret.brake >= analog_thresh
 
     # Regen braking is braking
     if self.CP.transmissionType == TransmissionType.direct:
@@ -120,7 +132,7 @@ class CarState(CarStateBase):
     ret.steerFaultTemporary = self.lkas_status == 2
     ret.steerFaultPermanent = self.lkas_status == 3
 
-    if self.CP.carFingerprint not in SDGM_CAR:
+    if not sdgm_non_volt:
       # 1 - open, 0 - closed
       ret.doorOpen = (pt_cp.vl["BCMDoorBeltStatus"]["FrontLeftDoor"] == 1 or
                       pt_cp.vl["BCMDoorBeltStatus"]["FrontRightDoor"] == 1 or
@@ -156,12 +168,12 @@ class CarState(CarStateBase):
     if self.CP.networkLocation == NetworkLocation.fwdCamera and not self.CP.flags & GMFlags.NO_CAMERA.value:
       if self.CP.carFingerprint not in CC_ONLY_CAR:
         ret.cruiseState.speed = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCSpeedSetpoint"] * CV.KPH_TO_MS
-      if self.CP.carFingerprint not in SDGM_CAR:
+      if self.CP.carFingerprint not in (SDGM_CAR | ASCM_INT):
         ret.stockAeb = cam_cp.vl["AEBCmd"]["AEBCmdActive"] != 0
       else:
         ret.stockAeb = False
       # openpilot controls nonAdaptive when not pcmCruise
-      if self.CP.pcmCruise:
+      if self.CP.pcmCruise and self.CP.carFingerprint not in ASCM_INT:
         ret.cruiseState.nonAdaptive = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCruiseState"] not in (2, 3)
     if self.CP.carFingerprint in CC_ONLY_CAR:
       ret.accFaulted = False
@@ -173,7 +185,7 @@ class CarState(CarStateBase):
         ret.cruiseState.enabled = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCmdActive"] != 0
 
     if self.CP.enableBsm:
-      if self.CP.carFingerprint not in SDGM_CAR:
+      if not sdgm_non_volt:
         ret.leftBlindspot = pt_cp.vl["BCMBlindSpotMonitor"]["LeftBSM"] == 1
         ret.rightBlindspot = pt_cp.vl["BCMBlindSpotMonitor"]["RightBSM"] == 1
       else:
@@ -182,7 +194,7 @@ class CarState(CarStateBase):
 
     # FrogPilot CarState functions
     self.lkas_previously_enabled = self.lkas_enabled
-    if self.CP.carFingerprint in SDGM_CAR:
+    if sdgm_non_volt:
       self.lkas_enabled = cam_cp.vl["ASCMSteeringButton"]["LKAButton"]
     else:
       self.lkas_enabled = pt_cp.vl["ASCMSteeringButton"]["LKAButton"]
@@ -197,10 +209,12 @@ class CarState(CarStateBase):
   def get_cam_can_parser(CP, FPCP):
     messages = []
     if CP.networkLocation == NetworkLocation.fwdCamera and not CP.flags & GMFlags.NO_CAMERA.value:
+      volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
+      sdgm_non_volt = CP.carFingerprint in SDGM_CAR and CP.carFingerprint not in volt_like
       messages += [
         ("ASCMLKASteeringCmd", 10),
       ]
-      if CP.carFingerprint in SDGM_CAR:
+      if sdgm_non_volt:
         messages += [
           ("BCMTurnSignals", 1),
           ("BCMDoorBeltStatus", 10),
@@ -209,7 +223,7 @@ class CarState(CarStateBase):
         ]
         if CP.enableBsm:
           messages.append(("BCMBlindSpotMonitor", 10))
-      else:
+      elif CP.carFingerprint not in ASCM_INT:
         messages += [
           ("AEBCmd", 10),
         ]
@@ -233,7 +247,9 @@ class CarState(CarStateBase):
       ("SportMode", 0),
     ]
 
-    if CP.carFingerprint in SDGM_CAR:
+    volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
+    sdgm_non_volt = CP.carFingerprint in SDGM_CAR and CP.carFingerprint not in volt_like
+    if sdgm_non_volt:
       messages += [
         ("ECMPRDNL2", 40),
         ("AcceleratorPedal2", 40),
