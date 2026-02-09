@@ -89,7 +89,7 @@ class CarState(CarStateBase):
       # that the brake is being intermittently pressed without user interaction.
       # To avoid a cruise fault we need to use a conservative brake position threshold
       # https://static.nhtsa.gov/odi/tsbs/2017/MC-10137629-9999.pdf
-      analog_thresh = 0.07 if (self.CP.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value) else 8
+      analog_thresh = 0.10 if (self.CP.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value) else 8
       ret.brakePressed = ret.brake >= analog_thresh
 
     # Regen braking is braking
