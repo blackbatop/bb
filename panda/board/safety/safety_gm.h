@@ -108,6 +108,7 @@ bool gm_cc_long = false;
 bool gm_skip_relay_check = false;
 bool gm_force_ascm = false;
 bool gm_bolt_2022_pedal = false;
+bool gm_ascm_int = false;
 bool gm_force_brake_c9 = false;
 bool gm_remote_start_boots_comma = false;
 
@@ -335,7 +336,8 @@ static int gm_fwd_hook(int bus_num, int addr) {
       } else {
         // block lkas message and acc messages if gm_cam_long, forward all others
         bool is_acc_msg = (addr == 0x315) || (addr == 0x2CB) || (addr == 0x370);
-        block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long) || (addr == 0x184);
+        const bool block_pscm = (gm_hw == GM_SDGM) || gm_ascm_int;
+        block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long) || (block_pscm && (addr == 0x184));
       }
       if (!block_msg) {
         bus_fwd = 0;
@@ -347,7 +349,7 @@ static int gm_fwd_hook(int bus_num, int addr) {
 }
 
 static safety_config gm_init(uint16_t param) {
-  const bool gm_ascm_int = GET_FLAG(param, GM_PARAM_ASCM_INT);
+  gm_ascm_int = GET_FLAG(param, GM_PARAM_ASCM_INT);
   if GET_FLAG(param, GM_PARAM_HW_CAM) {
     gm_hw = GM_CAM;
   } else if GET_FLAG(param, GM_PARAM_HW_SDGM) {
