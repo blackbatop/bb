@@ -11,6 +11,7 @@ from openpilot.selfdrive.car.fingerprints import eliminate_incompatible_cars, al
 from openpilot.selfdrive.car.vin import get_vin, is_valid_vin, VIN_UNKNOWN
 from openpilot.selfdrive.car.fw_versions import get_fw_versions_ordered, get_present_ecus, match_fw_to_car, set_obd_multiplexing
 from openpilot.selfdrive.car.mock.values import CAR as MOCK
+from openpilot.selfdrive.car.gm.values import CAR as GM_CAR, CanBus as GMCanBus
 from openpilot.common.swaglog import cloudlog
 import cereal.messaging as messaging
 from openpilot.selfdrive.car import gen_empty_fingerprint
@@ -201,6 +202,40 @@ def get_car(logcan, sendcan, experimental_long_allowed, params, num_pandas=1, fr
   else:
     params.put_nonblocking("CarMake", candidate.split('_')[0].title())
     params.put_nonblocking("CarModel", candidate)
+
+  # VIN-based Bolt year mapping (selfdrive-only, bolt variants only)
+  if not frogpilot_toggles.force_fingerprint and is_valid_vin(vin):
+    bolt_variants = {
+      GM_CAR.CHEVROLET_BOLT_ACC_2022_2023,
+      GM_CAR.CHEVROLET_BOLT_CC_2022_2023,
+      GM_CAR.CHEVROLET_BOLT_CC_2019_2021,
+      GM_CAR.CHEVROLET_BOLT_CC_2017,
+    }
+    if candidate in bolt_variants:
+      year_code = vin[9:10]
+      year_map = {
+        "H": GM_CAR.CHEVROLET_BOLT_CC_2017,       # 2017
+        "J": GM_CAR.CHEVROLET_BOLT_CC_2019_2021,  # 2018
+        "K": GM_CAR.CHEVROLET_BOLT_CC_2019_2021,  # 2019
+        "L": GM_CAR.CHEVROLET_BOLT_CC_2019_2021,  # 2020
+        "M": GM_CAR.CHEVROLET_BOLT_CC_2019_2021,  # 2021
+        "N": GM_CAR.CHEVROLET_BOLT_ACC_2022_2023, # 2022
+        "P": GM_CAR.CHEVROLET_BOLT_ACC_2022_2023, # 2023
+      }
+      if year_code in year_map:
+        vin_candidate = year_map[year_code]
+        if vin_candidate == GM_CAR.CHEVROLET_BOLT_ACC_2022_2023:
+          has_acc_msg = (
+            0x370 in fingerprints.get(GMCanBus.CAMERA, {}) or
+            0x370 in fingerprints.get(GMCanBus.POWERTRAIN, {})
+          )
+          vin_candidate = GM_CAR.CHEVROLET_BOLT_ACC_2022_2023 if has_acc_msg else GM_CAR.CHEVROLET_BOLT_CC_2022_2023
+        if candidate != vin_candidate:
+          prev_candidate = candidate
+          candidate = vin_candidate
+          params.put_nonblocking("CarMake", candidate.split('_')[0].title())
+          params.put_nonblocking("CarModel", candidate)
+          cloudlog.warning("VIN Bolt override: %s -> %s", prev_candidate, candidate)
 
   if frogpilot_toggles.block_user:
     candidate = MOCK.MOCK
