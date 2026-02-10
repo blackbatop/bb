@@ -51,7 +51,8 @@ class CarControllerParams:
       self.STEER_DELTA_UP = 15
       self.STEER_DELTA_DOWN = 34
       self.STEER_DRIVER_ALLOWANCE = 78
-      self.STEER_DRIVER_FACTOR = 6
+      self.STEER_DRIVER_MULTIPLIER = 6
+      self.STEER_DRIVER_FACTOR = 100
 
     # Gas/brake lookups
     self.ZERO_GAS = 6150  # Coasting
