@@ -88,6 +88,16 @@ static void gm_rx_hook(const CANPacket_t *msg) {
       regen_braking = (msg->data[0] >> 4) != 0U;
     }
   }
+
+  // ACC engaged status from camera/SDGM
+  if ((msg->bus == 2U) && (msg->addr == 0x880U)) {
+    bool cruise_engaged = GET_BIT(msg, 23U);  // ACCCmdActive
+    if (gm_pcm_cruise) {
+      pcm_cruise_check(cruise_engaged);
+    } else {
+      cruise_engaged_prev = cruise_engaged;
+    }
+  }
 }
 
 static bool gm_tx_hook(const CANPacket_t *msg) {
@@ -128,7 +138,7 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
   if (msg->addr == 0x2CBU) {
     bool apply = GET_BIT(msg, 0U);
     // convert float CAN signal to an int for gas checks: 22534 / 0.125 = 180272
-    int gas_regen = (((msg->data[1] & 0x7U) << 16) | (msg->data[2] << 8) | msg->data[3]) - 180272U;
+    int gas_regen = (((msg->data[1] & 0x1U) << 13) | (msg->data[2] << 5) | ((msg->data[3] & 0xF8U) >> 3)) - 180272U;
 
     bool violation = false;
     // Allow apply bit in pre-enabled and overriding states
@@ -218,7 +228,7 @@ static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_HW_CAM_LONG = 2;
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG);
 #endif
-  gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long;
+  gm_pcm_cruise = ((gm_hw == GM_CAM) || gm_sdgm) && !gm_cam_long;
 
   safety_config ret;
   if (gm_hw == GM_CAM) {
