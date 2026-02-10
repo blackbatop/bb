@@ -521,10 +521,11 @@ class CarController(CarControllerBase):
         can_sends += gmcan.create_adas_keepalive(CanBus.POWERTRAIN)
 
       # TODO: integrate this with the code block below?
+      stock_cc_active = CS.out.cruiseState.enabled or CS.pcm_acc_status != AccState.OFF
       if (
           (self.CP.flags & GMFlags.PEDAL_LONG.value)  # Always cancel stock CC when using pedal interceptor
           or (self.CP.flags & GMFlags.CC_LONG.value and not CC.enabled)  # Cancel stock CC if OP is not active
-      ) and CS.out.cruiseState.enabled:
+      ) and stock_cc_active:
         if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
           # Match 33 Hz cadence (every 3 frames) and align phase to the last seen checksum.
           if self.malibu_cancel_frame % 3 == 0:
