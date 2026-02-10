@@ -133,6 +133,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("AdvancedLateralTune", "1", 2, "0"),
   ("AdvancedLongitudinalTune", "0", 3, "0"),
   ("EVTuning", "", 3, "0"),
+  ("TruckTuning", "0", 3, "0"),
   ("AggressiveFollow", "1.25", 2, "1.25"),
   ("AggressiveFollowHigh", "1.25", 2, "1.25"),
   ("AggressiveJerkAcceleration", "50", 3, "50"),
@@ -634,7 +635,19 @@ class FrogPilotVariables:
     if params.get("EVTuning") == b"":
       params.put_bool("EVTuning", ev_vehicle)
 
-    toggle.ev_tuning = params.get_bool("EVTuning") if advanced_longitudinal_tuning and tuning_level >= level["EVTuning"] else ev_vehicle
+    if params.get("TruckTuning") == b"":
+      params.put_bool("TruckTuning", False)
+
+    ev_tuning_param = params.get_bool("EVTuning")
+    truck_tuning_param = params.get_bool("TruckTuning")
+
+    # Enforce exclusivity between EV and Truck tuning.
+    if truck_tuning_param and ev_tuning_param:
+      ev_tuning_param = False
+      params.put_bool("EVTuning", False)
+
+    toggle.ev_tuning = ev_tuning_param if advanced_longitudinal_tuning and tuning_level >= level["EVTuning"] else ev_vehicle
+    toggle.truck_tuning = truck_tuning_param if advanced_longitudinal_tuning and tuning_level >= level["TruckTuning"] else False
     toggle.longitudinalActuatorDelay = np.clip(params.get_float("LongitudinalActuatorDelay"), 0, 1) if advanced_longitudinal_tuning and tuning_level >= level["LongitudinalActuatorDelay"] else longitudinalActuatorDelay
     toggle.startAccel = np.clip(params.get_float("StartAccel"), 0, 4) if advanced_longitudinal_tuning and tuning_level >= level["StartAccel"] else startAccel
     toggle.stopAccel = np.clip(params.get_float("StopAccel"), -4, 0) if advanced_longitudinal_tuning and tuning_level >= level["StopAccel"] else stopAccel
