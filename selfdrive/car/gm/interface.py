@@ -184,6 +184,7 @@ class CarInterface(CarInterfaceBase):
       # TorqueTune camera-ACC behavior
       ret.experimentalLongitudinalAvailable = (candidate not in CC_ONLY_CAR) and not ret.enableGasInterceptor
       ret.networkLocation = NetworkLocation.fwdCamera
+      ret.radarUnavailable = True  # no radar
       ret.pcmCruise = not ret.enableGasInterceptor
       gm_safety_cfg.safetyParam |= Panda.FLAG_GM_HW_CAM
       ret.minEnableSpeed = 5 * CV.KPH_TO_MS
