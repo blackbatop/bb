@@ -74,7 +74,7 @@ class CarControllerParams:
       self.MAX_ACC_REGEN = 5500
       self.INACTIVE_REGEN = 5500
       max_regen_acceleration = 0.
-      self.BRAKE_SWITCH = self.ZERO_GAS
+      self.BRAKE_SWITCH_MAX = self.ZERO_GAS
 
     else:
       self.MAX_GAS = 7168  # Safety limit, not ACC max. Stock ACC >8192 from standstill.
