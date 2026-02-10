@@ -161,12 +161,13 @@ class CarInterface(CarInterfaceBase):
     if PEDAL_MSG in fingerprint[0]:
       ret.enableGasInterceptor = True
       gm_safety_cfg.safetyParam |= Panda.FLAG_GM_GAS_INTERCEPTOR
-      # When a pedal interceptor is present, always use normal longitudinal (block stock cruise)
-      experimental_long = False
       if candidate == CAR.CHEVROLET_BOLT_ACC_2022_2023:
         # Hard-block pedal interceptor for ACC fingerprinted Bolts
         ret.enableGasInterceptor = False
         gm_safety_cfg.safetyParam &= ~Panda.FLAG_GM_GAS_INTERCEPTOR
+      else:
+        # When a pedal interceptor is present, always use normal longitudinal (block stock cruise)
+        experimental_long = False
 
     if candidate in EV_CAR:
       ret.transmissionType = TransmissionType.direct
