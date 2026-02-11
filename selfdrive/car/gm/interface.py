@@ -179,7 +179,8 @@ class CarInterface(CarInterfaceBase):
 
     is_bolt_2022_2023_pedal = candidate == CAR.CHEVROLET_BOLT_CC_2022_2023 and ret.enableGasInterceptor
 
-    is_camera_acc = candidate in CAMERA_ACC_CAR and candidate not in CC_ONLY_CAR and candidate not in kaofui_cars
+    is_camera_acc = (candidate in CAMERA_ACC_CAR and candidate not in CC_ONLY_CAR and candidate not in kaofui_cars) or \
+                    (candidate == CAR.CHEVROLET_MALIBU_HYBRID_CC)
     if is_camera_acc:
       # TorqueTune camera-ACC behavior
       ret.experimentalLongitudinalAvailable = (candidate not in CC_ONLY_CAR) and not ret.enableGasInterceptor
