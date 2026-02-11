@@ -95,14 +95,14 @@ class ThemeManager:
     shutil.copy2(steering_wheel_image_path, steering_wheel_save_path)
 
     default_boot_logo_path = Path(__file__).parent / "other_images/frogpilot_boot_logo.png"
-    for default_name in ("starpilot.png", "frogpilot.png"):
-      boot_logo_save_path = THEME_SAVE_PATH / "bootlogos" / default_name
-      boot_logo_save_path.parent.mkdir(parents=True, exist_ok=True)
-      if not boot_logo_save_path.exists():
-        shutil.copy2(default_boot_logo_path, boot_logo_save_path)
+    boot_logo_save_path = THEME_SAVE_PATH / "bootlogos/starpilot.png"
+    boot_logo_save_path.parent.mkdir(parents=True, exist_ok=True)
+    if not boot_logo_save_path.exists():
+      shutil.copy2(default_boot_logo_path, boot_logo_save_path)
 
   def download_theme(self, theme_component, theme_name, asset_param, frogpilot_toggles):
     self.downloading_theme = True
+    allow_unknown_size = theme_component in {"boot_logos", "steering_wheels"}
 
     repo_url = get_repository_url()
     if not repo_url:
@@ -134,7 +134,7 @@ class ThemeManager:
       delete_file(theme_path)
 
       print(f"Downloading theme from GitHub: {theme_name}")
-      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory)
+      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size)
 
       if params_memory.get_bool(CANCEL_DOWNLOAD_PARAM):
         delete_file(theme_path)
@@ -143,7 +143,7 @@ class ThemeManager:
         self.downloading_theme = False
         return
 
-      if verify_download(theme_path, theme_url):
+      if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
         print(f"Theme {theme_name} downloaded and verified successfully from GitHub!")
         self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
 
@@ -348,6 +348,7 @@ class ThemeManager:
     }
 
   def handle_verification_failure(self, extension, theme_component, theme_name, asset_param, theme_path, download_path, frogpilot_toggles):
+    allow_unknown_size = theme_component in {"boot_logos", "steering_wheels"}
     if theme_component == "boot_logos":
       download_link = f"{GITLAB_URL}/Themes/bootlogo/{theme_name}"
     elif theme_component == "distance_icons":
@@ -361,9 +362,9 @@ class ThemeManager:
 
     theme_url = download_link + extension
     print(f"Downloading theme from GitLab: {theme_name}")
-    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory)
+    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size)
 
-    if verify_download(theme_path, theme_url):
+    if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
       print(f"Theme {theme_name} downloaded and verified successfully from GitLab!")
       self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
 

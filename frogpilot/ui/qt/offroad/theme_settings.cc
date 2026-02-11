@@ -256,7 +256,8 @@ FrogPilotThemesPanel::FrogPilotThemesPanel(FrogPilotSettingsWindow *parent) : Fr
     } else if (param == "BootLogo") {
       manageBootLogosButton = new FrogPilotButtonsControl(title, desc, icon, {tr("DELETE"), tr("DOWNLOAD"), tr("SELECT")});
       QObject::connect(manageBootLogosButton, &FrogPilotButtonsControl::buttonClicked, [this](int id) {
-        QStringList bootLogos = getThemeList(false, QDir(bootLogosDirectory.path()), "", "BootLogo", params);
+        // Show all downloaded boot logos, including the currently selected one.
+        QStringList bootLogos = getThemeList(true, QDir(bootLogosDirectory.path()), "", "BootLogo", params);
 
         if (id == 0) {
           QString bootLogoToDelete = MultiOptionDialog::getSelection(tr("Select a boot logo to delete"), bootLogos, "", this);
