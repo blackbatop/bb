@@ -160,6 +160,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("BlacklistedModels", "", 2, ""),
   ("BlindSpotMetrics", "1", 3, "0"),
   ("BlindSpotPath", "1", 1, "0"),
+  ("BootLogo", "starpilot", 0, "stock"),
   ("BorderMetrics", "1", 3, "0"),
   ("CalibratedLateralAcceleration", str(DEFAULT_LATERAL_ACCELERATION), 2, str(DEFAULT_LATERAL_ACCELERATION)),
   ("CalibrationProgress", "0", 3, "0"),
@@ -935,6 +936,7 @@ class FrogPilotVariables:
       toggle.old_long_api |= toggle.openpilot_longitudinal and toggle.car_make == "hyundai" and not (params.get_bool("NewLongAPI") if tuning_level >= level["NewLongAPI"] else default.get_bool("NewLongAPI"))
 
     personalize_openpilot = params.get_bool("PersonalizeOpenpilot") if tuning_level >= level["PersonalizeOpenpilot"] else default.get_bool("PersonalizeOpenpilot")
+    toggle.boot_logo = params.get("BootLogo", encoding="utf-8") or "starpilot"
     toggle.color_scheme = toggle.current_holiday_theme if toggle.current_holiday_theme != "stock" else params.get("CustomColors", encoding="utf-8") if personalize_openpilot else "stock"
     toggle.distance_icons = toggle.current_holiday_theme if toggle.current_holiday_theme != "stock" else params.get("CustomDistanceIcons", encoding="utf-8") if personalize_openpilot else "stock"
     toggle.icon_pack = toggle.current_holiday_theme if toggle.current_holiday_theme != "stock" else params.get("CustomIcons", encoding="utf-8") if personalize_openpilot else "stock"
