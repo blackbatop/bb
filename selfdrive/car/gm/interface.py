@@ -185,7 +185,13 @@ class CarInterface(CarInterfaceBase):
       CAR.CHEVROLET_MALIBU_CC,
       CAR.CHEVROLET_MALIBU_HYBRID_CC,
     }
-    is_camera_acc = candidate in CAMERA_ACC_CAR and candidate not in CC_ONLY_CAR and candidate not in kaofui_cars
+    bolt_cc_camera_cars = {
+      CAR.CHEVROLET_BOLT_CC_2017,
+      CAR.CHEVROLET_BOLT_CC_2019_2021,
+      CAR.CHEVROLET_BOLT_CC_2022_2023,
+    }
+    is_camera_acc = candidate in CAMERA_ACC_CAR and candidate not in kaofui_cars and \
+                    (candidate not in CC_ONLY_CAR or candidate in bolt_cc_camera_cars)
     if candidate in kaofui_camera_cars:
       # Keep Volt/Malibu camera path functionally aligned with kaofui.
       ret.experimentalLongitudinalAvailable = candidate not in (CC_ONLY_CAR | ASCM_INT | SDGM_CAR) or has_sascm(fingerprint)
