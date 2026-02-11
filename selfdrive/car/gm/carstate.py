@@ -39,7 +39,14 @@ class CarState(CarStateBase):
     ret = car.CarState.new_message()
     fp_ret = custom.FrogPilotCarState.new_message()
     volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
-    sdgm_non_volt = self.CP.carFingerprint in SDGM_CAR and self.CP.carFingerprint not in volt_like
+    kaofui_state_cars = volt_like | {
+      CAR.CHEVROLET_BLAZER,
+      CAR.CHEVROLET_MALIBU_SDGM,
+      CAR.CHEVROLET_MALIBU_CC,
+      CAR.CHEVROLET_MALIBU_HYBRID_CC,
+    }
+    sdgm_non_volt = self.CP.carFingerprint in SDGM_CAR and \
+                    self.CP.carFingerprint not in kaofui_state_cars
 
     self.prev_cruise_buttons = self.cruise_buttons
     self.prev_distance_button = self.distance_button
@@ -210,7 +217,14 @@ class CarState(CarStateBase):
     messages = []
     if CP.networkLocation == NetworkLocation.fwdCamera and not CP.flags & GMFlags.NO_CAMERA.value:
       volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
-      sdgm_non_volt = CP.carFingerprint in SDGM_CAR and CP.carFingerprint not in volt_like
+      kaofui_state_cars = volt_like | {
+        CAR.CHEVROLET_BLAZER,
+        CAR.CHEVROLET_MALIBU_SDGM,
+        CAR.CHEVROLET_MALIBU_CC,
+        CAR.CHEVROLET_MALIBU_HYBRID_CC,
+      }
+      sdgm_non_volt = CP.carFingerprint in SDGM_CAR and \
+                      CP.carFingerprint not in kaofui_state_cars
       messages += [
         ("ASCMLKASteeringCmd", 10),
       ]
@@ -248,16 +262,24 @@ class CarState(CarStateBase):
     ]
 
     volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
-    sdgm_non_volt = CP.carFingerprint in SDGM_CAR and CP.carFingerprint not in volt_like
+    kaofui_state_cars = volt_like | {
+      CAR.CHEVROLET_BLAZER,
+      CAR.CHEVROLET_MALIBU_SDGM,
+      CAR.CHEVROLET_MALIBU_CC,
+      CAR.CHEVROLET_MALIBU_HYBRID_CC,
+    }
+    prndl2_rate = 10 if CP.carFingerprint in kaofui_state_cars else 40
+    sdgm_non_volt = CP.carFingerprint in SDGM_CAR and \
+                    CP.carFingerprint not in kaofui_state_cars
     if sdgm_non_volt:
       messages += [
-        ("ECMPRDNL2", 40),
+        ("ECMPRDNL2", prndl2_rate),
         ("AcceleratorPedal2", 40),
         ("ECMEngineStatus", 80),
       ]
     else:
       messages += [
-        ("ECMPRDNL2", 40),
+        ("ECMPRDNL2", prndl2_rate),
         ("AcceleratorPedal2", 33),
         ("ECMEngineStatus", 100),
         ("BCMTurnSignals", 1),
@@ -278,8 +300,9 @@ class CarState(CarStateBase):
         messages.append(("EBCMBrakePedalPosition", 100))
 
     if CP.transmissionType == TransmissionType.direct:
+      regen_paddle_rate = 50 if CP.carFingerprint in kaofui_state_cars else 40
       messages += [
-        ("EBCMRegenPaddle", 40),
+        ("EBCMRegenPaddle", regen_paddle_rate),
         ("EVDriveMode", 0),
       ]
 

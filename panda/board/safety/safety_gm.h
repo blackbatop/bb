@@ -336,8 +336,7 @@ static int gm_fwd_hook(int bus_num, int addr) {
       } else {
         // block lkas message and acc messages if gm_cam_long, forward all others
         bool is_acc_msg = (addr == 0x315) || (addr == 0x2CB) || (addr == 0x370);
-        const bool block_pscm = (gm_hw == GM_SDGM) || gm_ascm_int;
-        block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long) || (block_pscm && (addr == 0x184));
+        block_msg = is_lkas_msg || (is_acc_msg && gm_cam_long);
       }
       if (!block_msg) {
         bus_fwd = 0;
@@ -391,8 +390,6 @@ static safety_config gm_init(uint16_t param) {
     } else {
       ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_TX_MSGS);
     }
-  } else if (gm_hw == GM_SDGM) {
-    ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_SDGM_TX_MSGS);
   }
   return ret;
 }

@@ -179,9 +179,35 @@ class CarInterface(CarInterfaceBase):
 
     is_bolt_2022_2023_pedal = candidate == CAR.CHEVROLET_BOLT_CC_2022_2023 and ret.enableGasInterceptor
 
-    is_camera_acc = (candidate in CAMERA_ACC_CAR and candidate not in CC_ONLY_CAR and candidate not in kaofui_cars) or \
-                    (candidate == CAR.CHEVROLET_MALIBU_HYBRID_CC)
-    if is_camera_acc:
+    kaofui_camera_cars = {
+      CAR.CHEVROLET_VOLT_CAMERA,
+      CAR.CHEVROLET_VOLT_CC,
+      CAR.CHEVROLET_MALIBU_CC,
+      CAR.CHEVROLET_MALIBU_HYBRID_CC,
+    }
+    is_camera_acc = candidate in CAMERA_ACC_CAR and candidate not in CC_ONLY_CAR and candidate not in kaofui_cars
+    if candidate in kaofui_camera_cars:
+      # Keep Volt/Malibu camera path functionally aligned with kaofui.
+      ret.experimentalLongitudinalAvailable = candidate not in (CC_ONLY_CAR | ASCM_INT | SDGM_CAR) or has_sascm(fingerprint)
+      ret.networkLocation = NetworkLocation.fwdCamera
+      ret.radarUnavailable = 0x460 not in fingerprint.get(CanBus.OBSTACLE, {})
+      ret.pcmCruise = True
+      ret.minEnableSpeed = 5 * CV.KPH_TO_MS
+      ret.minSteerSpeed = 10 * CV.KPH_TO_MS
+      gm_safety_cfg.safetyParam |= Panda.FLAG_GM_HW_CAM
+
+      # Tuning for experimental long
+      ret.longitudinalTuning.kiV = [0.5, 0.5]
+      ret.stoppingDecelRate = 1.0  # reach brake quickly after enabling
+      ret.vEgoStopping = 0.25
+      ret.vEgoStarting = 0.25
+      ret.stopAccel = -0.25
+
+      if ret.experimentalLongitudinalAvailable and experimental_long:
+        ret.pcmCruise = False
+        ret.openpilotLongitudinalControl = True
+        gm_safety_cfg.safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
+    elif is_camera_acc:
       # TorqueTune camera-ACC behavior
       ret.experimentalLongitudinalAvailable = (candidate not in CC_ONLY_CAR) and not ret.enableGasInterceptor
       ret.networkLocation = NetworkLocation.fwdCamera
