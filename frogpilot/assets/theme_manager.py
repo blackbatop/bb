@@ -134,7 +134,7 @@ class ThemeManager:
       delete_file(theme_path)
 
       print(f"Downloading theme from GitHub: {theme_name}")
-      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size)
+      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size, suppress_errors=allow_unknown_size)
 
       if params_memory.get_bool(CANCEL_DOWNLOAD_PARAM):
         delete_file(theme_path)
@@ -362,7 +362,7 @@ class ThemeManager:
 
     theme_url = download_link + extension
     print(f"Downloading theme from GitLab: {theme_name}")
-    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size)
+    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size, suppress_errors=allow_unknown_size)
 
     if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
       print(f"Theme {theme_name} downloaded and verified successfully from GitLab!")

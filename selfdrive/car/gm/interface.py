@@ -238,7 +238,8 @@ class CarInterface(CarInterfaceBase):
         ret.openpilotLongitudinalControl = True
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
     elif candidate in SDGM_CAR:
-      ret.experimentalLongitudinalAvailable = candidate not in CC_ONLY_CAR or has_sascm(fingerprint)
+      # kaofui parity: SDGM cars require SASCM for experimental long
+      ret.experimentalLongitudinalAvailable = candidate not in (CC_ONLY_CAR | ASCM_INT | SDGM_CAR) or has_sascm(fingerprint)
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.radarUnavailable = 0x460 not in fingerprint.get(CanBus.OBSTACLE, {})
       ret.pcmCruise = True
@@ -268,7 +269,8 @@ class CarInterface(CarInterfaceBase):
         ret.experimentalLongitudinalAvailable = False
         ret.pcmCruise = False
     elif candidate in ASCM_INT:
-      ret.experimentalLongitudinalAvailable = candidate not in CC_ONLY_CAR or has_sascm(fingerprint)
+      # kaofui parity: ASCM_INT cars require SASCM for experimental long
+      ret.experimentalLongitudinalAvailable = candidate not in (CC_ONLY_CAR | ASCM_INT | SDGM_CAR) or has_sascm(fingerprint)
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.radarUnavailable = 0x460 not in fingerprint.get(CanBus.OBSTACLE, {})
       ret.pcmCruise = True

@@ -112,29 +112,7 @@ bool gm_ascm_int = false;
 bool gm_force_brake_c9 = false;
 bool gm_remote_start_boots_comma = false;
 
-static void handle_gm_wheel_buttons(const CANPacket_t *to_push) {
-  int button = (GET_BYTE(to_push, 5) & 0x70U) >> 4;
-
-  // enter controls on falling edge of set or rising edge of resume (avoids fault)
-  bool set = (button != GM_BTN_SET) && (cruise_button_prev == GM_BTN_SET);
-  bool res = (button == GM_BTN_RESUME) && (cruise_button_prev != GM_BTN_RESUME);
-  if (set || res) {
-    controls_allowed = true;
-  }
-
-  // exit controls on cancel press
-  if (button == GM_BTN_CANCEL) {
-    controls_allowed = false;
-  }
-
-  cruise_button_prev = button;
-}
-
 static void gm_rx_hook(const CANPacket_t *to_push) {
-  if ((GET_BUS(to_push) == 2U) && (GET_ADDR(to_push) == 0x1E1) && (gm_hw == GM_SDGM)) {
-    // SDGM buttons are on bus 2
-    handle_gm_wheel_buttons(to_push);
-  }
   if (GET_BUS(to_push) == 0U) {
     int addr = GET_ADDR(to_push);
 
@@ -152,9 +130,23 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
       vehicle_moving = (left_rear_speed > GM_STANDSTILL_THRSLD) || (right_rear_speed > GM_STANDSTILL_THRSLD);
     }
 
-    // ACC steering wheel buttons (GM_CAM and GM_SDGM are tied to the PCM)
-    if ((addr == 0x1E1) && (!gm_pcm_cruise || gm_cc_long) && (gm_hw != GM_SDGM)) {
-      handle_gm_wheel_buttons(to_push);
+    // ACC steering wheel buttons (GM_CAM is tied to the PCM)
+    if ((addr == 0x1E1) && (!gm_pcm_cruise || gm_cc_long)) {
+      int button = (GET_BYTE(to_push, 5) & 0x70U) >> 4;
+
+      // enter controls on falling edge of set or rising edge of resume (avoids fault)
+      bool set = (button != GM_BTN_SET) && (cruise_button_prev == GM_BTN_SET);
+      bool res = (button == GM_BTN_RESUME) && (cruise_button_prev != GM_BTN_RESUME);
+      if (set || res) {
+        controls_allowed = true;
+      }
+
+      // exit controls on cancel press
+      if (button == GM_BTN_CANCEL) {
+        controls_allowed = false;
+      }
+
+      cruise_button_prev = button;
     }
 
     // Reference for brake pressed signals:

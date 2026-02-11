@@ -29,13 +29,15 @@ def check_github_rate_limit():
     print(f"Error checking GitHub rate limit: {error}")
     return False
 
-def download_file(cancel_param, destination, progress_param, url, download_param, params_memory, allow_unknown_size=False):
+def download_file(cancel_param, destination, progress_param, url, download_param, params_memory, allow_unknown_size=False, suppress_errors=False):
   try:
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    total_size = get_remote_file_size(url)
+    total_size = get_remote_file_size(url, suppress_errors=suppress_errors or allow_unknown_size)
     if total_size == 0 and not allow_unknown_size:
       if not url.endswith(".gif"):
+        if suppress_errors:
+          return
         handle_error(None, "Download invalid...", "Download invalid...", download_param, progress_param, params_memory)
       return
 
@@ -68,15 +70,18 @@ def download_file(cancel_param, destination, progress_param, url, download_param
         temp_file_path.rename(destination)
 
   except Exception as error:
+    if suppress_errors:
+      return
     handle_request_error(error, destination, download_param, progress_param, params_memory)
 
-def get_remote_file_size(url):
+def get_remote_file_size(url, suppress_errors=False):
   try:
     response = requests.head(url, headers={"Accept-Encoding": "identity"}, timeout=10)
     response.raise_for_status()
     return int(response.headers.get("Content-Length", 0))
   except Exception as error:
-    handle_request_error(error, None, None, None, None)
+    if not suppress_errors:
+      handle_request_error(error, None, None, None, None)
     return 0
 
 def get_repository_url():
@@ -108,7 +113,7 @@ def handle_request_error(error, destination, download_param, progress_param, par
   handle_error(destination, f"Failed: {error_message}", error, download_param, progress_param, params_memory)
 
 def verify_download(file_path, url, allow_unknown_size=False):
-  remote_file_size = get_remote_file_size(url)
+  remote_file_size = get_remote_file_size(url, suppress_errors=allow_unknown_size)
 
   if remote_file_size == 0 and allow_unknown_size:
     if not file_path.is_file():

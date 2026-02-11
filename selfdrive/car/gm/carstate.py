@@ -237,7 +237,7 @@ class CarState(CarStateBase):
         ]
         if CP.enableBsm:
           messages.append(("BCMBlindSpotMonitor", 10))
-      elif CP.carFingerprint not in ASCM_INT:
+      elif CP.carFingerprint not in (SDGM_CAR | ASCM_INT):
         messages += [
           ("AEBCmd", 10),
         ]
