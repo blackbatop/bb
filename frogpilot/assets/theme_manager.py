@@ -103,6 +103,7 @@ class ThemeManager:
   def download_theme(self, theme_component, theme_name, asset_param, frogpilot_toggles):
     self.downloading_theme = True
     allow_unknown_size = theme_component in {"boot_logos", "steering_wheels"}
+    name_candidates = [theme_name]
 
     repo_url = get_repository_url()
     if not repo_url:
@@ -111,9 +112,10 @@ class ThemeManager:
       return
 
     if theme_component == "boot_logos":
-      download_link = f"{repo_url}/Themes/bootlogo/{theme_name}"
+      download_link = f"{repo_url}/Themes/bootlogo"
       download_path = THEME_SAVE_PATH / "bootlogos" / theme_name
       extensions = [".png", ".jpg", ".jpeg"]
+      name_candidates = list(dict.fromkeys([theme_name, theme_name.replace("_", "-"), theme_name.replace("-", "_")]))
     elif theme_component == "distance_icons":
       download_link = f"{repo_url}/Distance-Icons/{theme_name}"
       download_path = THEME_SAVE_PATH / "theme_packs" / theme_name / theme_component
@@ -129,37 +131,40 @@ class ThemeManager:
 
     for extension in extensions:
       theme_path = download_path.with_suffix(extension)
-      theme_url = download_link + extension
+      theme_urls = [f"{download_link}/{candidate}{extension}" for candidate in name_candidates]
+      if theme_component != "boot_logos":
+        theme_urls = [download_link + extension]
 
-      delete_file(theme_path)
-
-      print(f"Downloading theme from GitHub: {theme_name}")
-      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size, suppress_errors=allow_unknown_size)
-
-      if params_memory.get_bool(CANCEL_DOWNLOAD_PARAM):
+      for theme_url in theme_urls:
         delete_file(theme_path)
-        handle_error(None, "Download cancelled...", "Download cancelled...", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
 
-        self.downloading_theme = False
-        return
+        print(f"Downloading theme from GitHub: {theme_name}")
+        download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size, suppress_errors=allow_unknown_size)
 
-      if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
-        print(f"Theme {theme_name} downloaded and verified successfully from GitHub!")
-        self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
+        if params_memory.get_bool(CANCEL_DOWNLOAD_PARAM):
+          delete_file(theme_path)
+          handle_error(None, "Download cancelled...", "Download cancelled...", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
 
-        if extension == ".zip":
-          params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Unpacking theme...")
-          extract_zip(theme_path, download_path)
+          self.downloading_theme = False
+          return
 
-        params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Downloaded!")
-        params_memory.remove(asset_param)
+        if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
+          print(f"Theme {theme_name} downloaded and verified successfully from GitHub!")
+          self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
 
-        self.downloading_theme = False
+          if extension == ".zip":
+            params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Unpacking theme...")
+            extract_zip(theme_path, download_path)
 
-        self.update_themes(frogpilot_toggles)
-        return
-      elif self.handle_verification_failure(extension, theme_component, theme_name, asset_param, theme_path, download_path, frogpilot_toggles):
-        return
+          params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Downloaded!")
+          params_memory.remove(asset_param)
+
+          self.downloading_theme = False
+
+          self.update_themes(frogpilot_toggles)
+          return
+        elif self.handle_verification_failure(extension, theme_component, theme_name, asset_param, theme_path, download_path, frogpilot_toggles):
+          return
 
     handle_error(download_path, "Download failed...", "Download failed...", asset_param, DOWNLOAD_PROGRESS_PARAM, params_memory)
     self.downloading_theme = False
@@ -350,35 +355,40 @@ class ThemeManager:
   def handle_verification_failure(self, extension, theme_component, theme_name, asset_param, theme_path, download_path, frogpilot_toggles):
     allow_unknown_size = theme_component in {"boot_logos", "steering_wheels"}
     if theme_component == "boot_logos":
-      download_link = f"{GITLAB_URL}/Themes/bootlogo/{theme_name}"
+      download_link = f"{GITLAB_URL}/Themes/bootlogo"
+      name_candidates = list(dict.fromkeys([theme_name, theme_name.replace("_", "-"), theme_name.replace("-", "_")]))
     elif theme_component == "distance_icons":
       download_link = f"{GITLAB_URL}/Distance-Icons/{theme_name}"
+      name_candidates = [theme_name]
     elif theme_component == "steering_wheels":
       download_link = f"{GITLAB_URL}/Steering-Wheels/{theme_name}"
+      name_candidates = [theme_name]
     else:
       download_link = f"{GITLAB_URL}/Themes/{theme_name}/{theme_component}"
+      name_candidates = [theme_name]
 
-    delete_file(theme_path)
+    for candidate in name_candidates:
+      delete_file(theme_path)
 
-    theme_url = download_link + extension
-    print(f"Downloading theme from GitLab: {theme_name}")
-    download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size, suppress_errors=allow_unknown_size)
+      theme_url = f"{download_link}/{candidate}{extension}" if theme_component == "boot_logos" else download_link + extension
+      print(f"Downloading theme from GitLab: {theme_name}")
+      download_file(CANCEL_DOWNLOAD_PARAM, theme_path, DOWNLOAD_PROGRESS_PARAM, theme_url, asset_param, params_memory, allow_unknown_size=allow_unknown_size, suppress_errors=allow_unknown_size)
 
-    if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
-      print(f"Theme {theme_name} downloaded and verified successfully from GitLab!")
-      self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
+      if verify_download(theme_path, theme_url, allow_unknown_size=allow_unknown_size):
+        print(f"Theme {theme_name} downloaded and verified successfully from GitLab!")
+        self.update_theme_size(theme_component, theme_name, theme_path.stat().st_size)
 
-      if extension == ".zip":
-        params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Unpacking theme...")
-        extract_zip(theme_path, download_path)
+        if extension == ".zip":
+          params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Unpacking theme...")
+          extract_zip(theme_path, download_path)
 
-      params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Downloaded!")
-      params_memory.remove(asset_param)
+        params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Downloaded!")
+        params_memory.remove(asset_param)
 
-      self.downloading_theme = False
+        self.downloading_theme = False
 
-      self.update_themes(frogpilot_toggles)
-      return True
+        self.update_themes(frogpilot_toggles)
+        return True
 
     # Let the caller continue trying alternate extensions before surfacing failure.
     return False
@@ -539,7 +549,11 @@ class ThemeManager:
     def update_param(key, assets, subfolder):
       if subfolder == "boot_logos":
         themes_path = THEME_SAVE_PATH / "bootlogos"
-        existing_assets = {self.format_name(item.name, "boot_logos") for item in themes_path.glob("*") if item.is_file()}
+        existing_assets = {item.stem.lower() for item in themes_path.glob("*") if item.is_file()}
+        pending_assets = [asset for asset in assets if asset.lower() not in existing_assets]
+        params.put(key, ",".join(sorted(set(pending_assets))))
+        print(f"{key} updated successfully")
+        return
       elif subfolder == "steering_wheels":
         themes_path = THEME_SAVE_PATH / subfolder
         existing_assets = {self.format_name(item.name, "steering_wheels") for item in themes_path.glob("*") if item.is_file()}
@@ -644,7 +658,7 @@ class ThemeManager:
       if "sounds" in available_assets:
         downloadable_sounds.append(theme_name)
 
-    downloadable_boot_logos = [self.format_name(boot_logo, "boot_logos") for boot_logo in assets["boot_logos"]]
+    downloadable_boot_logos = [Path(boot_logo).stem for boot_logo in assets["boot_logos"]]
     downloadable_wheels = [self.format_name(wheel, "steering_wheels") for wheel in assets["wheels"]]
 
     print(f"Downloadable Boot Logos: {downloadable_boot_logos}")

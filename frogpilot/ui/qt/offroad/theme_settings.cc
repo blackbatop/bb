@@ -66,6 +66,11 @@ void deleteThemeAsset(QDir &directory, const QString &subFolder, const QString &
 }
 
 void downloadThemeAsset(const QString &input, const std::string &paramKey, const QString &assetParam, Params &params, Params &params_memory) {
+  if (paramKey == "BootLogoToDownload") {
+    params_memory.put(paramKey, input.trimmed().toStdString());
+    return;
+  }
+
   QString output = input;
   int tilde = output.indexOf("~");
   if (tilde >= 0) {
