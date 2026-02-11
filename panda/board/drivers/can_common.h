@@ -203,7 +203,11 @@ void ignition_can_hook(CANPacket_t *to_push) {
     int len = GET_LEN(to_push);
     
     // GM exception
+    #ifdef PANDA_GM_REMOTE_START_C9
+    if (true) {
+    #else
     if (gm_remote_start_boots_comma) {
+    #endif
       if ((addr == 0xC9) && (len == 8)) {
         // Matches SystemPowerMode (1=Run, 0=Off)
         ignition_can = (GET_BYTE(to_push, 6) & 0x10U) != 0U;
