@@ -538,6 +538,7 @@ class CarInterface(CarInterfaceBase):
 
     if (self.CP.flags & GMFlags.PEDAL_LONG.value) and \
       self.CP.transmissionType == TransmissionType.direct and \
+      self.CP.carFingerprint != CAR.CHEVROLET_MALIBU_HYBRID_CC and \
       not self.CS.single_pedal_mode and \
       c.longActive:
       events.add(FrogPilotEventName.pedalInterceptorNoBrake)
