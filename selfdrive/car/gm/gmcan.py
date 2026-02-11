@@ -79,7 +79,7 @@ def create_buttons_malibu_cancel(bus, phase, prefix=0x41):
   data[3] = prefix & 0xFF
   data[4] = 0x00
   cancel_bytes = (0x60, 0xAF, 0x65, 0x9E, 0x6A, 0x8D, 0x6F, 0x7C)
-  idx = (phase % 4) * 2
+  idx = ((phase + 2) % 4) * 2
   data[5] = cancel_bytes[idx]
   data[6] = cancel_bytes[idx + 1]
   return make_can_msg(0x1e1, bytes(data), bus)
