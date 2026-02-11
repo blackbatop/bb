@@ -366,7 +366,7 @@ static safety_config gm_init(uint16_t param) {
   if (gm_hw == GM_CAM && enable_gas_interceptor && gm_bolt_2022_pedal) {
     gm_cam_long = true;
   }
-  gm_pcm_cruise = ((gm_hw == GM_CAM) && (!gm_cam_long || gm_cc_long) && !gm_force_ascm && !gm_pedal_long) || (gm_hw == GM_SDGM);
+  gm_pcm_cruise = (((gm_hw == GM_CAM) || (gm_hw == GM_SDGM)) && (!gm_cam_long || gm_cc_long) && !gm_force_ascm && !gm_pedal_long);
   gm_skip_relay_check = GET_FLAG(param, GM_PARAM_NO_CAMERA);
   gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
   enable_gas_interceptor = GET_FLAG(param, GM_PARAM_PEDAL_INTERCEPTOR);
