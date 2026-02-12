@@ -52,7 +52,7 @@ const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4}, {0x200, 0, 6}, {0x1E1, 0, 7}, {0
                                  {0x1E1, 2, 7}, {0x184, 2, 8}};  // camera bus
 
 const CanMsg GM_CAM_LONG_TX_MSGS[] = {{0x180, 0, 4}, {0x315, 0, 5}, {0x2CB, 0, 8}, {0x370, 0, 6}, {0x200, 0, 6}, {0xBD, 0, 7}, {0x1F5, 0, 8},   // pt bus
-                                      {0x1E1, 2, 7}, {0x184, 2, 8}};  // camera bus
+                                      {0x315, 2, 5}, {0x1E1, 2, 7}, {0x184, 2, 8}};  // camera bus
 
 const CanMsg GM_SDGM_TX_MSGS[] = {{0x180, 0, 4}, {0x1E1, 0, 7}, {0xBD, 0, 7}, {0x1F5, 0, 8}, // pt bus
                                   {0x184, 2, 8}};  // camera bus
@@ -74,17 +74,17 @@ RxCheck gm_rx_checks[] = {
 
 const uint16_t GM_PARAM_HW_CAM = 1;
 const uint16_t GM_PARAM_HW_CAM_LONG = 2;
-const uint16_t GM_PARAM_HW_SDGM = 4;
-const uint16_t GM_PARAM_CC_LONG = 8;
-const uint16_t GM_PARAM_HW_ASCM_LONG = 16;
-const uint16_t GM_PARAM_NO_CAMERA = 32;
-const uint16_t GM_PARAM_NO_ACC = 64;
-const uint16_t GM_PARAM_PEDAL_LONG = 128;  // TODO: this can be inferred
-const uint16_t GM_PARAM_PEDAL_INTERCEPTOR = 256;
-const uint16_t GM_PARAM_BOLT_2017 = 512;
-const uint16_t GM_PARAM_BOLT_2022_PEDAL = 1024;
-const uint16_t GM_PARAM_ASCM_INT = 2048;
-const uint16_t GM_PARAM_FORCE_BRAKE_C9 = 4096;
+const uint16_t GM_PARAM_CC_LONG = 4;
+const uint16_t GM_PARAM_HW_ASCM_LONG = 8;
+const uint16_t GM_PARAM_NO_CAMERA = 16;
+const uint16_t GM_PARAM_NO_ACC = 32;
+const uint16_t GM_PARAM_PEDAL_LONG = 64;  // TODO: this can be inferred
+const uint16_t GM_PARAM_PEDAL_INTERCEPTOR = 128;
+const uint16_t GM_PARAM_ASCM_INT = 256;
+const uint16_t GM_PARAM_FORCE_BRAKE_C9 = 512;
+const uint16_t GM_PARAM_HW_SDGM = 1024;
+const uint16_t GM_PARAM_BOLT_2017 = 2048;
+const uint16_t GM_PARAM_BOLT_2022_PEDAL = 4096;
 const uint16_t GM_PARAM_REMOTE_START_BOOTS_COMMA = 8192;
 
 enum {
@@ -348,9 +348,9 @@ static int gm_fwd_hook(int bus_num, int addr) {
 
 static safety_config gm_init(uint16_t param) {
   gm_ascm_int = GET_FLAG(param, GM_PARAM_ASCM_INT);
-  if GET_FLAG(param, GM_PARAM_HW_CAM) {
+  if (GET_FLAG(param, GM_PARAM_HW_CAM)) {
     gm_hw = GM_CAM;
-  } else if GET_FLAG(param, GM_PARAM_HW_SDGM) {
+  } else if (GET_FLAG(param, GM_PARAM_HW_SDGM)) {
     gm_hw = GM_SDGM;
   } else {
     gm_hw = GM_ASCM;

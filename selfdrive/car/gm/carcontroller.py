@@ -162,6 +162,13 @@ class CarController(CarControllerBase):
       CAR.CHEVROLET_MALIBU_CC,
       CAR.CHEVROLET_MALIBU_HYBRID_CC,
     }
+    volt_like = {
+      CAR.CHEVROLET_VOLT,
+      CAR.CHEVROLET_VOLT_2019,
+      CAR.CHEVROLET_VOLT_ASCM,
+      CAR.CHEVROLET_VOLT_CAMERA,
+      CAR.CHEVROLET_VOLT_CC,
+    }
 
     # Planner-driven regen hold: gate by car support and OP long active, use commanded accel thresholds
     if (self.CP.enableGasInterceptor and self.CP.carFingerprint in CC_REGEN_PADDLE_CAR
@@ -553,7 +560,7 @@ class CarController(CarControllerBase):
                 CanBus.POWERTRAIN, self.malibu_cancel_phase, CS.steering_button_prefix))
               self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
             self.malibu_cancel_frame += 1
-          elif self.CP.carFingerprint in SDGM_CAR:
+          elif self.CP.carFingerprint in SDGM_CAR and self.CP.carFingerprint not in volt_like:
             can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, CS.buttons_counter, CruiseButtons.CANCEL))
           else:
             cancel_bus = CanBus.POWERTRAIN if (self.CP.enableGasInterceptor and self.CP.carFingerprint == CAR.CHEVROLET_BOLT_CC_2022_2023) else CanBus.CAMERA
