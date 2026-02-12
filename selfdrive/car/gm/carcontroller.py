@@ -568,7 +568,7 @@ class CarController(CarControllerBase):
 
     if self.CP.networkLocation == NetworkLocation.fwdCamera:
       # Silence "Take Steering" alert sent by camera, forward PSCMStatus with HandsOffSWlDetectionStatus=1
-      if self.frame % 20 == 0:
+      if self.frame % 10 == 0:
         can_sends.append(gmcan.create_pscm_status(self.packer_pt, CanBus.CAMERA, CS.pscm_status))
 
     new_actuators = actuators.as_builder()
