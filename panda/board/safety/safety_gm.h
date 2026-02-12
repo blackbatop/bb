@@ -212,10 +212,17 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
     generic_rx_checks(stock_ecu_detected);
   }
 
-  // Cruise check for Gen2 Bolt (ASCMActiveCruiseControlStatus on bus 2)
-  if (gm_bolt_2022_pedal && (GET_ADDR(to_push) == 0x370) && (GET_BUS(to_push) == 2U)) {
+  // Cruise check for ASCMActiveCruiseControlStatus on bus 2.
+  // Keep kaofui behavior for non-Bolt paths; Bolt pedal path keeps local tracking.
+  if ((GET_ADDR(to_push) == 0x370) && (GET_BUS(to_push) == 2U)) {
     bool cruise_engaged = (GET_BYTE(to_push, 2) >> 7) != 0U;  // ACCCmdActive
-    cruise_engaged_prev = cruise_engaged;
+    if (gm_bolt_2022_pedal) {
+      cruise_engaged_prev = cruise_engaged;
+    } else if (gm_pcm_cruise && gm_has_acc) {
+      pcm_cruise_check(cruise_engaged);
+    } else {
+      cruise_engaged_prev = cruise_engaged;
+    }
   }
 }
 
@@ -361,6 +368,7 @@ static safety_config gm_init(uint16_t param) {
 
   gm_pedal_long = GET_FLAG(param, GM_PARAM_PEDAL_LONG);
   gm_cc_long = GET_FLAG(param, GM_PARAM_CC_LONG);
+  enable_gas_interceptor = GET_FLAG(param, GM_PARAM_PEDAL_INTERCEPTOR);
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG) && !gm_cc_long;
   gm_bolt_2022_pedal = GET_FLAG(param, GM_PARAM_BOLT_2022_PEDAL);
   if (gm_hw == GM_CAM && enable_gas_interceptor && gm_bolt_2022_pedal) {
@@ -369,7 +377,6 @@ static safety_config gm_init(uint16_t param) {
   gm_pcm_cruise = (((gm_hw == GM_CAM) || (gm_hw == GM_SDGM)) && (!gm_cam_long || gm_cc_long) && !gm_force_ascm && !gm_pedal_long);
   gm_skip_relay_check = GET_FLAG(param, GM_PARAM_NO_CAMERA);
   gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
-  enable_gas_interceptor = GET_FLAG(param, GM_PARAM_PEDAL_INTERCEPTOR);
   gm_force_brake_c9 = GET_FLAG(param, GM_PARAM_FORCE_BRAKE_C9);
   gm_remote_start_boots_comma = GET_FLAG(param, GM_PARAM_REMOTE_START_BOOTS_COMMA);
 
