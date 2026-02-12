@@ -69,7 +69,6 @@ class CarControllerParams:
     }
     volt_like = {
       CAR.CHEVROLET_VOLT,
-      CAR.CHEVROLET_VOLT_2019,
       CAR.CHEVROLET_VOLT_ASCM,
       CAR.CHEVROLET_VOLT_CAMERA,
       CAR.CHEVROLET_VOLT_CC,
