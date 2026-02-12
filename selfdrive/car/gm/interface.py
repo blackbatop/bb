@@ -561,7 +561,7 @@ class CarInterface(CarInterfaceBase):
     below_min_enable_speed = ret.vEgo < self.CP.minEnableSpeed or self.CS.moving_backward
     if below_min_enable_speed and not (ret.standstill and ret.brake >= 20 and
                                        (self.CP.networkLocation == NetworkLocation.fwdCamera and
-                                        (self.CP.carFingerprint in VOLT_LIKE_CARS or self.CP.carFingerprint not in SDGM_CAR))):
+                                        (self.CP.carFingerprint in VOLT_LIKE_CARS or self.CP.carFingerprint in {CAR.CHEVROLET_BLAZER, CAR.CHEVROLET_MALIBU_SDGM} or self.CP.carFingerprint not in SDGM_CAR))):
       events.add(EventName.belowEngageSpeed)
     if ret.cruiseState.standstill and not self.CP.autoResumeSng:
       events.add(EventName.resumeRequired)

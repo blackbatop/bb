@@ -39,7 +39,7 @@ class CarState(CarStateBase):
     ret = car.CarState.new_message()
     fp_ret = custom.FrogPilotCarState.new_message()
     volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
-    kaofui_state_cars = volt_like | {
+    kaofui_state_cars = volt_like | SDGM_CAR | ASCM_INT | {
       CAR.CHEVROLET_BLAZER,
       CAR.CHEVROLET_MALIBU_SDGM,
       CAR.CHEVROLET_MALIBU_CC,
@@ -223,7 +223,7 @@ class CarState(CarStateBase):
     messages = []
     if CP.networkLocation == NetworkLocation.fwdCamera and not CP.flags & GMFlags.NO_CAMERA.value:
       volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
-      kaofui_state_cars = volt_like | {
+      kaofui_state_cars = volt_like | SDGM_CAR | ASCM_INT | {
         CAR.CHEVROLET_BLAZER,
         CAR.CHEVROLET_MALIBU_SDGM,
         CAR.CHEVROLET_MALIBU_CC,
@@ -268,7 +268,7 @@ class CarState(CarStateBase):
     ]
 
     volt_like = {CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_2019, CAR.CHEVROLET_VOLT_ASCM, CAR.CHEVROLET_VOLT_CAMERA, CAR.CHEVROLET_VOLT_CC}
-    kaofui_state_cars = volt_like | {
+    kaofui_state_cars = volt_like | SDGM_CAR | ASCM_INT | {
       CAR.CHEVROLET_BLAZER,
       CAR.CHEVROLET_MALIBU_SDGM,
       CAR.CHEVROLET_MALIBU_CC,
