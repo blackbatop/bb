@@ -108,7 +108,10 @@ class CarState(CarStateBase):
         ret.brake = pt_cp.vl.get("ECMAcceleratorPos", {}).get("BrakePedalPos", 0)
       else:
         ret.brake = pt_cp.vl["ECMAcceleratorPos"]["BrakePedalPos"]
-    if (self.CP.flags & GMFlags.FORCE_BRAKE_C9.value) or ((self.CP.networkLocation == NetworkLocation.fwdCamera) and (self.CP.carFingerprint != CAR.CHEVROLET_BLAZER)):
+    if self.CP.carFingerprint == CAR.CHEVROLET_BLAZER:
+      # Blazer can miss light taps on analog threshold; include digital brake switch.
+      ret.brakePressed = (pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0) or (ret.brake >= 0.15)
+    elif (self.CP.flags & GMFlags.FORCE_BRAKE_C9.value) or (self.CP.networkLocation == NetworkLocation.fwdCamera):
       ret.brakePressed = pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0
     else:
       # Some Volt 2016-17 have loose brake pedal push rod retainers which causes the ECM to believe
