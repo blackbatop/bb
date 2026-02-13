@@ -537,6 +537,9 @@ class CarInterface(CarInterfaceBase):
       # Keep Malibu Hybrid pedal on the same longitudinal tune as Bolt pedal cars.
       ret.longitudinalTuning.kpBP = [0.0, 5.0, 15.0, 35.0]
       ret.longitudinalTuning.kpV = [0.095, 0.085, 0.065, 0.050]
+      # Reuse Bolt pedal cancel-allow safety path so 0x1E1 cancel isn't blocked
+      # when stock cruise state differs from pedal-long control state.
+      gm_safety_cfg.safetyParam |= Panda.FLAG_GM_BOLT_2022_PEDAL
       ret.longitudinalTuning.kiBP = [0.0, 3.0, 6.0, 35.0]
       ret.longitudinalTuning.kiV = [0.07, 0.10, 0.15, 0.24]
       ret.longitudinalTuning.kfDEPRECATED = 0.20
