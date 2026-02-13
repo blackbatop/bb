@@ -66,7 +66,9 @@ class CarController(CarControllerBase):
     self.malibu_cancel_phase = 0
     self.malibu_cancel_last_ts = 0.0
     self.malibu_cancel_frame = 0
+    self.malibu_cancel_frame_offset = 0
     self.malibu_button_phase = 0
+    self.malibu_last_button_ts_nanos = 0
 
     self.packer_pt = CANPacker(DBC[self.CP.carFingerprint]['pt'])
     self.packer_obj = CANPacker(DBC[self.CP.carFingerprint]['radar'])
@@ -229,6 +231,19 @@ class CarController(CarControllerBase):
     self.pedal_steady = pedal_gas
     return pedal_gas, press_regen_paddle
 
+  def _update_malibu_button_slot(self, cs):
+    button_ts = cs.steering_button_ts_nanos
+    if button_ts != 0 and button_ts != self.malibu_last_button_ts_nanos:
+      self.malibu_last_button_ts_nanos = button_ts
+      return True
+    return False
+
+  def _sync_malibu_phase_from_oem(self, cs):
+    phase_map = gmcan.malibu_phase_map_for_acc(cs.cruise_buttons)
+    if phase_map and cs.steering_button_checksum in phase_map:
+      phase = phase_map[cs.steering_button_checksum]
+      self.malibu_cancel_phase = phase
+      self.malibu_button_phase = phase
 
   def update(self, CC, CS, now_nanos, frogpilot_toggles):
     self.CS = CS
@@ -286,12 +301,11 @@ class CarController(CarControllerBase):
     # Send CAN commands.
     can_sends = []
 
+    malibu_oem_button_slot = False
     if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
-      phase_map = gmcan.malibu_phase_map_for_acc(CS.cruise_buttons)
-      if phase_map and CS.steering_button_checksum in phase_map:
-        phase = (phase_map[CS.steering_button_checksum] + 1) % 4
-        self.malibu_cancel_phase = phase
-        self.malibu_button_phase = phase
+      malibu_oem_button_slot = self._update_malibu_button_slot(CS)
+      if malibu_oem_button_slot:
+        self._sync_malibu_phase_from_oem(CS)
 
     raw_regen_active = (
       self.CP.carFingerprint in CC_REGEN_PADDLE_CAR and
@@ -368,6 +382,8 @@ class CarController(CarControllerBase):
       spoof_set_speed_kph = hud_v_cruise * CV.MS_TO_KPH
       can_sends.append(gmcan.create_ecm_cruise_control_command(
         self.packer_pt, CanBus.POWERTRAIN, spoof_enabled, spoof_set_speed_kph))
+
+    malibu_cancel_requested = False
 
     if self.CP.openpilotLongitudinalControl:
 
@@ -547,17 +563,16 @@ class CarController(CarControllerBase):
       stock_cc_active = CS.out.cruiseState.enabled or CS.pcm_acc_status != AccState.OFF
       if self.CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL:
         stock_cc_active = CS.out.cruiseState.enabled
+      pedal_cancel = self.CP.flags & GMFlags.PEDAL_LONG.value
+      if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+        pedal_cancel = pedal_cancel and CC.longActive
+
       if (
-          (self.CP.flags & GMFlags.PEDAL_LONG.value)  # Always cancel stock CC when using pedal interceptor
+          pedal_cancel
           or (self.CP.flags & GMFlags.CC_LONG.value and not CC.enabled)  # Cancel stock CC if OP is not active
       ) and stock_cc_active:
         if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
-          # Match 33 Hz cadence (every 3 frames) and align phase to the last seen checksum.
-          if self.malibu_cancel_frame % 3 == 0:
-            can_sends.append(gmcan.create_buttons_malibu_cancel(
-              CanBus.POWERTRAIN, self.malibu_cancel_phase, CS.steering_button_prefix))
-            self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
-          self.malibu_cancel_frame += 1
+          malibu_cancel_requested = True
         else:
           if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
             self.last_button_frame = self.frame
@@ -570,19 +585,23 @@ class CarController(CarControllerBase):
       self.cancel_counter = self.cancel_counter + 1 if CC.cruiseControl.cancel else 0
 
       # Stock longitudinal, integrated at camera
-      if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
+      if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+        if self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
+          malibu_cancel_requested = True
+      elif (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
         if self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
           self.last_button_frame = self.frame
-          if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
-            if self.malibu_cancel_frame % 3 == 0:
-              can_sends.append(gmcan.create_buttons_malibu_cancel(
-                CanBus.POWERTRAIN, self.malibu_cancel_phase, CS.steering_button_prefix))
-              self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
-            self.malibu_cancel_frame += 1
-          elif self.CP.carFingerprint in SDGM_CAR and self.CP.carFingerprint not in (volt_like | {CAR.CHEVROLET_BLAZER, CAR.CHEVROLET_MALIBU_SDGM, CAR.CHEVROLET_TRAVERSE}):
+          if self.CP.carFingerprint in SDGM_CAR and self.CP.carFingerprint not in (volt_like | {CAR.CHEVROLET_BLAZER, CAR.CHEVROLET_MALIBU_SDGM, CAR.CHEVROLET_TRAVERSE}):
             can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, CS.buttons_counter, CruiseButtons.CANCEL))
           else:
             can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.CAMERA, CS.buttons_counter, CruiseButtons.CANCEL))
+
+    if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+      # Malibu has no reliable rolling counter in 0x1E1; lock cancel send to each observed OEM 0x1E1 slot.
+      if malibu_cancel_requested and malibu_oem_button_slot:
+        can_sends.append(gmcan.create_buttons_malibu_cancel(
+          CanBus.POWERTRAIN, (self.malibu_cancel_phase + 1) % 4, CS.steering_button_prefix))
+        self.malibu_cancel_phase = (self.malibu_cancel_phase + 1) % 4
 
     if self.CP.networkLocation == NetworkLocation.fwdCamera:
       # Silence "Take Steering" alert sent by camera, forward PSCMStatus with HandsOffSWlDetectionStatus=1
