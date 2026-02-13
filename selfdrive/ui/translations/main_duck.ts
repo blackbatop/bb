@@ -2137,6 +2137,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Truck Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use aggressive acceleration profiles tuned for trucks.&lt;/b&gt; Intended for heavy vehicles that need stronger throttle.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>High Speed Following Distance</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3366,6 +3374,30 @@ Developer - Ultra-custom settings for seasoned duckthusiasts</translation>
         <source>CANCEL</source>
         <translation type="gpt-5-generated">QUACK-CANCEL</translation>
     </message>
+    <message>
+        <source>Boot Logo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;The boot logo shown while the device starts.&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a boot logo to delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete the "%1" boot logo?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a boot logo to download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a boot logo</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotUtilitiesPanel</name>
@@ -3817,11 +3849,31 @@ Developer - Ultra-custom settings for seasoned duckthusiasts</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Red Panda</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Enable Red Panda behavior&lt;/b&gt; for GM (alternate safety config and bus numbering). Requires a reboot to take effect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remote Start Boots Comma</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use GM C9 SystemPowerMode&lt;/b&gt; for ignition detection. Toggle requires a panda firmware update and a reboot to take effect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>SASCM Support</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&lt;b&gt;Does your vehicle support "SASCMs"?&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remote Start requires a Panda firmware update. Flash the Panda now?</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4753,6 +4805,10 @@ Developer - Ultra-custom settings for seasoned duckthusiasts</translation>
     <message>
         <source> ALERT</source>
         <translation type="gpt-5-generated">QUACK ALERT</translation>
+    </message>
+    <message>
+        <source>Branch Merge Notice: This branch is deprecated and has been merged into StarPilot. Please switch to the StarPilot branch.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

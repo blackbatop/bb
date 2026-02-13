@@ -13,6 +13,11 @@ a.out
 dist/
 pandacan.egg-info/
 obj/
+!board/obj/
+!board/obj/bootstub.panda_remote.bin
+!board/obj/bootstub.panda_h7_remote.bin
+!board/obj/panda_remote.bin.signed
+!board/obj/panda_h7_remote.bin.signed
 examples/output.csv
 .DS_Store
 .vscode*
