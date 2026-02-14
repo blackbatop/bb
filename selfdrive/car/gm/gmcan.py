@@ -239,7 +239,7 @@ def create_lka_icon_command(bus, active, critical, steer):
   return make_can_msg(0x104c006c, dat, bus)
 
 def create_prndl2_command(packer, bus, press_regen_paddle, CP):
-  if CP.carFingerprint in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_CC_2022_2023):
+  if CP.carFingerprint in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL, CAR.CHEVROLET_BOLT_CC_2022_2023):
     prndl2_value = 5 if press_regen_paddle else 6
   else:
     prndl2_value = 7 if press_regen_paddle else 6

@@ -563,7 +563,7 @@ class CarController(CarControllerBase):
           elif self.CP.carFingerprint in SDGM_CAR and self.CP.carFingerprint not in (volt_like | {CAR.CHEVROLET_BLAZER, CAR.CHEVROLET_MALIBU_SDGM, CAR.CHEVROLET_TRAVERSE}):
             can_sends.append(gmcan.create_buttons(self.packer_pt, CanBus.POWERTRAIN, CS.buttons_counter, CruiseButtons.CANCEL))
           else:
-            cancel_bus = CanBus.POWERTRAIN if (self.CP.enableGasInterceptor and self.CP.carFingerprint == CAR.CHEVROLET_BOLT_CC_2022_2023) else CanBus.CAMERA
+            cancel_bus = CanBus.POWERTRAIN if (self.CP.enableGasInterceptor and self.CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL) else CanBus.CAMERA
             can_sends.append(gmcan.create_buttons(self.packer_pt, cancel_bus, CS.buttons_counter, CruiseButtons.CANCEL))
 
     if self.CP.networkLocation == NetworkLocation.fwdCamera:
