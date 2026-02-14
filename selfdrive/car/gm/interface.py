@@ -44,6 +44,10 @@ NON_LINEAR_TORQUE_PARAMS = {
     "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
     "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
   },
+  CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL: {
+    "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
+    "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
+  },
   CAR.CHEVROLET_BOLT_CC_2022_2023: {
     "left": [2.6531724862969748, 1.1, 0.1919764879840985, 0.0],
     "right": [2.7031724862969748, 1.0, 0.1469764879840985, 0.0],
@@ -177,7 +181,7 @@ class CarInterface(CarInterfaceBase):
     kaofui_cars = SDGM_CAR | ASCM_INT | VOLT_LIKE_CARS | {CAR.CHEVROLET_MALIBU_CC, CAR.CHEVROLET_MALIBU_HYBRID_CC}
     ret.longitudinalTuning.kiBP = [5., 35.] if candidate in kaofui_cars else [5., 35., 60.]
 
-    is_bolt_2022_2023_pedal = candidate == CAR.CHEVROLET_BOLT_CC_2022_2023 and ret.enableGasInterceptor
+    is_bolt_2022_2023_pedal = candidate == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL and ret.enableGasInterceptor
 
     kaofui_camera_cars = {
       CAR.CHEVROLET_VOLT_CAMERA,
@@ -188,6 +192,7 @@ class CarInterface(CarInterfaceBase):
     bolt_cc_camera_cars = {
       CAR.CHEVROLET_BOLT_CC_2017,
       CAR.CHEVROLET_BOLT_CC_2019_2021,
+      CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL,
       CAR.CHEVROLET_BOLT_CC_2022_2023,
     }
     is_camera_acc = candidate in CAMERA_ACC_CAR and candidate not in kaofui_cars and \
@@ -367,7 +372,7 @@ class CarInterface(CarInterfaceBase):
         ret.steerActuatorDelay = 0.2
         CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
-    elif candidate in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_CC_2022_2023, CAR.CHEVROLET_BOLT_CC_2019_2021, CAR.CHEVROLET_BOLT_CC_2017):
+    elif candidate in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL, CAR.CHEVROLET_BOLT_CC_2022_2023, CAR.CHEVROLET_BOLT_CC_2019_2021, CAR.CHEVROLET_BOLT_CC_2017):
       ret.steerActuatorDelay = 0.2
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 

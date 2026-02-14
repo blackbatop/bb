@@ -127,7 +127,7 @@ class CarState(CarStateBase):
       self.single_pedal_mode = (ret.gearShifter == GearShifter.low or
                                 pt_cp.vl["EVDriveMode"]["SinglePedalModeActive"] == 1 or
                                 (ret.regenBraking and GearShifter.manumatic) or
-                                (self.CP.carFingerprint in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_CC_2022_2023) and self.CP.enableGasInterceptor))
+                                (self.CP.carFingerprint in (CAR.CHEVROLET_BOLT_ACC_2022_2023, CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL, CAR.CHEVROLET_BOLT_CC_2022_2023) and self.CP.enableGasInterceptor))
 
     if self.CP.enableGasInterceptor:
       ret.gas = (pt_cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS"] + pt_cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS2"]) / 2.
