@@ -194,11 +194,17 @@ class CarState(CarStateBase):
     if self.CP.carFingerprint in CC_ONLY_CAR:
       ret.accFaulted = False
       ret.cruiseState.speed = pt_cp.vl["ECMCruiseControl"]["CruiseSetSpeed"] * CV.KPH_TO_MS
-      # Try ECM first for cars that might have it (like most GMs), fall back to ASCM
-      try:
-        ret.cruiseState.enabled = pt_cp.vl["ECMCruiseControl"]["CruiseActive"] != 0
-      except:
-        ret.cruiseState.enabled = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCmdActive"] != 0
+      if self.CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL:
+        try:
+          ret.cruiseState.enabled = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCmdActive"] != 0
+        except:
+          ret.cruiseState.enabled = pt_cp.vl["ECMCruiseControl"]["CruiseActive"] != 0
+      else:
+        # Most CC paths use ECM first.
+        try:
+          ret.cruiseState.enabled = pt_cp.vl["ECMCruiseControl"]["CruiseActive"] != 0
+        except:
+          ret.cruiseState.enabled = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCCmdActive"] != 0
 
     if self.CP.enableBsm:
       if not sdgm_non_volt:
@@ -250,7 +256,7 @@ class CarState(CarStateBase):
         messages += [
           ("AEBCmd", 10),
         ]
-      if CP.carFingerprint not in CC_ONLY_CAR:
+      if CP.carFingerprint not in CC_ONLY_CAR or CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL:
         messages += [
           ("ASCMActiveCruiseControlStatus", 25),
         ]
