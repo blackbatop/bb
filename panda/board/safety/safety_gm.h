@@ -218,7 +218,7 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
     bool cruise_engaged = (GET_BYTE(to_push, 2) >> 7) != 0U;  // ACCCmdActive
     if (gm_bolt_2022_pedal) {
       cruise_engaged_prev = cruise_engaged;
-    } else if (gm_pcm_cruise && gm_has_acc && (gm_hw != GM_CAM)) {
+    } else if (gm_pcm_cruise && gm_has_acc) {
       pcm_cruise_check(cruise_engaged);
     } else {
       cruise_engaged_prev = cruise_engaged;
