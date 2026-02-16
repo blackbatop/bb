@@ -42,7 +42,6 @@ class CarState(CarStateBase):
     kaofui_state_cars = volt_like | SDGM_CAR | ASCM_INT | {
       CAR.CHEVROLET_BLAZER,
       CAR.CHEVROLET_MALIBU_SDGM,
-      CAR.CHEVROLET_MALIBU_CC,
       CAR.CHEVROLET_MALIBU_HYBRID_CC,
     }
     sdgm_non_volt = self.CP.carFingerprint in SDGM_CAR and \
@@ -111,6 +110,9 @@ class CarState(CarStateBase):
     if self.CP.carFingerprint == CAR.CHEVROLET_BLAZER:
       # Blazer can miss light taps on analog threshold; include digital brake switch.
       ret.brakePressed = (pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0) or (ret.brake >= 0.7)
+    elif self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_CC:
+      # Malibu CC: keep strict opgm behavior using BrakePedalPos >= 8.
+      ret.brakePressed = ret.brake >= 8
     elif (self.CP.flags & GMFlags.FORCE_BRAKE_C9.value) or (self.CP.networkLocation == NetworkLocation.fwdCamera):
       ret.brakePressed = pt_cp.vl["ECMEngineStatus"]["BrakePressed"] != 0
     else:
@@ -235,7 +237,6 @@ class CarState(CarStateBase):
       kaofui_state_cars = volt_like | SDGM_CAR | ASCM_INT | {
         CAR.CHEVROLET_BLAZER,
         CAR.CHEVROLET_MALIBU_SDGM,
-        CAR.CHEVROLET_MALIBU_CC,
         CAR.CHEVROLET_MALIBU_HYBRID_CC,
       }
       sdgm_non_volt = CP.carFingerprint in SDGM_CAR and \
@@ -280,7 +281,6 @@ class CarState(CarStateBase):
     kaofui_state_cars = volt_like | SDGM_CAR | ASCM_INT | {
       CAR.CHEVROLET_BLAZER,
       CAR.CHEVROLET_MALIBU_SDGM,
-      CAR.CHEVROLET_MALIBU_CC,
       CAR.CHEVROLET_MALIBU_HYBRID_CC,
     }
     prndl2_rate = 10 if CP.carFingerprint in kaofui_state_cars else 40
