@@ -47,8 +47,10 @@ A_CRUISE_MIN_SPORT = A_CRUISE_MIN * 2
 
                        # MPH = [0.0,  11,  22,  34,  45,  56,  89]
 A_CRUISE_MAX_BP_CUSTOM =       [0.0,  5., 10., 15., 20., 25., 40.]
-A_CRUISE_MAX_VALS_ECO_EV =     [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-A_CRUISE_MAX_VALS_SPORT_EV =   [1.25, 1.25, 1.25, 1.25, 1.5, 1.5, 2.0]
+A_CRUISE_MAX_VALS_ECO_EV =     [1.0, 1.0, 1.0, 1.0, 1.12, 1.12, 1.45]
+A_CRUISE_MAX_VALS_STANDARD_EV = [1.15, 1.15, 1.15, 1.15, 1.30, 1.30, 1.72]
+A_CRUISE_MAX_VALS_SPORT_EV =   [1.25, 1.25, 1.25, 1.25, 1.45, 1.5, 2.0]
+A_CRUISE_MAX_VALS_SPORT_PLUS_EV = [1.35, 1.35, 1.35, 1.35, 1.60, 1.60, 2.10]
 A_CRUISE_MAX_VALS_ECO_GAS =    [2.0, 1.5, 1.0, 0.8, 0.6, 0.4, 0.2]
 A_CRUISE_MAX_VALS_SPORT_GAS =  [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6]
 A_CRUISE_MAX_VALS_ECO_TRUCK =       [4.0, 1.10, 0.60, 0.50, 0.45, 0.43, 0.35]
@@ -74,7 +76,9 @@ def get_max_accel_sport(v_ego, ev_tuning=True, truck_tuning=False):
     cruise_vals = A_CRUISE_MAX_VALS_SPORT_GAS
   return float(akima_interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, cruise_vals))
 
-def get_max_accel_standard(v_ego, truck_tuning=False):
+def get_max_accel_standard(v_ego, ev_tuning=True, truck_tuning=False):
+  if ev_tuning:
+    return float(akima_interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, A_CRUISE_MAX_VALS_STANDARD_EV))
   if truck_tuning:
     return float(akima_interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, A_CRUISE_MAX_VALS_STANDARD_TRUCK))
   return get_max_accel(v_ego)
@@ -85,7 +89,9 @@ def get_max_accel_low_speeds(max_accel, v_cruise):
 def get_max_accel_ramp_off(max_accel, v_cruise, v_ego):
   return float(akima_interp(v_cruise - v_ego, [0., 1., 5., 10.], [0., 0.5, 1.0, max_accel]))
 
-def get_max_allowed_accel(v_ego, truck_tuning=False):
+def get_max_allowed_accel(v_ego, ev_tuning=True, truck_tuning=False):
+  if ev_tuning:
+    return float(akima_interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, A_CRUISE_MAX_VALS_SPORT_PLUS_EV))
   if truck_tuning:
     return float(akima_interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, A_CRUISE_MAX_VALS_SPORT_PLUS_TRUCK))
   return float(akima_interp(v_ego, [0., 5., 20.], [4.0, 4.0, 2.0]))  # ISO 15622:2018
@@ -104,7 +110,7 @@ class FrogPilotAcceleration:
     truck_tuning = frogpilot_toggles.truck_tuning
 
     if sm["frogpilotCarState"].trafficModeEnabled:
-      self.max_accel = get_max_accel_standard(v_ego, truck_tuning)
+      self.max_accel = get_max_accel_standard(v_ego, ev_tuning, truck_tuning)
     elif frogpilot_toggles.map_acceleration and (eco_gear or sport_gear):
       if eco_gear:
         self.max_accel = get_max_accel_eco(v_ego, ev_tuning, truck_tuning)
@@ -112,16 +118,16 @@ class FrogPilotAcceleration:
         if frogpilot_toggles.acceleration_profile == 2:
           self.max_accel = get_max_accel_sport(v_ego, ev_tuning, truck_tuning)
         else:
-          self.max_accel = get_max_allowed_accel(v_ego, truck_tuning)
+          self.max_accel = get_max_allowed_accel(v_ego, ev_tuning, truck_tuning)
     else:
       if frogpilot_toggles.acceleration_profile == 1:
         self.max_accel = get_max_accel_eco(v_ego, ev_tuning, truck_tuning)
       elif frogpilot_toggles.acceleration_profile == 2:
         self.max_accel = get_max_accel_sport(v_ego, ev_tuning, truck_tuning)
       elif frogpilot_toggles.acceleration_profile == 3:
-        self.max_accel = get_max_allowed_accel(v_ego, truck_tuning)
+        self.max_accel = get_max_allowed_accel(v_ego, ev_tuning, truck_tuning)
       else:
-        self.max_accel = get_max_accel_standard(v_ego, truck_tuning)
+        self.max_accel = get_max_accel_standard(v_ego, ev_tuning, truck_tuning)
 
     if frogpilot_toggles.human_acceleration:
       self.max_accel = min(get_max_accel_low_speeds(self.max_accel, self.frogpilot_planner.v_cruise), self.max_accel)
