@@ -62,7 +62,7 @@ A_CRUISE_MAX_VALS_SPORT_GAS =  [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6]
 A_CRUISE_MAX_VALS_ECO_TRUCK =       [4.0, 1.10, 0.60, 0.50, 0.45, 0.43, 0.35]
 A_CRUISE_MAX_VALS_STANDARD_TRUCK =  [6.0, 1.25, 0.80, 0.60, 0.55, 0.50, 0.38]
 A_CRUISE_MAX_VALS_SPORT_TRUCK =     [6.0, 1.30, 0.85, 0.72, 0.65, 0.60, 0.45]
-A_CRUISE_MAX_VALS_SPORT_PLUS_TRUCK = [7.0, 1.40, 1.00, 0.85, 0.77, 0.70, 0.55]
+A_CRUISE_MAX_VALS_SPORT_PLUS_TRUCK = [7.0, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
 
 def get_max_accel_eco(v_ego, ev_tuning=True, truck_tuning=False):
   if ev_tuning:
