@@ -273,9 +273,8 @@ class CarInterface(CarInterfaceBase):
       if is_bolt_2022_2023_pedal:
         ret.experimentalLongitudinalAvailable = False
         ret.pcmCruise = False
-    elif candidate in ASCM_INT:
-      # kaofui parity: ASCM_INT cars require SASCM for experimental long
-      ret.experimentalLongitudinalAvailable = candidate not in (CC_ONLY_CAR | ASCM_INT | SDGM_CAR) or has_sascm(fingerprint)
+    elif candidate in ASCM_INT and has_sascm(fingerprint):
+      ret.experimentalLongitudinalAvailable = True
       ret.networkLocation = NetworkLocation.fwdCamera
       ret.radarUnavailable = 0x460 not in fingerprint.get(CanBus.OBSTACLE, {})
       ret.pcmCruise = True
