@@ -68,10 +68,6 @@ NON_LINEAR_TORQUE_PARAMS = {
     "left": [3.8, 0.81, 0.24, 0.0465122],
     "right": [3.8, 0.81, 0.24, 0.0465122],
   },
-  CAR.GMC_SIERRA: {
-    "left": [3.8, 0.81, 0.24, 0.0465122],
-    "right": [3.8, 0.81, 0.24, 0.0465122],
-  },
 }
 
 
@@ -398,14 +394,12 @@ class CarInterface(CarInterfaceBase):
       gm_safety_cfg.safetyParam |= Panda.FLAG_GM_NO_ACC
       gm_safety_cfg.safetyParam |= Panda.FLAG_GM_BOLT_2022_PEDAL
 
-    if candidate in (CAR.CHEVROLET_SILVERADO, CAR.GMC_SIERRA):
+    if candidate == CAR.CHEVROLET_SILVERADO:
       # On the Bolt, the ECM and camera independently check that you are either above 5 kph or at a stop
       # with foot on brake to allow engagement, but this platform only has that check in the camera.
       # TODO: check if this is split by EV/ICE with more platforms in the future
       if ret.openpilotLongitudinalControl:
         ret.minEnableSpeed = -1.
-      elif candidate == CAR.GMC_SIERRA:
-        ret.minEnableSpeed = 10 * CV.MPH_TO_MS
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
     elif candidate in (CAR.CHEVROLET_EQUINOX, CAR.CHEVROLET_EQUINOX_CC):
