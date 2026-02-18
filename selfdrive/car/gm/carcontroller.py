@@ -368,7 +368,21 @@ class CarController(CarControllerBase):
       if now_nanos - self.last_steer_ts_ns >= flush_gap_ns:
         can_sends.extend(paddle_sends)
 
+    spoof_ecm_cruise_cars = {
+      CAR.CHEVROLET_BOLT_CC_2017,
+      CAR.CHEVROLET_BOLT_CC_2019_2021,
+      CAR.CHEVROLET_BOLT_CC_2022_2023,
+      CAR.CHEVROLET_MALIBU_HYBRID_CC,
+    }
+    non_acc_pedal_long = (self.CP.flags & GMFlags.PEDAL_LONG.value) and self.CP.carFingerprint in spoof_ecm_cruise_cars and self.CP.enableGasInterceptor
+    if non_acc_pedal_long and self.frame % 4 == 0:
+      spoof_enabled = True
+      spoof_set_speed_kph = hud_v_cruise * CV.MS_TO_KPH
+      can_sends.append(gmcan.create_ecm_cruise_control_command(
+        self.packer_pt, CanBus.POWERTRAIN, spoof_enabled, spoof_set_speed_kph))
+
     if self.CP.openpilotLongitudinalControl:
+
       # Gas/regen, brakes, and UI commands - all at 25Hz
       if self.frame % 4 == 0:
         stopping = actuators.longControlState == LongCtrlState.stopping
@@ -419,10 +433,10 @@ class CarController(CarControllerBase):
 
             gas_max = self.params.MAX_GAS
             accel_max = self.params.ACCEL_MAX
-            
+
             accel = clip(actuators.accel + accel_due_to_pitch, self.params.ACCEL_MIN, accel_max)
             torque = self.tireRadius * ((self.mass*accel) + (0.5*self.coeffDrag*self.frontalArea*self.airDensity*CS.out.vEgo**2))
-            
+
             scaled_torque = torque + self.params.ZERO_GAS
             apply_gas_torque = clip(scaled_torque, self.params.MAX_ACC_REGEN, gas_max)
             BRAKE_SWITCH = int(round(interp(CS.out.vEgo, self.params.BRAKE_SWITCH_LOOKUP_BP, self.params.BRAKE_SWITCH_LOOKUP_V)))
@@ -467,7 +481,7 @@ class CarController(CarControllerBase):
           friction_brake_bus = CanBus.CHASSIS
           # GM Camera exceptions
           # TODO: can we always check the longControlState?
-          if self.CP.networkLocation == NetworkLocation.fwdCamera and self.CP.carFingerprint not in CC_ONLY_CAR:
+          if self.CP.networkLocation == NetworkLocation.fwdCamera:
             at_full_stop = at_full_stop and stopping
             friction_brake_bus = CanBus.POWERTRAIN
             if self.CP.carFingerprint in SDGM_CAR:
@@ -488,10 +502,11 @@ class CarController(CarControllerBase):
           can_sends.append(gmcan.create_friction_brake_command(self.packer_ch, friction_brake_bus, self.apply_brake,
                                                                idx, CC.enabled, near_stop, at_full_stop, self.CP))
 
-          # Send dashboard UI commands (ACC status)
+        is_bolt_acc_pedal = self.CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL
+        if self.CP.carFingerprint not in CC_ONLY_CAR or is_bolt_acc_pedal:
           send_fcw = hud_alert == VisualAlert.fcw
-          can_sends.append(gmcan.create_acc_dashboard_command(self.packer_pt, CanBus.POWERTRAIN, CC.enabled,
-                                                              hud_v_cruise * CV.MS_TO_KPH, hud_control, send_fcw))
+          can_sends.append(gmcan.create_acc_dashboard_command(
+            self.packer_pt, CanBus.POWERTRAIN, CC.enabled, hud_v_cruise * CV.MS_TO_KPH, hud_control, send_fcw))
       else:
         # to keep accel steady for logs when not sending gas
         accel += self.accel_g
@@ -501,7 +516,10 @@ class CarController(CarControllerBase):
       if not self.CP.radarUnavailable:
         send_adas = True
         if self.CP.carFingerprint in kaofui_cars:
-          send_adas = (self.CP.networkLocation != NetworkLocation.fwdCamera) and (self.CP.carFingerprint not in SDGM_CAR)
+          if self.CP.carFingerprint in ASCM_INT:
+            send_adas = True
+          else:
+            send_adas = (self.CP.networkLocation != NetworkLocation.fwdCamera) and (self.CP.carFingerprint not in SDGM_CAR)
 
         if send_adas:
           tt = self.frame * DT_CTRL
