@@ -62,7 +62,6 @@ THEME_SAVE_PATH = Path("/data/themes")
 ERROR_LOGS_PATH = Path("/data/error_logs")
 SCREEN_RECORDINGS_PATH = Path("/data/media/screen_recordings")
 VIDEO_CACHE_PATH = Path("/data/video_cache")
-MODEL_MIGRATION_FLAG_PATH = Path("/data/params/d/ModelMigratedBd2ToSc")
 
 BACKUP_PATH = Path("/cache/on_backup")
 
@@ -76,8 +75,8 @@ MAPD_PATH = Path("/data/media/0/osm/mapd")
 MAPS_PATH = Path("/data/media/0/osm/offline")
 NNFF_MODELS_PATH = Path(BASEDIR) / "frogpilot/assets/nnff_models"
 
-DEFAULT_MODEL = "sc"
-DEFAULT_MODEL_NAME = "South Carolina (Default) 👀📡"
+DEFAULT_MODEL = "bd2"
+DEFAULT_MODEL_NAME = "Firehose (Default) 👀📡"
 DEFAULT_MODEL_VERSION = "v11"
 
 BUTTON_FUNCTIONS = {
@@ -534,18 +533,6 @@ class FrogPilotVariables:
     toggle.force_onroad = params_memory.get_bool("ForceOnroad")
 
     tuning_level = params.get_int("TuningLevel") if params.get_bool("TuningLevelConfirmed") else 3
-
-    # One-time migration: move legacy bd2 selections to the new default sc model.
-    if not MODEL_MIGRATION_FLAG_PATH.is_file():
-      if params.get("Model", encoding="utf-8") == "bd2":
-        params.put("Model", DEFAULT_MODEL)
-        params.put("ModelVersion", DEFAULT_MODEL_VERSION)
-        params_cache.put("Model", DEFAULT_MODEL)
-        params_cache.put("ModelVersion", DEFAULT_MODEL_VERSION)
-      try:
-        MODEL_MIGRATION_FLAG_PATH.touch(exist_ok=True)
-      except OSError:
-        pass
 
     toggle.is_metric = params.get_bool("IsMetric")
     distance_conversion = 1 if toggle.is_metric else CV.FOOT_TO_METER
