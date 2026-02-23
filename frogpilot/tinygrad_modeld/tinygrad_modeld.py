@@ -124,8 +124,8 @@ class ModelState:
       cloudlog.warning(f"ModelVersion parameter not available: {e}")
 
     model_dir = MODELS_PATH
-    # For the default "bd2" model, use built-in files from the models directory
-    if model_id == "bd2":
+    # For the default "sc" model, use built-in files from the models directory
+    if model_id == "sc":
         models_dir = Path(__file__).parent / "models"
         VISION_PKL_PATH = models_dir / "driving_vision_tinygrad.pkl"
         POLICY_PKL_PATH = models_dir / "driving_policy_tinygrad.pkl"
