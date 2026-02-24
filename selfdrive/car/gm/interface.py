@@ -382,6 +382,14 @@ class CarInterface(CarInterfaceBase):
       ret.lateralTuning.torque.kd = 0.93
       ret.lateralTuning.torque.kfDEPRECATED = 0.02
 
+      if candidate in (CAR.CHEVROLET_BOLT_CC_2019_2021,
+                       CAR.CHEVROLET_BOLT_ACC_2022_2023,
+                       CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL,
+                       CAR.CHEVROLET_BOLT_CC_2022_2023):
+        # Apply 2019-style negative FF and Ki-mult tweaks to 2019-2021 and 2022 variants.
+        ret.lateralTuning.torque.ki *= 1.07
+        ret.lateralTuning.torque.kd *= 0.93
+
       if candidate == CAR.CHEVROLET_BOLT_CC_2017:
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_BOLT_2017
 
