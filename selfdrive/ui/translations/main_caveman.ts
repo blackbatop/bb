@@ -401,6 +401,54 @@
         <source>Disengage to Power Off</source>
         <translation type="gpt-5-generated">Stop drive. Power off.</translation>
     </message>
+    <message>
+        <source>Galaxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair your device with Galaxy for remote access to The Pond.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter 6-digit PIN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please enter a 6-digit PIN to secure your Galaxy access.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unpair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing successful! Visit galaxy.firestar.link/</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> to connect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to unpair from Galaxy?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Galaxy QR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SHOW</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show a QR code to quickly open Galaxy on your phone.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DriveStats</name>
@@ -4645,6 +4693,17 @@ Developer - Many custom setting for seasoned enthusiast</translation>
     <message>
         <source>Select a function to assign to this button</source>
         <translation type="gpt-5-generated">Pick job for this button</translation>
+    </message>
+</context>
+<context>
+    <name>GalaxyQRPopup</name>
+    <message>
+        <source>Scan to open Galaxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tap anywhere to dismiss</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
