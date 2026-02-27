@@ -145,6 +145,8 @@ class Keyboard(Widget):
     input_margin = 25
     input_box_rect = rl.Rectangle(rect.x + input_margin, rect.y + 160, rect.width - input_margin, 100)
     self._render_input_area(input_box_rect)
+    if self._input_box.consume_submit_requested() and len(self._input_box.text) >= self._min_text_size:
+      self._render_return_status = 1
 
     # Process backspace key repeat if it's held down
     if not self._all_keys[BACKSPACE_KEY].is_pressed:

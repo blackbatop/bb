@@ -2,6 +2,7 @@ import pyray as rl
 import time
 from openpilot.system.ui.lib.application import gui_app, MousePos, FONT_SCALE
 from openpilot.system.ui.lib.text_measure import measure_text_cached
+from openpilot.system.ui.lib.usb_keyboard import get_usb_char_pressed, get_usb_key_pressed
 from openpilot.system.ui.widgets import Widget
 
 PASSWORD_MASK_CHAR = "•"
@@ -25,6 +26,7 @@ class InputBox(Widget):
     self._visible_width = 0
     self._last_char_time = 0  # Track when last character was added
     self._masked_length = 0  # How many characters are currently masked
+    self._submit_requested = False
 
   @property
   def text(self):
@@ -43,6 +45,12 @@ class InputBox(Widget):
     self._input_text = ''
     self._cursor_position = 0
     self._text_offset = 0
+    self._submit_requested = False
+
+  def consume_submit_requested(self) -> bool:
+    requested = self._submit_requested
+    self._submit_requested = False
+    return requested
 
   def set_cursor_position(self, position):
     """Set the cursor position and reset the blink counter."""
@@ -191,6 +199,8 @@ class InputBox(Widget):
   def _handle_keyboard_input(self):
     # Handle navigation keys
     key = rl.get_key_pressed()
+    if key == 0:
+      key = get_usb_key_pressed()
     if key != 0:
       self._process_key(key)
       if key in (rl.KEY_LEFT, rl.KEY_RIGHT, rl.KEY_BACKSPACE, rl.KEY_DELETE):
@@ -208,6 +218,8 @@ class InputBox(Widget):
 
     # Handle text input
     char = rl.get_char_pressed()
+    if char == 0:
+      char = get_usb_char_pressed()
     if char != 0 and char >= 32:  # Filter out control characters
       self.add_char_at_cursor(chr(char))
 
@@ -226,3 +238,5 @@ class InputBox(Widget):
       self.set_cursor_position(0)
     elif key == rl.KEY_END:
       self.set_cursor_position(len(self._input_text))
+    elif key == rl.KEY_ENTER:
+      self._submit_requested = True
