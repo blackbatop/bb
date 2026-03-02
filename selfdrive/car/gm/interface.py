@@ -389,12 +389,13 @@ class CarInterface(CarInterfaceBase):
         # Apply 2019-style negative FF and Ki-mult tweaks to 2019-2021 and 2022 variants.
         ret.lateralTuning.torque.ki *= 1.07
         ret.lateralTuning.torque.kd *= 0.93
+        ret.lateralTuning.torque.kfDEPRECATED *= 1.20
 
       if candidate == CAR.CHEVROLET_BOLT_CC_2017:
         ret.lateralTuning.torque.kp *= 1.0
         ret.lateralTuning.torque.ki *= 0.9
         ret.lateralTuning.torque.kd *= 0.9
-        ret.lateralTuning.torque.kfDEPRECATED = 0.02
+        ret.lateralTuning.torque.kfDEPRECATED = 0.024
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_BOLT_2017
 
       if ret.enableGasInterceptor:
