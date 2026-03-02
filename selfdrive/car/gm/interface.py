@@ -57,8 +57,8 @@ NON_LINEAR_TORQUE_PARAMS = {
     "right": [2.0, 1.0, 0.205, 0.0],
   },
   CAR.CHEVROLET_BOLT_CC_2017: {
-    "left": [2.15, 1.02, 0.129, 0.0],
-    "right": [2.15, 1.02, 0.145, 0.0],
+    "left": [2.15, 1.00, 0.129, 0.0],
+    "right": [2.15, 1.00, 0.145, 0.0],
   },
   CAR.GMC_ACADIA: {
     "left": [4.78003305, 1.0, 0.3122, 0.05591772],
@@ -395,7 +395,7 @@ class CarInterface(CarInterfaceBase):
         ret.lateralTuning.torque.kp *= 1.0
         ret.lateralTuning.torque.ki *= 0.9
         ret.lateralTuning.torque.kd *= 0.9
-        ret.lateralTuning.torque.kfDEPRECATED = 0.024
+        ret.lateralTuning.torque.kfDEPRECATED = 0.026
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_BOLT_2017
 
       if ret.enableGasInterceptor:
