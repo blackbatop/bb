@@ -123,15 +123,15 @@ def main():
 
   while True:
     glxyauth_file = GALAXY_DIR / "glxyauth"
-    galaxy_pin = glxyauth_file.read_text().strip() if glxyauth_file.exists() else None
-    is_paired = galaxy_pin and len(galaxy_pin) == 64
+    galaxy_password_hash = glxyauth_file.read_text().strip() if glxyauth_file.exists() else None
+    is_paired = galaxy_password_hash and len(galaxy_password_hash) == 64
 
     if is_paired:
       if process is None or process.poll() is not None:
         if process is not None:
           print(f"Galaxy: frpc exited with code {process.returncode}. Restarting...")
 
-        print("Galaxy: PIN set. Preparing frpc tunnel...")
+        print("Galaxy: Password set. Preparing frpc tunnel...")
         if not setup_frpc():
           print("Galaxy: FRPC setup failed. Retrying later...")
           time.sleep(10)
@@ -175,7 +175,7 @@ customDomains = ["auth-{dongle_id}.devices.local"]
         )
     else:
       if process is not None and process.poll() is None:
-        print("Galaxy: PIN cleared. Stopping frpc tunnel...")
+        print("Galaxy: Password cleared. Stopping frpc tunnel...")
         cleanup_frpc()
 
     time.sleep(3)

@@ -261,11 +261,11 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
 
   pair_galaxy = new ButtonControl(tr("Galaxy"), tr("Pair"), tr("Pair your device with Galaxy for remote access to The Pond."));
   connect(pair_galaxy, &ButtonControl::clicked, [=]() {
-    std::string current_pin = util::read_file("/data/galaxy/glxyauth");
-    if (current_pin.empty()) {
-      QString new_pin = InputDialog::getText(tr("Enter 6-digit PIN"), this, tr("Please enter a 6-digit PIN to secure your Galaxy access."), false, 6);
-      if (!new_pin.isEmpty()) {
-        std::string hash = QCryptographicHash::hash(new_pin.toUtf8(), QCryptographicHash::Sha256).toHex().toStdString();
+    std::string current_password = util::read_file("/data/galaxy/glxyauth");
+    if (current_password.empty()) {
+      QString new_password = InputDialog::getText(tr("Enter Password"), this, tr("Please enter a password to secure your Galaxy access. (Min 6 characters)"), false, 6);
+      if (!new_password.isEmpty()) {
+        std::string hash = QCryptographicHash::hash(new_password.toUtf8(), QCryptographicHash::Sha256).toHex().toStdString();
         util::create_directories("/data/galaxy", 0775);
         util::write_file("/data/galaxy/glxyauth", hash.data(), hash.size(), O_WRONLY | O_CREAT | O_TRUNC);
         pair_galaxy->setText(tr("Unpair"));
