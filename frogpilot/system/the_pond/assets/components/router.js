@@ -12,6 +12,7 @@ import { SettingsView } from "/assets/components/settings.js"
 import { ScreenRecordings } from "/assets/components/recordings/screen_recordings.js"
 import { Sidebar } from "/assets/components/sidebar.js"
 import { SpeedLimits } from "/assets/components/tools/speed_limits.js"
+import { ModelManager } from "/assets/components/tools/model_manager.js?v=20260303t"
 import { ThemeMaker } from "/assets/components/tools/theme_maker.js"
 import { TmuxLog } from "/assets/components/tools/tmux.js"
 import { ToggleControl } from "/assets/components/tools/toggles.js"
@@ -40,6 +41,7 @@ function Root() {
     createRoute("screen_recordings", "/screen_recordings", ScreenRecordings),
     createRoute("settings", "/settings/:section/:subsection?", SettingsView),
     createRoute("speed_limits", "/download_speed_limits", SpeedLimits),
+    createRoute("model_manager", "/manage_models", ModelManager),
     createRoute("thememaker", "/theme_maker", ThemeMaker),
     createRoute("tmux", "/manage_tmux", TmuxLog),
     createRoute("toggles", "/manage_toggles", ToggleControl),
@@ -61,13 +63,13 @@ function Root() {
   })
 
   router.subscribe(({ initialized, navigation, matches, errors }) => {
-    const [match] = matches
+    const [match] = matches || []
     Object.assign(routerState, {
       initialized,
-      activePath: match.route.path,
-      activePathFull: match.pathname,
+      activePath: match?.route?.path || "",
+      activePathFull: match?.pathname || "",
       navigation,
-      params: match.params,
+      params: match?.params || {},
       errors,
     })
   })
@@ -76,8 +78,8 @@ function Root() {
     ${() => Sidebar(routerState.activePathFull)}
     <div class="content">
       ${() => {
-      if (!routerState.initialized || routerState.navigation.state === "loading") {
-        return html`<div>Loading...</div>`
+      if (!routerState.initialized) {
+        return Home({ params: routerState.params })
       }
 
       if (routerState.errors?.root?.status === 404) {
@@ -85,6 +87,10 @@ function Root() {
       }
 
       const match = routes.find(r => r.path === routerState.activePath)
+      if (!match) {
+        console.warn("[router] no route match for path:", routerState.activePathFull)
+        return Home({ params: routerState.params })
+      }
       return match.element({ params: routerState.params })
     }}
     </div>
@@ -109,4 +115,9 @@ export function Navigate(href) {
   window.scrollTo(0, 0)
 }
 
-Root()(document.getElementById("app"))
+if (!window.__thePondRouterMounted) {
+  window.__thePondRouterMounted = true
+  Root()(document.getElementById("app"))
+} else {
+  console.warn("[router] duplicate mount prevented")
+}

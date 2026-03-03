@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from flask import Flask, Response, jsonify, render_template, request, send_file, send_from_directory
+from flask import Flask, Response, jsonify, make_response, render_template, request, send_file, send_from_directory
 from io import BytesIO
 from pathlib import Path
 from werkzeug.utils import secure_filename
@@ -57,14 +57,69 @@ KEYS = {
 
 TMUX_LOGS_PATH = Path("/data/tmux_logs")
 
+MODEL_DOWNLOAD_PARAM = "ModelToDownload"
+MODEL_DOWNLOAD_ALL_PARAM = "DownloadAllModels"
+MODEL_DOWNLOAD_PROGRESS_PARAM = "ModelDownloadProgress"
+MODEL_CANCEL_DOWNLOAD_PARAM = "CancelModelDownload"
+MODEL_SORT_MODE_PARAM = "ModelSortMode"
+MODEL_USER_FAVORITES_PARAM = "UserFavorites"
+
+def read_legacy_param_file(key, default_value=""):
+  try:
+    value_path = Path(params.get_param_path(key))
+    if value_path.is_file():
+      return value_path.read_text(encoding="utf-8").strip() or default_value
+  except Exception:
+    pass
+  return default_value
+
+def write_legacy_param_file(key, value):
+  value_path = Path(params.get_param_path(key))
+  value_path.parent.mkdir(parents=True, exist_ok=True)
+  tmp_path = value_path.with_name(f".tmp_{value_path.name}")
+  tmp_path.write_text(str(value), encoding="utf-8")
+  os.replace(tmp_path, value_path)
+
 def setup(app):
+  model_status_debug = {
+    "last_signature": None,
+    "last_log_time": 0.0,
+    "last_empty_catalog_log_time": 0.0,
+  }
+
   @app.errorhandler(404)
   def not_found(_):
-    return render_template("index.html")
+    response = make_response(render_template("index.html"))
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
   @app.route("/", methods=["GET"])
   def index():
-    return render_template("index.html")
+    response = make_response(render_template("index.html"))
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+  @app.route("/manifest.json", methods=["GET"])
+  @app.route("/assets/manifest.json", methods=["GET"])
+  def manifest():
+    manifest_path = Path(app.static_folder) / "manifest.json"
+    if manifest_path.is_file():
+      return send_file(str(manifest_path), mimetype="application/manifest+json")
+
+    # Fallback so the browser doesn't keep logging noisy 404s.
+    return jsonify({
+      "name": "Galaxy",
+      "short_name": "Galaxy",
+      "display": "standalone",
+      "start_url": "/",
+      "background_color": "#000000",
+      "theme_color": "#8b6cc5",
+      "icons": [],
+    }), 200
 
   @app.route("/api/doors_available", methods=["GET"])
   def doors_available():
@@ -408,31 +463,328 @@ def setup(app):
 
   @app.route("/api/models/installed", methods=["GET"])
   def get_installed_models():
-    """Returns only models with files present in /data/models/."""
-    import os
+    catalog = get_model_catalog()
+    installed = [{"value": model["value"], "label": model["label"]} for model in catalog if model["installed"]]
 
-    available = (params.get("AvailableModels", encoding="utf-8") or "").split(",")
-    names = (params.get("AvailableModelNames", encoding="utf-8") or "").split(",")
-    models_dir = "/data/models"
-
-    try:
-      on_disk = os.listdir(models_dir) if os.path.isdir(models_dir) else []
-    except Exception:
-      on_disk = []
-
-    installed = []
-    for i, key in enumerate(available):
-      if not key:
-        continue
-      if any(f.startswith(f"{key}.") or f.startswith(f"{key}_") for f in on_disk):
-        label = names[i] if i < len(names) else key
-        installed.append({"value": key, "label": label})
+    # Keep current model selectable even if local files are currently inconsistent.
+    current_model = params.get("Model", encoding="utf-8") or ""
+    if current_model and all(model["value"] != current_model for model in installed):
+      for model in catalog:
+        if model["value"] == current_model:
+          installed.append({"value": model["value"], "label": model["label"]})
+          break
 
     return jsonify(installed), 200
+
+  @app.route("/api/models/catalog", methods=["GET"])
+  def get_models_catalog():
+    models = get_model_catalog()
+    return jsonify({
+      "models": models,
+      "currentModel": params.get("Model", encoding="utf-8") or "",
+      "summary": {
+        "installed": sum(1 for model in models if model["installed"]),
+        "missing": sum(1 for model in models if not model["installed"]),
+        "total": len(models),
+      },
+    }), 200
+
+  @app.route("/api/models/preferences", methods=["GET", "PUT"])
+  def get_or_set_models_preferences():
+    if request.method == "GET":
+      return jsonify({
+        "sortMode": read_legacy_param_file(MODEL_SORT_MODE_PARAM, "alphabetical"),
+        "userFavorites": [entry for entry in (params.get(MODEL_USER_FAVORITES_PARAM, encoding="utf-8") or "").split(",") if entry],
+      }), 200
+
+    data = request.get_json() or {}
+    changed = []
+
+    if "sortMode" in data:
+      sort_mode = str(data.get("sortMode") or "alphabetical").strip() or "alphabetical"
+      write_legacy_param_file(MODEL_SORT_MODE_PARAM, sort_mode)
+      changed.append("sort mode")
+
+    if "userFavorites" in data:
+      incoming = data.get("userFavorites")
+      if isinstance(incoming, list):
+        favorites = ",".join(entry.strip() for entry in incoming if str(entry).strip())
+      else:
+        favorites = ",".join(entry.strip() for entry in str(incoming or "").split(",") if entry.strip())
+      params.put(MODEL_USER_FAVORITES_PARAM, favorites)
+      changed.append("favorites")
+
+    if not changed:
+      return jsonify({"error": "No preferences provided."}), 400
+
+    return jsonify({"message": f"Updated model {' and '.join(changed)}."}), 200
+
+  @app.route("/api/models/status", methods=["GET"])
+  def get_models_status():
+    models = get_model_catalog()
+    model_to_download = params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""
+    download_all = params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM)
+    progress = params_memory.get(MODEL_DOWNLOAD_PROGRESS_PARAM, encoding="utf-8") or ""
+    cancelling = params_memory.get_bool(MODEL_CANCEL_DOWNLOAD_PARAM)
+
+    downloading = bool(model_to_download) or download_all
+    current_model = params.get("Model", encoding="utf-8") or ""
+    sort_mode = read_legacy_param_file(MODEL_SORT_MODE_PARAM, "alphabetical")
+    terminal = progress in ("Downloaded!", "All models downloaded!") or bool(re.search(r"cancelled|exists|failed|offline|invalid|error", progress, re.IGNORECASE))
+    summary = {
+      "installed": sum(1 for model in models if model["installed"]),
+      "missing": sum(1 for model in models if not model["installed"]),
+      "total": len(models),
+    }
+
+    now = time.monotonic()
+    signature = (
+      summary["total"],
+      summary["installed"],
+      summary["missing"],
+      model_to_download,
+      download_all,
+      downloading,
+      cancelling,
+      progress,
+      current_model,
+      sort_mode,
+      terminal,
+      bool(params.get_bool("IsOnroad")),
+    )
+    if model_status_debug["last_signature"] != signature or now - model_status_debug["last_log_time"] >= 15:
+      print(
+        f"[ModelStatus] addr={request.remote_addr or 'unknown'} total={summary['total']} "
+        f"installed={summary['installed']} missing={summary['missing']} downloading={downloading} "
+        f"download_all={download_all} model='{model_to_download or '-'}' current='{current_model or '-'}' "
+        f"progress='{progress or 'Idle'}' cancelling={cancelling} onroad={params.get_bool('IsOnroad')} terminal={terminal}"
+      )
+      model_status_debug["last_signature"] = signature
+      model_status_debug["last_log_time"] = now
+
+    if summary["total"] == 0 and now - model_status_debug["last_empty_catalog_log_time"] >= 15:
+      available_models = params.get("AvailableModels", encoding="utf-8") or ""
+      available_names = params.get("AvailableModelNames", encoding="utf-8") or ""
+      available_models_count = len([item for item in available_models.split(",") if item.strip()])
+      available_names_count = len([item for item in available_names.split(",") if item.strip()])
+      print(
+        f"[ModelStatus] WARNING empty catalog available_models={available_models_count} "
+        f"available_names={available_names_count} raw_available_models='{available_models[:120]}'"
+      )
+      model_status_debug["last_empty_catalog_log_time"] = now
+
+    return jsonify({
+      "modelToDownload": model_to_download,
+      "downloadAll": download_all,
+      "downloading": downloading,
+      "cancelling": cancelling,
+      "progress": progress,
+      "isOnroad": params.get_bool("IsOnroad"),
+      "terminal": terminal,
+      "models": models,
+      "currentModel": current_model,
+      "summary": summary,
+      "sortMode": sort_mode,
+    }), 200
+
+  @app.route("/api/models/refresh_manifest", methods=["POST"])
+  def refresh_models_manifest():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot refresh model manifest while driving."}), 403
+
+    if params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM) or (params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""):
+      return jsonify({"error": "Cannot refresh model manifest while a download is in progress."}), 409
+
+    try:
+      from openpilot.frogpilot.assets.model_manager import ModelManager
+
+      manager = ModelManager()
+      manager.update_models(False)
+    except Exception as exception:
+      return jsonify({"error": f"Failed to refresh model manifest: {exception}"}), 500
+
+    return jsonify({"message": "Model manifest refreshed."}), 200
+
+  @app.route("/api/models/download", methods=["POST"])
+  def start_model_download():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot download models while driving."}), 403
+
+    if params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM) or (params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""):
+      return jsonify({"error": "A model download is already in progress."}), 409
+
+    data = request.get_json() or {}
+    model_key = (data.get("model") or "").strip()
+    if not model_key:
+      return jsonify({"error": "Missing model key."}), 400
+
+    catalog = {model["value"]: model for model in get_model_catalog()}
+    model = catalog.get(model_key)
+    if model is None:
+      return jsonify({"error": f"Unknown model '{model_key}'."}), 404
+
+    if model["installed"]:
+      return jsonify({"message": f"\"{model['label']}\" is already installed."}), 200
+
+    params_memory.remove(MODEL_CANCEL_DOWNLOAD_PARAM)
+    params_memory.remove(MODEL_DOWNLOAD_ALL_PARAM)
+    params_memory.put(MODEL_DOWNLOAD_PARAM, model_key)
+    params_memory.put(MODEL_DOWNLOAD_PROGRESS_PARAM, "Downloading...")
+
+    return jsonify({"message": f"Started downloading \"{model['label']}\"."}), 200
+
+  @app.route("/api/models/download_all", methods=["POST"])
+  def start_models_download_all():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot download models while driving."}), 403
+
+    if params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM) or (params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""):
+      return jsonify({"error": "A model download is already in progress."}), 409
+
+    missing_models = [model for model in get_model_catalog() if not model["installed"]]
+    if not missing_models:
+      return jsonify({"message": "All models are already installed."}), 200
+
+    params_memory.remove(MODEL_CANCEL_DOWNLOAD_PARAM)
+    params_memory.remove(MODEL_DOWNLOAD_PARAM)
+    params_memory.put_bool(MODEL_DOWNLOAD_ALL_PARAM, True)
+    params_memory.put(MODEL_DOWNLOAD_PROGRESS_PARAM, "Downloading...")
+
+    return jsonify({"message": f"Started downloading {len(missing_models)} model(s)."}), 200
+
+  @app.route("/api/models/cancel", methods=["POST"])
+  def cancel_model_download():
+    model_to_download = params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""
+    download_all = params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM)
+    if not model_to_download and not download_all:
+      return jsonify({"message": "No active model download to cancel."}), 200
+
+    params_memory.put_bool(MODEL_CANCEL_DOWNLOAD_PARAM, True)
+    return jsonify({"message": "Cancellation requested."}), 200
+
+  @app.route("/api/models/delete", methods=["POST"])
+  def delete_model_files():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot delete model files while driving."}), 403
+
+    if params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM) or (params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""):
+      return jsonify({"error": "Cannot delete model files while a download is in progress."}), 409
+
+    data = request.get_json() or {}
+    model_key = (data.get("model") or "").strip()
+    if not model_key:
+      return jsonify({"error": "Missing model key."}), 400
+
+    current_model = params.get("Model", encoding="utf-8") or ""
+    if model_key == current_model:
+      return jsonify({"error": "Cannot delete the currently active model."}), 409
+
+    catalog = {model["value"]: model for model in get_model_catalog()}
+    model = catalog.get(model_key)
+    if model is None:
+      return jsonify({"error": f"Unknown model '{model_key}'."}), 404
+
+    models_dir = Path("/data/models")
+    if not models_dir.is_dir():
+      return jsonify({"message": "No model directory exists yet."}), 200
+
+    deleted = []
+    for item in models_dir.iterdir():
+      name = item.name
+      is_match = (
+        name == f"{model_key}.thneed" or
+        name == f"{model_key}.pkl" or
+        name.startswith(f"{model_key}_")
+      )
+
+      if not is_match:
+        continue
+
+      try:
+        if item.is_dir():
+          shutil.rmtree(item)
+        else:
+          item.unlink(missing_ok=True)
+        deleted.append(name)
+      except Exception as exception:
+        return jsonify({"error": f"Failed deleting '{name}': {exception}"}), 500
+
+    if not deleted:
+      return jsonify({"message": f"No files found for \"{model['label']}\"."}), 200
+
+    return jsonify({"message": f"Deleted {len(deleted)} file(s) for \"{model['label']}\"."}), 200
 
   @app.route("/api/params_memory", methods=["GET"])
   def get_param_memory():
     return params_memory.get(request.args.get("key")) or "", 200
+
+  def is_model_installed(model_key, model_version, on_disk_files):
+    if f"{model_key}.thneed" in on_disk_files:
+      return True
+
+    if model_version in ("v8", "v9", "v10", "v11", "v12"):
+      required_files = {
+        f"{model_key}_driving_policy_tinygrad.pkl",
+        f"{model_key}_driving_vision_tinygrad.pkl",
+        f"{model_key}_driving_policy_metadata.pkl",
+        f"{model_key}_driving_vision_metadata.pkl",
+      }
+      if model_version == "v12":
+        required_files |= {
+          f"{model_key}_driving_off_policy_tinygrad.pkl",
+          f"{model_key}_driving_off_policy_metadata.pkl",
+        }
+      return required_files.issubset(on_disk_files)
+
+    if model_version == "v7":
+      return f"{model_key}.pkl" in on_disk_files
+
+    # Fallback for unknown versions
+    return any(file.startswith(f"{model_key}.") or file.startswith(f"{model_key}_") for file in on_disk_files)
+
+  def get_model_catalog():
+    available = [model.strip() for model in (params.get("AvailableModels", encoding="utf-8") or "").split(",")]
+    names = [name.strip() for name in (params.get("AvailableModelNames", encoding="utf-8") or "").split(",")]
+    series = [entry.strip() for entry in (params.get("AvailableModelSeries", encoding="utf-8") or "").split(",")]
+    versions = [entry.strip() for entry in (params.get("ModelVersions", encoding="utf-8") or "").split(",")]
+    released_dates = [entry.strip() for entry in (params.get("ModelReleasedDates", encoding="utf-8") or "").split(",")]
+
+    community_favorites = {entry.strip() for entry in (params.get("CommunityFavorites", encoding="utf-8") or "").split(",") if entry.strip()}
+    user_favorites = {entry.strip() for entry in (params.get(MODEL_USER_FAVORITES_PARAM, encoding="utf-8") or "").split(",") if entry.strip()}
+
+    models_dir = "/data/models"
+    try:
+      on_disk_files = set(os.listdir(models_dir)) if os.path.isdir(models_dir) else set()
+    except Exception:
+      on_disk_files = set()
+
+    models = []
+    for i, key in enumerate(available):
+      if not key:
+        continue
+
+      label = names[i] if i < len(names) and names[i] else key
+      model_version = versions[i] if i < len(versions) else ""
+      model_series = series[i] if i < len(series) and series[i] else "Custom Series"
+      released = released_dates[i] if i < len(released_dates) else ""
+
+      installed = is_model_installed(key, model_version, on_disk_files)
+      partial = not installed and any(file.startswith(f"{key}.") or file.startswith(f"{key}_") for file in on_disk_files)
+
+      models.append({
+        "value": key,
+        "label": label,
+        "series": model_series,
+        "version": model_version,
+        "released": released,
+        "installed": installed,
+        "partial": partial,
+        "communityFavorite": key in community_favorites,
+        "userFavorite": key in user_favorites,
+      })
+
+    models.sort(key=lambda model: (model["series"].lower(), model["label"].lower()))
+    return models
 
   @app.route("/api/routes", methods=["GET"])
   def list_routes():
