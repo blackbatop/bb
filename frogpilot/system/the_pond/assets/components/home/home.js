@@ -64,40 +64,45 @@ function renderDiskUsageSection({ diskError, diskUsage }) {
   return DiskUsage({ size: "0 GB", used: "0 GB", usedPercentage: "0" });
 }
 
-export function Home() {
-  const state = reactive({
-    data: null,
-    unit: "miles",
-    isLoading: true,
-    error: null,
-  });
+const state = reactive({
+  data: null,
+  unit: "miles",
+  isLoading: true,
+  error: null,
+});
 
-  async function initialize() {
-    try {
-      const [statsResponse, unitResponse] = await Promise.all([
-        fetch("/api/stats"),
-        fetch("/api/params?key=IsMetric"),
-      ]);
+let initialized = false;
 
-      if (!statsResponse.ok) throw new Error(`API error: ${statsResponse.statusText}`);
-      if (!unitResponse.ok) throw new Error(`API error: ${unitResponse.statusText}`);
+async function initialize() {
+  try {
+    const [statsResponse, unitResponse] = await Promise.all([
+      fetch("/api/stats"),
+      fetch("/api/params?key=IsMetric"),
+    ]);
 
-      const statsJson = await statsResponse.json();
-      const isMetricText = (await unitResponse.text()).trim();
-      const isMetric = isMetricText === "1";
+    if (!statsResponse.ok) throw new Error(`API error: ${statsResponse.statusText}`);
+    if (!unitResponse.ok) throw new Error(`API error: ${unitResponse.statusText}`);
 
-      state.data = statsJson;
-      state.unit = isMetric ? "kilometers" : "miles";
-      localStorage.setItem("isMetric", isMetricText);
-    } catch (err) {
-      console.error("Failed to initialize component:", err);
-      state.error = err.message;
-    } finally {
-      state.isLoading = false;
-    }
+    const statsJson = await statsResponse.json();
+    const isMetricText = (await unitResponse.text()).trim();
+    const isMetric = isMetricText === "1";
+
+    state.data = statsJson;
+    state.unit = isMetric ? "kilometers" : "miles";
+    localStorage.setItem("isMetric", isMetricText);
+  } catch (err) {
+    console.error("Failed to initialize component:", err);
+    state.error = err.message;
+  } finally {
+    state.isLoading = false;
   }
+}
 
-  initialize();
+export function Home() {
+  if (!initialized) {
+    initialized = true;
+    initialize();
+  }
 
   return html`
     <div>

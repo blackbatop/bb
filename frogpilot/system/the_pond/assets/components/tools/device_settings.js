@@ -23,7 +23,13 @@ async function fetchLayoutAndParams() {
   // 1. Fetch Layout Structure (Build-time Static JSON)
   try {
     const layoutRes = await fetch("/assets/components/tools/device_settings_layout.json")
-    const layoutData = await layoutRes.json()
+    const rawLayoutData = await layoutRes.json()
+    const layoutData = rawLayoutData
+      .map(section => ({
+        ...section,
+        params: (section.params || []).filter(param => param.key !== "Model"),
+      }))
+      .filter(section => section.params.length > 0)
     state.layout = layoutData
 
     // Extract flatter key map
