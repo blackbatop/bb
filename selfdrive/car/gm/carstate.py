@@ -101,11 +101,7 @@ class CarState(CarStateBase):
 
     no_accel_pos = bool(self.CP.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value)
 
-    # Hardcode Volt ASCM to the 0xBE brake source; no fallback path.
-    if self.CP.carFingerprint == CAR.CHEVROLET_VOLT_ASCM:
-      no_accel_pos = False
-      ret.brake = pt_cp.vl["EBCMBrakePedalPosition"]["BrakePedalPosition"]
-    elif no_accel_pos:
+    if no_accel_pos:
       if self.CP.carFingerprint in kaofui_state_cars:
         ret.brake = pt_cp.vl.get("EBCMBrakePedalPosition", {}).get("BrakePedalPosition", 0) / 0xd0
       else:
