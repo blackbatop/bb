@@ -64,6 +64,188 @@ MODEL_CANCEL_DOWNLOAD_PARAM = "CancelModelDownload"
 MODEL_SORT_MODE_PARAM = "ModelSortMode"
 MODEL_USER_FAVORITES_PARAM = "UserFavorites"
 
+FINGERPRINT_MAKE_LABELS = [
+  "Acura",
+  "Audi",
+  "Buick",
+  "Cadillac",
+  "Chevrolet",
+  "Chrysler",
+  "CUPRA",
+  "Dodge",
+  "Ford",
+  "Genesis",
+  "GMC",
+  "Holden",
+  "Honda",
+  "Hyundai",
+  "Jeep",
+  "Kia",
+  "Lexus",
+  "Lincoln",
+  "MAN",
+  "Mazda",
+  "Nissan",
+  "Ram",
+  "SEAT",
+  "\u0160koda",
+  "Subaru",
+  "Tesla",
+  "Toyota",
+  "Volkswagen",
+]
+
+FINGERPRINT_MAKE_TO_VALUES_DIR = {
+  "acura": "honda",
+  "audi": "volkswagen",
+  "buick": "gm",
+  "cadillac": "gm",
+  "chevrolet": "gm",
+  "chrysler": "chrysler",
+  "cupra": "volkswagen",
+  "dodge": "chrysler",
+  "ford": "ford",
+  "genesis": "hyundai",
+  "gmc": "gm",
+  "holden": "gm",
+  "honda": "honda",
+  "hyundai": "hyundai",
+  "jeep": "chrysler",
+  "kia": "hyundai",
+  "lexus": "toyota",
+  "lincoln": "ford",
+  "man": "volkswagen",
+  "mazda": "mazda",
+  "nissan": "nissan",
+  "ram": "chrysler",
+  "seat": "volkswagen",
+  "\u0161koda": "volkswagen",
+  "subaru": "subaru",
+  "tesla": "tesla",
+  "toyota": "toyota",
+  "volkswagen": "volkswagen",
+}
+
+_FINGERPRINT_CARDOCS_RE = re.compile(r'CarDocs\(\s*"([^"]+)"')
+_FINGERPRINT_PLATFORM_RE = re.compile(r'(\w+)\s*=\s*\w+\s*\(\s*\[([\s\S]*?)\]\s*,')
+_FINGERPRINT_PLATFORM_NAME_RE = re.compile(r'^[A-Z0-9_]+$')
+_FINGERPRINT_VALID_NAME_RE = re.compile(r'^[A-Za-z0-9 \u0160.()\-]+$')
+
+_openpilot_root_cache = None
+_fingerprint_catalog_cache = None
+
+def _normalize_fingerprint_make_key(make_value):
+  return str(make_value or "").strip().lower()
+
+def _get_openpilot_root():
+  global _openpilot_root_cache
+  if _openpilot_root_cache is not None:
+    return _openpilot_root_cache
+
+  for parent in Path(__file__).resolve().parents:
+    if (parent / "selfdrive" / "car").is_dir():
+      _openpilot_root_cache = parent
+      return _openpilot_root_cache
+
+  # Fallback to repo root shape used in this tree.
+  _openpilot_root_cache = Path(__file__).resolve().parents[3]
+  return _openpilot_root_cache
+
+def _extract_fingerprint_models_for_make(make_key):
+  source_make = FINGERPRINT_MAKE_TO_VALUES_DIR.get(make_key, make_key)
+  values_path = _get_openpilot_root() / "selfdrive" / "car" / source_make / "values.py"
+  if not values_path.is_file():
+    return []
+
+  try:
+    content = values_path.read_text(encoding="utf-8", errors="replace")
+  except Exception:
+    return []
+
+  content = re.sub(r'#[^\n]*', "", content)
+  content = re.sub(r'footnotes=\[[^\]]*\],\s*', "", content)
+
+  models = []
+  seen = set()
+
+  for platform_match in _FINGERPRINT_PLATFORM_RE.finditer(content):
+    platform_name = platform_match.group(1)
+    if not _FINGERPRINT_PLATFORM_NAME_RE.match(platform_name):
+      continue
+
+    platform_section = platform_match.group(2)
+    for name_match in _FINGERPRINT_CARDOCS_RE.finditer(platform_section):
+      car_name = name_match.group(1).strip()
+      if " " not in car_name:
+        continue
+      if not _FINGERPRINT_VALID_NAME_RE.match(car_name):
+        continue
+
+      if car_name.split(" ", 1)[0].lower() != make_key:
+        continue
+
+      dedupe_key = (car_name, platform_name)
+      if dedupe_key in seen:
+        continue
+      seen.add(dedupe_key)
+      models.append({"value": platform_name, "label": car_name})
+
+  models.sort(key=lambda entry: entry["label"].lower())
+  return models
+
+def _get_fingerprint_catalog():
+  global _fingerprint_catalog_cache
+  if _fingerprint_catalog_cache is not None:
+    return _fingerprint_catalog_cache
+
+  make_options = [{"value": label, "label": label} for label in FINGERPRINT_MAKE_LABELS]
+  make_keys = [_normalize_fingerprint_make_key(label) for label in FINGERPRINT_MAKE_LABELS]
+  make_label_by_key = {key: label for key, label in zip(make_keys, FINGERPRINT_MAKE_LABELS)}
+
+  models_by_make = {}
+  all_models = []
+  seen_all = set()
+  model_to_label = {}
+  model_to_make = {}
+  label_to_model = {}
+
+  for make_key in make_keys:
+    make_label = make_label_by_key.get(make_key, make_key.title())
+    entries = _extract_fingerprint_models_for_make(make_key)
+
+    models_by_make[make_key] = entries
+    for entry in entries:
+      model_value = entry["value"]
+      model_label = entry["label"]
+
+      model_to_label.setdefault(model_value, model_label)
+      model_to_make.setdefault(model_value, make_label)
+      label_to_model.setdefault(model_label, model_value)
+
+      dedupe_key = (model_label, model_value)
+      if dedupe_key in seen_all:
+        continue
+      seen_all.add(dedupe_key)
+
+      all_models.append({
+        "value": model_value,
+        "label": model_label,
+        "make": make_label,
+      })
+
+  all_models.sort(key=lambda entry: entry["label"].lower())
+
+  _fingerprint_catalog_cache = {
+    "makes": make_options,
+    "models_by_make": models_by_make,
+    "all_models": all_models,
+    "make_label_by_key": make_label_by_key,
+    "model_to_label": model_to_label,
+    "model_to_make": model_to_make,
+    "label_to_model": label_to_model,
+  }
+  return _fingerprint_catalog_cache
+
 def read_legacy_param_file(key, default_value=""):
   try:
     value_path = Path(params.get_param_path(key))
@@ -79,6 +261,52 @@ def write_legacy_param_file(key, value):
   tmp_path = value_path.with_name(f".tmp_{value_path.name}")
   tmp_path.write_text(str(value), encoding="utf-8")
   os.replace(tmp_path, value_path)
+
+_layout_type_overrides = None
+
+def _get_layout_type_overrides():
+  global _layout_type_overrides
+  if _layout_type_overrides is None:
+    try:
+      layout_path = os.path.join(os.path.dirname(__file__), "assets", "components", "tools", "device_settings_layout.json")
+      with open(layout_path) as f:
+        layout_data = json.load(f)
+      _layout_type_overrides = {
+        p["key"]: p["data_type"]
+        for section in layout_data
+        for p in section.get("params", [])
+        if "key" in p and "data_type" in p
+      }
+    except Exception:
+      _layout_type_overrides = {}
+  return _layout_type_overrides
+
+_cached_allowed_keys = None
+_cached_param_types = None
+
+def _get_param_type_info():
+  global _cached_allowed_keys, _cached_param_types
+  if _cached_allowed_keys is None:
+    _cached_allowed_keys = {k for k, _, _, _ in frogpilot_default_params if k not in EXCLUDED_KEYS}
+
+    types = {}
+    for k, default_val, _, _ in frogpilot_default_params:
+      if k in _cached_allowed_keys:
+        if default_val in ("0", "1", b"0", b"1") or isinstance(default_val, bool):
+          types[k] = bool
+        elif isinstance(default_val, float) or (isinstance(default_val, str) and "." in default_val and default_val.replace(".", "", 1).isdigit()):
+          types[k] = float
+        elif isinstance(default_val, int) or (isinstance(default_val, str) and default_val.isdigit()):
+          types[k] = int
+        else:
+          types[k] = str
+
+    for k, dt in _get_layout_type_overrides().items():
+      if k in types and dt in ("int", "float") and types[k] == bool:
+        types[k] = float if dt == "float" else int
+
+    _cached_param_types = types
+  return _cached_allowed_keys, _cached_param_types
 
 def setup(app):
   model_status_debug = {
@@ -121,12 +349,18 @@ def setup(app):
       "icons": [],
     }), 200
 
-  @app.route("/api/doors_available", methods=["GET"])
-  def doors_available():
-    with car.CarParams.from_bytes(params.get("CarParamsPersistent")) as cp_reader:
-      CP = cp_reader.as_builder()
-
-    return jsonify({"result": HARDWARE.get_device_type() != "tici" and CP.carName == "toyota"})
+  @app.route("/api/car_features_check", methods=["GET"])
+  def car_features_check():
+    tool = request.args.get("tool")
+    try:
+      with car.CarParams.from_bytes(params.get("CarParamsPersistent")) as cp:
+        if tool == "doors":
+          return jsonify({"result": HARDWARE.get_device_type() != "tici" and cp.carName == "toyota"})
+        elif tool == "tsk":
+          return jsonify({"result": cp.secOcRequired})
+    except Exception:
+      pass
+    return jsonify({"result": False})
 
   @app.route("/api/doors/lock", methods=["POST"])
   def lock_doors():
@@ -355,6 +589,23 @@ def setup(app):
 
     return jsonify(message=f"{', '.join(saved)} saved successfully!")
 
+  @app.route("/api/fingerprints/makes", methods=["GET"])
+  def get_fingerprint_makes():
+    return jsonify(_get_fingerprint_catalog()["makes"]), 200
+
+  @app.route("/api/fingerprints/models", methods=["GET"])
+  def get_fingerprint_models():
+    catalog = _get_fingerprint_catalog()
+    make_key = _normalize_fingerprint_make_key(
+      request.args.get("make") or params.get("CarMake", encoding="utf-8") or ""
+    )
+
+    models = catalog["models_by_make"].get(make_key) if make_key else catalog["all_models"]
+    if not models:
+      models = catalog["all_models"]
+
+    return jsonify(models), 200
+
   @app.route("/api/params", methods=["GET", "PUT"])
   def get_param():
     if request.method == "PUT":
@@ -371,7 +622,7 @@ def setup(app):
       else:
         str_val = str(val)
 
-      allowed_keys = {k for k, _, _, _ in frogpilot_default_params if k not in EXCLUDED_KEYS}
+      allowed_keys, _ = _get_param_type_info()
       if key not in allowed_keys:
         return jsonify({"error": f"Parameter '{key}' is not editable."}), 403
 
@@ -388,12 +639,51 @@ def setup(app):
         name = friendly_names.get(key, key)
         return jsonify({"error": f"Cannot change {name} while the car is driving. A reboot is required."}), 403
 
+      if key == "CarMake":
+        catalog = _get_fingerprint_catalog()
+        normalized_make = _normalize_fingerprint_make_key(str_val)
+        stored_make = catalog["make_label_by_key"].get(normalized_make, str_val.strip())
+        params.put("CarMake", stored_make)
+        update_frogpilot_toggles()
+        return jsonify({
+          "message": "Car make updated successfully.",
+          "updated": {"CarMake": stored_make},
+        }), 200
+
+      if key == "CarModel":
+        selected_model = str_val.strip()
+        if not selected_model:
+          return jsonify({"error": "Car model cannot be empty."}), 400
+
+        catalog = _get_fingerprint_catalog()
+        model_label = catalog["model_to_label"].get(selected_model)
+        make_label = catalog["model_to_make"].get(selected_model)
+
+        params.put("CarModel", selected_model)
+        updated = {"CarModel": selected_model}
+
+        if model_label:
+          params.put("CarModelName", model_label)
+          updated["CarModelName"] = model_label
+        else:
+          params.remove("CarModelName")
+          updated["CarModelName"] = ""
+
+        if make_label:
+          params.put("CarMake", make_label)
+          updated["CarMake"] = make_label
+
+        update_frogpilot_toggles()
+        return jsonify({
+          "message": f"Fingerprint set to '{model_label or selected_model}'.",
+          "updated": updated,
+        }), 200
+
       params.put(key, str_val)
 
       if key == "Model":
         # 2. Sync ModelVersion explicitly
         try:
-          import json
           with open("/data/models/.model_versions.json", "r") as f:
             versions = json.load(f)
             if str_val in versions:
@@ -409,34 +699,7 @@ def setup(app):
 
   @app.route("/api/params/all", methods=["GET"])
   def get_all_params():
-    allowed_keys = {k for k, _, _, _ in frogpilot_default_params if k not in EXCLUDED_KEYS}
-
-    # Establish intended types from defaults
-    types = {}
-    for k, default_val, _, _ in frogpilot_default_params:
-      if k in allowed_keys:
-        if default_val in ("0", "1", b"0", b"1") or isinstance(default_val, bool):
-          types[k] = bool
-        elif isinstance(default_val, float) or (isinstance(default_val, str) and "." in default_val and default_val.replace(".", "", 1).isdigit()):
-          types[k] = float
-        elif isinstance(default_val, int) or (isinstance(default_val, str) and default_val.isdigit()):
-          types[k] = int
-        else:
-          types[k] = str
-
-    # Override ambiguous "0"/"1" defaults using layout JSON's authoritative data_type
-    try:
-      layout_path = os.path.join(os.path.dirname(__file__), "assets", "components", "tools", "device_settings_layout.json")
-      with open(layout_path) as f:
-        layout_data = json.load(f)
-      for section in layout_data:
-        for p in section.get("params", []):
-          k = p.get("key")
-          dt = p.get("data_type")
-          if k in types and dt in ("int", "float") and types[k] == bool:
-            types[k] = float if dt == "float" else int
-    except Exception:
-      pass
+    allowed_keys, types = _get_param_type_info()
 
     result = {}
     for key in allowed_keys:
@@ -799,33 +1062,9 @@ def setup(app):
           try:
             result = future.result()
             yield f"data: {json.dumps({'routes': [result]})}\n\n"
-
-            path, name = futures[future]
-            segments = utilities.get_segments_in_route(name, path)
-            if segments:
-              for camera, cam_file in {
-                "forward": "fcamera.hevc",
-                "wide": "ecamera.hevc",
-                "driver": "dcamera.hevc"
-              }.items():
-                input_files = [
-                  os.path.join(path, seg, cam_file)
-                  for seg in segments
-                  if os.path.exists(os.path.join(path, seg, cam_file))
-                ]
-                if input_files:
-                  executor.submit(
-                    utilities.ffmpeg_concat_segments_to_mp4,
-                    input_files,
-                    f"{name}-{camera}"
-                  )
-
           except Exception as exception:
             print(f"Error processing route: {exception}")
           yield f"data: {json.dumps({'progress': processed, 'total': total})}\n\n"
-
-        for path, name in routes:
-          utilities.process_route_gif(path, name)
 
     return Response(generate(), mimetype="text/event-stream")
 
@@ -1066,9 +1305,6 @@ def setup(app):
 
           yield f"data: {json.dumps({'progress': processed, 'total': total})}\n\n"
 
-        for recording in recordings:
-          utilities.process_screen_recording_gif(recording)
-
     return Response(generate(), mimetype="text/event-stream")
 
   @app.route("/screen_recordings/<path:filename>", methods=["GET"])
@@ -1132,17 +1368,9 @@ def setup(app):
     else:
       env = short_branch
 
-    try:
-      response = requests.get(f"https://api.comma.ai/v1/devices/{params.get('DongleId', encoding='utf8')}/firehose_stats", timeout=10)
-      response.raise_for_status()
-      firehose_stats = response.json().get("firehose", 0)
-    except (requests.RequestException, ValueError) as e:
-      firehose_stats = 0
-
     return {
       "diskUsage": utilities.get_disk_usage(),
       "driveStats": utilities.get_drive_stats(),
-      "firehoseStats": {"segments": firehose_stats},
       "softwareInfo": {
         "branchName": build_metadata.channel,
         "buildEnvironment": env,
@@ -1985,12 +2213,6 @@ def setup(app):
 
     return jsonify({"message": f"Renamed {old} to {new_safe}!"}), 200
 
-  @app.route("/api/tsk_available", methods=["GET"])
-  def tsk_available():
-    with car.CarParams.from_bytes(params.get("CarParamsPersistent")) as cp_reader:
-      CP = cp_reader.as_builder()
-
-    return jsonify({"result": CP.secOcRequired})
 
   @app.route("/api/tsk_keys", methods=["DELETE"])
   def delete_secoc_key():
