@@ -19,54 +19,27 @@ const MenuItems = {
     { name: "Download Speed Limits", link: "/download_speed_limits", icon: "bi-download" },
     { name: "Error Logs", link: "/manage_error_logs", icon: "bi-exclamation-triangle" },
     { name: "Galaxy", link: "/galaxy", icon: "bi-globe2" },
-    { name: "Lock/Unlock Doors", link: "/lock_or_unlock_doors", icon: "bi-door-closed" },
     { name: "Model Manager", link: "/manage_models", icon: "bi-cpu" },
     { name: "Theme Maker", link: "/theme_maker", icon: "bi-palette-fill" },
     { name: "Tmux Log", link: "/manage_tmux", icon: "bi-terminal" },
     { name: "Toggles", link: "/manage_toggles", icon: "bi-toggle-on" },
-    { name: "Toyota Security Keys", link: "/tsk_manager", icon: "bi-key-fill" },
+    { name: "Vehicle Features", link: "/vehicle_features", icon: "bi-car-front" },
   ],
 };
 
 const state = reactive({
-  doorsVisible: false,
-  isDoorsFetched: false,
-  isTSKFetched: false,
-  tskVisible: false,
-
   activeRoute: ""
 });
 
 export function Sidebar() {
   const currentPath = window.location.pathname;
-  const activeItem = Object.values(MenuItems).flat().find(item => item.link === currentPath);
+  const matchesPath = (link) => {
+    if (link === "/") return currentPath === "/";
+    return currentPath === link || currentPath.startsWith(`${link}/`);
+  };
+  const activeItem = Object.values(MenuItems).flat().find(item => matchesPath(item.link));
   state.activeRoute = activeItem?.name ?? "";
 
-  if (!state.isDoorsFetched) {
-    state.isDoorsFetched = true;
-    (async () => {
-      try {
-        const response = await fetch("/api/doors_available");
-        const data = await response.json();
-        state.doorsVisible = data.result;
-      } catch (e) {
-        console.error("Failed to fetch door availability:", e);
-      }
-    })();
-  }
-
-  if (!state.isTSKFetched) {
-    state.isTSKFetched = true;
-    (async () => {
-      try {
-        const response = await fetch("/api/tsk_available");
-        const data = await response.json();
-        state.tskVisible = data.result;
-      } catch (e) {
-        console.error("Failed to fetch TSK availability:", e);
-      }
-    })();
-  }
 
   function navigate(link) {
     state.activeRoute = link.name;
@@ -101,14 +74,6 @@ export function Sidebar() {
                 <span class="section-title">${upperFirst(section)}</span>
                 <ul id="${section}">
                   ${links.map(link => {
-    if (link.name === "Lock/Unlock Doors" && !state.doorsVisible) {
-      return "";
-    }
-
-    if (link.name === "Toyota Security Keys" && !state.tskVisible) {
-      return "";
-    }
-
     const isActive = state.activeRoute === link.name;
     const classList = [isActive && "active"].filter(Boolean).join(" ");
 
