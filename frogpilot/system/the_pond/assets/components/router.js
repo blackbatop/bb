@@ -4,6 +4,7 @@ import { hideSidebar } from "/assets/js/utils.js"
 import { DeviceSettings } from "/assets/components/tools/device_settings.js"
 import { DoorControl } from "/assets/components/tools/doors.js"
 import { ErrorLogs } from "/assets/components/tools/error_logs.js"
+import { GalaxyPairing } from "/assets/components/tools/galaxy.js"
 import { Home } from "/assets/components/home/home.js"
 import { NavDestination } from "/assets/components/navigation/navigation_destination.js"
 import { NavKeys } from "/assets/components/navigation/navigation_keys.js"
@@ -34,6 +35,7 @@ function Root() {
     createRoute("device_settings", "/device_settings", DeviceSettings),
     createRoute("doors", "/lock_or_unlock_doors", DoorControl),
     createRoute("errorLogs", "/manage_error_logs", ErrorLogs),
+    createRoute("galaxy", "/galaxy", GalaxyPairing),
     createRoute("navdestination", "/set_navigation_destination", NavDestination),
     createRoute("navkeys", "/manage_navigation_keys", NavKeys),
     createRoute("root", "/", Home),
