@@ -18,6 +18,7 @@ const MenuItems = {
     { name: "Device Settings", link: "/device_settings", icon: "bi-sliders" },
     { name: "Download Speed Limits", link: "/download_speed_limits", icon: "bi-download" },
     { name: "Error Logs", link: "/manage_error_logs", icon: "bi-exclamation-triangle" },
+    { name: "Galaxy", link: "/galaxy", icon: "bi-globe2" },
     { name: "Lock/Unlock Doors", link: "/lock_or_unlock_doors", icon: "bi-door-closed" },
     { name: "Model Manager", link: "/manage_models", icon: "bi-cpu" },
     { name: "Theme Maker", link: "/theme_maker", icon: "bi-palette-fill" },
