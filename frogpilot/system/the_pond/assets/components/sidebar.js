@@ -20,6 +20,7 @@ const MenuItems = {
     { name: "Error Logs", link: "/manage_error_logs", icon: "bi-exclamation-triangle" },
     { name: "Galaxy", link: "/galaxy", icon: "bi-globe2" },
     { name: "Model Manager", link: "/manage_models", icon: "bi-cpu" },
+    { name: "Plots", link: "/plots", icon: "bi-graph-up-arrow" },
     { name: "Theme Maker", link: "/theme_maker", icon: "bi-palette-fill" },
     { name: "Tmux Log", link: "/manage_tmux", icon: "bi-terminal" },
     { name: "Toggles", link: "/manage_toggles", icon: "bi-toggle-on" },

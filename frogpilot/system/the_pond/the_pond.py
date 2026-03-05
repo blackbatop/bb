@@ -162,8 +162,191 @@ _fast_update_state = {
   "progressDetail": "",
 }
 
+_PLOTS_POLL_INTERVAL_S = 0.5
+_PLOTS_CLIENT_IDLE_TIMEOUT_S = 15.0
+_PLOTS_SAMPLE_STALE_AFTER_S = 1.5
+
+_plots_lock = threading.Lock()
+_plots_worker_thread = None
+_plots_last_client_request_ts = 0.0
+_plots_state = {
+  "timestamp": 0.0,
+  "desiredLateralAccel": 0.0,
+  "actualLateralAccel": 0.0,
+  "desiredLongitudinalAccel": 0.0,
+  "actualLongitudinalAccel": 0.0,
+  "lateralP": 0.0,
+  "lateralI": 0.0,
+  "lateralD": 0.0,
+  "lateralF": 0.0,
+  "longitudinalUpAccelCmd": 0.0,
+  "longitudinalUiAccelCmd": 0.0,
+  "longitudinalUfAccelCmd": 0.0,
+  "speed": 0.0,
+  "lateralSource": "curvature",
+  "longitudinalSource": "controlsState + liveLocationKalman",
+  "lateralTermsSource": "unknown",
+  "longitudinalTermsSource": "controlsState",
+  "sampleIndex": 0,
+  "lastError": "",
+}
+
 def _normalize_fingerprint_make_key(make_value):
   return str(make_value or "").strip().lower()
+
+def _safe_float(value, default=0.0):
+  try:
+    return float(value)
+  except Exception:
+    return float(default)
+
+def _extract_lateral_accel_values(controls_state, speed_mps):
+  v_ego = max(0.0, _safe_float(speed_mps))
+  speed_sq = v_ego * v_ego
+
+  try:
+    lateral_state = controls_state.lateralControlState
+    if lateral_state.which() == "torqueState":
+      torque_state = lateral_state.torqueState
+      desired = _safe_float(getattr(torque_state, "desiredLateralAccel", 0.0))
+      actual = _safe_float(getattr(torque_state, "actualLateralAccel", 0.0))
+      if abs(desired) > 1e-3 or abs(actual) > 1e-3:
+        return desired, actual, "torqueState"
+  except Exception:
+    pass
+
+  desired_curvature = _safe_float(getattr(controls_state, "desiredCurvature", 0.0))
+  actual_curvature = _safe_float(getattr(controls_state, "curvature", 0.0))
+  return desired_curvature * speed_sq, actual_curvature * speed_sq, "curvature"
+
+def _extract_longitudinal_accel_values(controls_state, live_location_kalman):
+  desired = _safe_float(getattr(controls_state, "upAccelCmd", 0.0)) + \
+            _safe_float(getattr(controls_state, "uiAccelCmd", 0.0)) + \
+            _safe_float(getattr(controls_state, "ufAccelCmd", 0.0))
+
+  actual = 0.0
+  source = "controlsState + liveLocationKalman"
+  try:
+    accel_calibrated = getattr(live_location_kalman, "accelerationCalibrated", None)
+    if accel_calibrated and getattr(accel_calibrated, "valid", False):
+      accel_values = list(getattr(accel_calibrated, "value", []))
+      if len(accel_values) > 0:
+        actual = _safe_float(accel_values[0], 0.0)
+  except Exception:
+    source = "controlsState"
+
+  return desired, actual, source
+
+def _extract_lateral_controller_terms(controls_state):
+  terms = {
+    "lateralP": 0.0,
+    "lateralI": 0.0,
+    "lateralD": 0.0,
+    "lateralF": 0.0,
+  }
+  source = "unknown"
+
+  try:
+    lateral_state = controls_state.lateralControlState
+    which = lateral_state.which()
+    if which == "torqueState":
+      torque_state = lateral_state.torqueState
+      terms["lateralP"] = _safe_float(getattr(torque_state, "p", 0.0))
+      terms["lateralI"] = _safe_float(getattr(torque_state, "i", 0.0))
+      terms["lateralD"] = _safe_float(getattr(torque_state, "d", 0.0))
+      terms["lateralF"] = _safe_float(getattr(torque_state, "f", 0.0))
+      source = "torqueState"
+    elif which == "pidState":
+      pid_state = lateral_state.pidState
+      terms["lateralP"] = _safe_float(getattr(pid_state, "p", 0.0))
+      terms["lateralI"] = _safe_float(getattr(pid_state, "i", 0.0))
+      terms["lateralF"] = _safe_float(getattr(pid_state, "f", 0.0))
+      source = "pidState"
+    elif which:
+      source = which
+  except Exception:
+    pass
+
+  return terms, source
+
+def _extract_longitudinal_controller_terms(controls_state):
+  terms = {
+    "longitudinalUpAccelCmd": _safe_float(getattr(controls_state, "upAccelCmd", 0.0)),
+    "longitudinalUiAccelCmd": _safe_float(getattr(controls_state, "uiAccelCmd", 0.0)),
+    "longitudinalUfAccelCmd": _safe_float(getattr(controls_state, "ufAccelCmd", 0.0)),
+  }
+  return terms, "controlsState"
+
+def _plots_worker():
+  global _plots_worker_thread
+
+  try:
+    sm = messaging.SubMaster(["controlsState", "liveLocationKalman"], poll="controlsState")
+  except Exception as exception:
+    with _plots_lock:
+      _plots_state["lastError"] = str(exception)
+      _plots_worker_thread = None
+    return
+
+  while True:
+    with _plots_lock:
+      idle_for = time.monotonic() - _plots_last_client_request_ts
+
+    if idle_for >= _PLOTS_CLIENT_IDLE_TIMEOUT_S:
+      break
+
+    try:
+      sm.update(0)
+
+      controls_state = sm["controlsState"]
+      live_location_kalman = sm["liveLocationKalman"]
+      speed = _safe_float(getattr(controls_state, "vPid", 0.0))
+
+      desired_lateral, actual_lateral, lateral_source = _extract_lateral_accel_values(controls_state, speed)
+      desired_longitudinal, actual_longitudinal, longitudinal_source = _extract_longitudinal_accel_values(controls_state, live_location_kalman)
+      lateral_terms, lateral_terms_source = _extract_lateral_controller_terms(controls_state)
+      longitudinal_terms, longitudinal_terms_source = _extract_longitudinal_controller_terms(controls_state)
+
+      with _plots_lock:
+        _plots_state.update({
+          "timestamp": time.time(),
+          "desiredLateralAccel": round(desired_lateral, 4),
+          "actualLateralAccel": round(actual_lateral, 4),
+          "desiredLongitudinalAccel": round(desired_longitudinal, 4),
+          "actualLongitudinalAccel": round(actual_longitudinal, 4),
+          "lateralP": round(lateral_terms["lateralP"], 4),
+          "lateralI": round(lateral_terms["lateralI"], 4),
+          "lateralD": round(lateral_terms["lateralD"], 4),
+          "lateralF": round(lateral_terms["lateralF"], 4),
+          "longitudinalUpAccelCmd": round(longitudinal_terms["longitudinalUpAccelCmd"], 4),
+          "longitudinalUiAccelCmd": round(longitudinal_terms["longitudinalUiAccelCmd"], 4),
+          "longitudinalUfAccelCmd": round(longitudinal_terms["longitudinalUfAccelCmd"], 4),
+          "speed": round(speed, 4),
+          "lateralSource": lateral_source,
+          "longitudinalSource": longitudinal_source,
+          "lateralTermsSource": lateral_terms_source,
+          "longitudinalTermsSource": longitudinal_terms_source,
+          "sampleIndex": int(_plots_state.get("sampleIndex", 0)) + 1,
+          "lastError": "",
+        })
+    except Exception as exception:
+      with _plots_lock:
+        _plots_state["lastError"] = str(exception)
+
+    time.sleep(_PLOTS_POLL_INTERVAL_S)
+
+  with _plots_lock:
+    _plots_worker_thread = None
+
+def _ensure_plots_worker():
+  global _plots_worker_thread, _plots_last_client_request_ts
+
+  with _plots_lock:
+    _plots_last_client_request_ts = time.monotonic()
+    if _plots_worker_thread and _plots_worker_thread.is_alive():
+      return
+    _plots_worker_thread = threading.Thread(target=_plots_worker, daemon=True)
+    _plots_worker_thread.start()
 
 def _set_fast_update_state(**kwargs):
   with _fast_update_lock:
@@ -1935,6 +2118,22 @@ def setup(app):
         "versionDate": utilities.format_git_date(build_metadata.openpilot.git_commit_date),
       },
     }
+
+  @app.route("/api/plots/live", methods=["GET"])
+  def get_live_plots():
+    _ensure_plots_worker()
+    with _plots_lock:
+      payload = dict(_plots_state)
+
+    timestamp = _safe_float(payload.get("timestamp", 0.0), 0.0)
+    age_seconds = max(0.0, time.time() - timestamp) if timestamp else 999.0
+
+    return jsonify({
+      **payload,
+      "isOnroad": params.get_bool("IsOnroad"),
+      "sampleAgeSeconds": round(age_seconds, 3),
+      "stale": age_seconds > _PLOTS_SAMPLE_STALE_AFTER_S,
+    }), 200
 
   @app.route("/api/update/fast/status", methods=["GET"])
   def get_fast_update_status():

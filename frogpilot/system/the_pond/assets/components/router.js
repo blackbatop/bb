@@ -14,6 +14,7 @@ import { ScreenRecordings } from "/assets/components/recordings/screen_recording
 import { Sidebar } from "/assets/components/sidebar.js"
 import { SpeedLimits } from "/assets/components/tools/speed_limits.js"
 import { ModelManager } from "/assets/components/tools/model_manager.js?v=20260303t"
+import { LivePlots } from "/assets/components/tools/plots.js"
 import { ThemeMaker } from "/assets/components/tools/theme_maker.js"
 import { TmuxLog } from "/assets/components/tools/tmux.js"
 import { ToggleControl } from "/assets/components/tools/toggles.js"
@@ -43,6 +44,7 @@ function Root() {
     createRoute("settings", "/settings/:section/:subsection?", SettingsView),
     createRoute("speed_limits", "/download_speed_limits", SpeedLimits),
     createRoute("model_manager", "/manage_models", ModelManager),
+    createRoute("plots", "/plots", LivePlots),
     createRoute("thememaker", "/theme_maker", ThemeMaker),
     createRoute("tmux", "/manage_tmux", TmuxLog),
     createRoute("toggles", "/manage_toggles", ToggleControl),
