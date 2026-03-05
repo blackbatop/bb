@@ -14,11 +14,14 @@ import os
 import re
 import requests
 import secrets
+import selectors
 import shutil
 import signal
 import subprocess
+import threading
 import time
 import traceback
+from urllib.parse import quote
 
 from cereal import car, messaging
 from opendbc.can.parser import CANParser
@@ -134,8 +137,557 @@ _FINGERPRINT_VALID_NAME_RE = re.compile(r'^[A-Za-z0-9 \u0160.()\-]+$')
 _openpilot_root_cache = None
 _fingerprint_catalog_cache = None
 
+_fast_update_lock = threading.Lock()
+_FAST_UPDATE_TOTAL_STEPS = 5
+_FAST_UPDATE_PROGRESS_UPDATE_INTERVAL_S = 5.0
+_FAST_UPDATE_REBOOT_NOTICE_SECONDS = 6.0
+_FAST_UPDATE_FETCH_TIMEOUT_S = 60
+_FAST_BRANCH_SWITCH_FETCH_TIMEOUT_S = 60
+_GIT_PROGRESS_PERCENT_RE = re.compile(r'([A-Za-z][A-Za-z /_-]+):\s*([0-9]{1,3})%')
+_GIT_SUBMODULE_SECTION_RE = re.compile(r'^\s*\[submodule\s+"[^"]+"\]\s*$', re.MULTILINE)
+_fast_update_state = {
+  "running": False,
+  "stage": "idle",
+  "message": "",
+  "lastError": "",
+  "lastBranch": "",
+  "lastMode": "",
+  "startedAt": 0.0,
+  "finishedAt": 0.0,
+  "progressStep": 0,
+  "progressTotalSteps": _FAST_UPDATE_TOTAL_STEPS,
+  "progressStepPercent": 0.0,
+  "progressPercent": 0.0,
+  "progressLabel": "Idle",
+  "progressDetail": "",
+}
+
 def _normalize_fingerprint_make_key(make_value):
   return str(make_value or "").strip().lower()
+
+def _set_fast_update_state(**kwargs):
+  with _fast_update_lock:
+    _fast_update_state.update(kwargs)
+
+def _get_fast_update_state():
+  with _fast_update_lock:
+    return dict(_fast_update_state)
+
+def _set_fast_update_progress(step, label, step_percent=0.0, detail=""):
+  safe_step = max(1, min(_FAST_UPDATE_TOTAL_STEPS, int(step)))
+  safe_step_percent = float(max(0.0, min(100.0, step_percent)))
+  overall_percent = (((safe_step - 1) + (safe_step_percent / 100.0)) / _FAST_UPDATE_TOTAL_STEPS) * 100.0
+
+  _set_fast_update_state(
+    progressStep=safe_step,
+    progressTotalSteps=_FAST_UPDATE_TOTAL_STEPS,
+    progressStepPercent=round(safe_step_percent, 1),
+    progressPercent=round(overall_percent, 1),
+    progressLabel=label,
+    progressDetail=detail,
+  )
+
+def _parse_git_progress_line(raw_line):
+  text = str(raw_line or "").replace("\x1b", "").strip()
+  while text.startswith("remote:"):
+    text = text[len("remote:"):].strip()
+
+  if not text:
+    return None, "", ""
+
+  match = _GIT_PROGRESS_PERCENT_RE.search(text)
+  if not match:
+    return None, text, ""
+
+  try:
+    percent = float(match.group(2))
+  except Exception:
+    percent = None
+
+  phase = str(match.group(1) or "").strip().lower()
+  return percent, text, phase
+
+def _normalize_git_phase_percent(phase, percent):
+  safe_percent = max(0.0, min(100.0, float(percent)))
+  phase_text = str(phase or "").strip().lower()
+
+  # Git progress lines are per-phase and can hit 100% multiple times before the
+  # command actually exits. Map known phases to a monotonic 0..99% envelope.
+  if "counting objects" in phase_text:
+    return min(20.0, safe_percent * 0.20)
+  if "compressing objects" in phase_text:
+    return min(45.0, 20.0 + (safe_percent * 0.25))
+  if "receiving objects" in phase_text:
+    return min(85.0, 45.0 + (safe_percent * 0.40))
+  if "resolving deltas" in phase_text:
+    return min(99.0, 85.0 + (safe_percent * 0.14))
+
+  # Unknown phase: keep below 100 until the process exits.
+  return min(99.0, safe_percent)
+
+def _git_command_env():
+  env = os.environ.copy()
+  env["GIT_TERMINAL_PROMPT"] = "0"
+  env["GIT_ASKPASS"] = "/bin/false"
+  env["SSH_ASKPASS"] = "/bin/false"
+  env["GCM_INTERACTIVE"] = "Never"
+  if not env.get("GIT_SSH_COMMAND"):
+    env["GIT_SSH_COMMAND"] = "ssh -oBatchMode=yes"
+  return env
+
+def _build_shallow_fetch_args(branch):
+  return [
+    "-c", "gc.auto=0",
+    "-c", "maintenance.auto=false",
+    "fetch",
+    "--progress",
+    "--depth=1",
+    "--no-recurse-submodules",
+    "origin",
+    branch,
+  ]
+
+def _run_git_with_progress(repo_path, args, timeout, step, label):
+  cmd = ["git", *args]
+
+  process = subprocess.Popen(
+    cmd,
+    cwd=repo_path,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    env=_git_command_env(),
+  )
+
+  if process.stdout is None:
+    raise RuntimeError("Failed to open git output stream")
+
+  fd = process.stdout.fileno()
+  os.set_blocking(fd, False)
+
+  selector = selectors.DefaultSelector()
+  selector.register(fd, selectors.EVENT_READ)
+
+  started_at = time.monotonic()
+  last_activity_at = started_at
+  last_emit_at = 0.0
+  last_percent = None
+  last_detail = ""
+  output_tail = []
+  buffer = ""
+
+  def consume_text(text):
+    nonlocal buffer
+    for char in text:
+      if char in ("\r", "\n"):
+        if buffer:
+          handle_line(buffer)
+          buffer = ""
+      else:
+        buffer += char
+
+  def append_tail(text):
+    if not text:
+      return
+    output_tail.append(text)
+    if len(output_tail) > 180:
+      del output_tail[:-180]
+
+  def handle_line(text):
+    nonlocal last_activity_at, last_emit_at, last_percent, last_detail
+
+    percent, detail, phase = _parse_git_progress_line(text)
+    append_tail(detail or text)
+
+    now = time.monotonic()
+    last_activity_at = now
+    should_emit = False
+
+    if percent is not None:
+      safe_percent = _normalize_git_phase_percent(phase, percent)
+      if safe_percent in (0.0, 99.0):
+        should_emit = True
+      elif now - last_emit_at >= _FAST_UPDATE_PROGRESS_UPDATE_INTERVAL_S:
+        should_emit = last_percent is None or abs(safe_percent - last_percent) >= 1.0
+
+      if should_emit:
+        _set_fast_update_progress(step, label, safe_percent, detail or label)
+        last_emit_at = now
+        last_percent = safe_percent
+        last_detail = detail or label
+      else:
+        if last_percent is None:
+          last_percent = safe_percent
+    else:
+      if detail and now - last_emit_at >= _FAST_UPDATE_PROGRESS_UPDATE_INTERVAL_S and detail != last_detail:
+        fallback_percent = last_percent if last_percent is not None else 0.0
+        _set_fast_update_progress(step, label, fallback_percent, detail)
+        last_emit_at = now
+        last_detail = detail
+
+  try:
+    while True:
+      now = time.monotonic()
+      if timeout and (now - last_activity_at) > timeout:
+        try:
+          process.kill()
+        except Exception:
+          pass
+        tail = output_tail[-1] if output_tail else ""
+        suffix = f" (last output: {tail})" if tail else ""
+        raise TimeoutError(f"git {' '.join(args)} stalled for {int(timeout)}s without output{suffix}")
+
+      events = selector.select(timeout=0.5)
+      if not events:
+        if process.poll() is not None:
+          try:
+            trailing = os.read(fd, 4096)
+          except BlockingIOError:
+            trailing = b""
+          if trailing:
+            last_activity_at = time.monotonic()
+            consume_text(trailing.decode("utf-8", errors="replace"))
+            continue
+          break
+
+        # Heartbeat: if git is quiet (no progress lines), still surface activity.
+        now = time.monotonic()
+        if now - last_emit_at >= _FAST_UPDATE_PROGRESS_UPDATE_INTERVAL_S:
+          if timeout:
+            inferred_percent = min(95.0, max(0.0, ((now - started_at) / timeout) * 95.0))
+          else:
+            inferred_percent = min(95.0, (last_percent or 0.0) + 1.0)
+          if last_percent is None or inferred_percent > last_percent:
+            last_percent = inferred_percent
+          heartbeat_detail = last_detail or f"{label}..."
+          _set_fast_update_progress(step, label, last_percent or 0.0, heartbeat_detail)
+          last_emit_at = now
+        continue
+
+      reached_eof = False
+      for _, _ in events:
+        try:
+          chunk = os.read(fd, 4096)
+        except BlockingIOError:
+          chunk = b""
+
+        if not chunk:
+          # Selector can keep reporting readability on EOF; exit once process ended.
+          if process.poll() is not None:
+            reached_eof = True
+            break
+          continue
+
+        last_activity_at = time.monotonic()
+        consume_text(chunk.decode("utf-8", errors="replace"))
+
+      if reached_eof:
+        break
+
+    if buffer:
+      handle_line(buffer)
+
+    return_code = process.wait(timeout=2)
+  finally:
+    try:
+      selector.unregister(fd)
+    except Exception:
+      pass
+    selector.close()
+    try:
+      process.stdout.close()
+    except Exception:
+      pass
+
+  if return_code == 0:
+    _set_fast_update_progress(step, label, 100.0, last_detail or "Done")
+
+  return return_code, "\n".join(output_tail[-40:])
+
+def _run_git(repo_path, args, timeout=30):
+  return subprocess.run(
+    ["git", *args],
+    cwd=repo_path,
+    capture_output=True,
+    text=True,
+    timeout=timeout,
+    check=False,
+    env=_git_command_env(),
+  )
+
+def _git_stdout(repo_path, args, timeout=15):
+  result = _run_git(repo_path, args, timeout=timeout)
+  if result.returncode != 0:
+    stderr = (result.stderr or "").strip() or (result.stdout or "").strip() or "git command failed"
+    raise RuntimeError(stderr)
+  return (result.stdout or "").strip()
+
+def _is_valid_git_branch_name(repo_path, branch_name):
+  branch = str(branch_name or "").strip()
+  if not branch or branch.startswith("-") or "\x00" in branch:
+    return False
+
+  result = _run_git(repo_path, ["check-ref-format", "--branch", branch], timeout=10)
+  return result.returncode == 0
+
+def _list_origin_branches(repo_path, include_remote=True):
+  branches = set()
+  remote_error = ""
+
+  if include_remote:
+    try:
+      remote_heads = _git_stdout(repo_path, ["ls-remote", "--heads", "origin"], timeout=25)
+      for line in remote_heads.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+          continue
+
+        ref = parts[1].strip()
+        if not ref.startswith("refs/heads/"):
+          continue
+
+        branch = ref[len("refs/heads/"):].strip()
+        if branch:
+          branches.add(branch)
+    except Exception as exception:
+      remote_error = str(exception)
+
+  if not branches:
+    try:
+      local_refs = _git_stdout(
+        repo_path,
+        ["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin"],
+        timeout=15,
+      )
+      for line in local_refs.splitlines():
+        ref = line.strip()
+        if not ref or ref in ("origin/HEAD",):
+          continue
+        if ref.startswith("origin/"):
+          ref = ref[len("origin/"):]
+        if ref.endswith("/HEAD"):
+          continue
+        if ref:
+          branches.add(ref)
+    except Exception as exception:
+      if not remote_error:
+        remote_error = str(exception)
+
+  return sorted(branches, key=lambda branch: branch.lower()), remote_error
+
+def _repo_has_submodule_entries(repo_path):
+  gitmodules_path = Path(repo_path) / ".gitmodules"
+  if not gitmodules_path.is_file():
+    return False
+
+  try:
+    content = gitmodules_path.read_text(encoding="utf-8", errors="replace")
+  except Exception:
+    # If we cannot inspect .gitmodules, stay conservative and try syncing.
+    return True
+
+  return bool(_GIT_SUBMODULE_SECTION_RE.search(content))
+
+def _run_submodule_update_if_needed(repo_path, step=4):
+  if not _repo_has_submodule_entries(repo_path):
+    _set_fast_update_progress(step, "Updating submodules", 100.0, "No submodules configured.")
+    return
+
+  _set_fast_update_progress(step, "Updating submodules", 0.0, "Syncing submodules...")
+  submodule_rc, submodule_output = _run_git_with_progress(
+    repo_path,
+    ["submodule", "update", "--init", "--recursive", "--depth=1", "--progress"],
+    timeout=240,
+    step=step,
+    label="Updating submodules",
+  )
+  if submodule_rc != 0:
+    raise RuntimeError(submodule_output.strip() or "git submodule update failed")
+
+def _finish_update_and_reboot(message):
+  _set_fast_update_progress(5, "Rebooting device", 100.0, "Update complete. Please wait for device to reboot.")
+  _set_fast_update_state(
+    running=False,
+    stage="rebooting",
+    message=message,
+    finishedAt=time.time(),
+  )
+  # Keep the service online briefly so the UI can fetch and render the reboot notice.
+  time.sleep(_FAST_UPDATE_REBOOT_NOTICE_SECONDS)
+  HARDWARE.reboot()
+
+def _set_fast_update_error_state(message, exception):
+  error_text = str(exception).strip() or "Unknown error"
+  _set_fast_update_state(
+    running=False,
+    stage="error",
+    message=message,
+    lastError=error_text,
+    finishedAt=time.time(),
+    progressStep=0,
+    progressTotalSteps=_FAST_UPDATE_TOTAL_STEPS,
+    progressStepPercent=0.0,
+    progressPercent=0.0,
+    progressLabel="Failed",
+    progressDetail="Update failed. See Last Error below.",
+  )
+
+def _collect_fast_update_info(include_remote=True):
+  repo_path = str(_get_openpilot_root())
+
+  branch = ""
+  local_commit = ""
+  remote_commit = ""
+  update_available = False
+  remote_error = ""
+  origin_remote = ""
+  commits_url = ""
+
+  try:
+    branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    local_commit = _git_stdout(repo_path, ["rev-parse", "HEAD"])
+    try:
+      origin_remote = _git_stdout(repo_path, ["config", "--get", "remote.origin.url"])
+    except Exception:
+      origin_remote = ""
+  except Exception as exception:
+    return {
+      "repoPath": repo_path,
+      "branch": branch,
+      "localCommit": local_commit,
+      "remoteCommit": remote_commit,
+      "updateAvailable": False,
+      "remoteError": str(exception),
+      "originRemote": origin_remote,
+      "commitsUrl": commits_url,
+    }
+
+  if origin_remote:
+    remote = origin_remote.strip()
+    if remote.startswith("git@github.com:"):
+      remote = "https://github.com/" + remote.split(":", 1)[1]
+    elif remote.startswith("ssh://git@github.com/"):
+      remote = "https://github.com/" + remote.split("ssh://git@github.com/", 1)[1]
+    elif remote.startswith("http://github.com/"):
+      remote = "https://github.com/" + remote.split("http://github.com/", 1)[1]
+
+    if remote.startswith("https://github.com/"):
+      remote = remote.rstrip("/")
+      if remote.endswith(".git"):
+        remote = remote[:-4]
+      if branch:
+        commits_url = f"{remote}/commits/{quote(branch, safe='')}/"
+
+  if branch and include_remote:
+    try:
+      remote_raw = _git_stdout(repo_path, ["ls-remote", "--heads", "origin", branch], timeout=20)
+      if remote_raw:
+        remote_commit = remote_raw.split()[0]
+        update_available = bool(local_commit and remote_commit and local_commit != remote_commit)
+    except Exception as exception:
+      remote_error = str(exception)
+
+  return {
+    "repoPath": repo_path,
+    "branch": branch,
+    "localCommit": local_commit,
+    "remoteCommit": remote_commit,
+    "updateAvailable": update_available,
+    "remoteError": remote_error,
+    "originRemote": origin_remote,
+    "commitsUrl": commits_url,
+  }
+
+def _fast_update_worker():
+  started_at = time.time()
+  repo_path = str(_get_openpilot_root())
+
+  try:
+    _set_fast_update_progress(1, "Preparing update", 10.0, "Resolving active branch...")
+    branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    _set_fast_update_progress(1, "Preparing update", 100.0, f"Branch: {branch}")
+    _set_fast_update_state(
+      running=True,
+      stage="updating",
+      message=f"Applying shallow update on '{branch}'...",
+      lastError="",
+      lastBranch=branch,
+      lastMode="fetch-reset",
+      startedAt=started_at,
+      finishedAt=0.0,
+    )
+
+    _set_fast_update_progress(2, "Fetching branch snapshot", 0.0, "Fetching latest shallow commit...")
+    fetch_rc, fetch_output = _run_git_with_progress(
+      repo_path,
+      _build_shallow_fetch_args(branch),
+      timeout=_FAST_UPDATE_FETCH_TIMEOUT_S,
+      step=2,
+      label="Fetching branch snapshot",
+    )
+    if fetch_rc != 0:
+      raise RuntimeError(fetch_output.strip() or "git fetch failed")
+
+    _set_fast_update_progress(3, "Applying fetched commit", 20.0, "Resetting repository to fetched head...")
+    reset = _run_git(repo_path, ["reset", "--hard", "FETCH_HEAD"], timeout=120)
+    if reset.returncode != 0:
+      raise RuntimeError((reset.stderr or reset.stdout or "git reset failed").strip())
+    _set_fast_update_progress(3, "Applying fetched commit", 100.0, "Repository reset complete.")
+
+    _run_submodule_update_if_needed(repo_path, step=4)
+    _finish_update_and_reboot(
+      "Update successful. Device is rebooting now. Please wait for reconnection."
+    )
+  except Exception as exception:
+    _set_fast_update_error_state("Fast update failed.", exception)
+
+def _branch_switch_worker(target_branch):
+  started_at = time.time()
+  repo_path = str(_get_openpilot_root())
+
+  try:
+    _set_fast_update_progress(1, "Preparing branch switch", 10.0, f"Target: {target_branch}")
+    current_branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    _set_fast_update_progress(1, "Preparing branch switch", 100.0, f"{current_branch} -> {target_branch}")
+    _set_fast_update_state(
+      running=True,
+      stage="switching",
+      message=f"Switching to '{target_branch}' with shallow fetch...",
+      lastError="",
+      lastBranch=target_branch,
+      lastMode="branch-switch",
+      startedAt=started_at,
+      finishedAt=0.0,
+    )
+
+    _set_fast_update_progress(2, "Fetching branch snapshot", 0.0, f"Fetching '{target_branch}' from origin...")
+    fetch_rc, fetch_output = _run_git_with_progress(
+      repo_path,
+      _build_shallow_fetch_args(target_branch),
+      timeout=_FAST_BRANCH_SWITCH_FETCH_TIMEOUT_S,
+      step=2,
+      label="Fetching branch snapshot",
+    )
+    if fetch_rc != 0:
+      raise RuntimeError(fetch_output.strip() or f"git fetch failed for '{target_branch}'")
+
+    _set_fast_update_progress(3, "Switching branch", 20.0, f"Checking out '{target_branch}'...")
+    checkout = _run_git(repo_path, ["checkout", "--force", "-B", target_branch, "FETCH_HEAD"], timeout=120)
+    if checkout.returncode != 0:
+      raise RuntimeError((checkout.stderr or checkout.stdout or "git checkout failed").strip())
+
+    reset = _run_git(repo_path, ["reset", "--hard", "FETCH_HEAD"], timeout=120)
+    if reset.returncode != 0:
+      raise RuntimeError((reset.stderr or reset.stdout or "git reset failed").strip())
+
+    _run_git(repo_path, ["branch", "--set-upstream-to", f"origin/{target_branch}", target_branch], timeout=30)
+    _set_fast_update_progress(3, "Switching branch", 100.0, f"Now on '{target_branch}'.")
+
+    _run_submodule_update_if_needed(repo_path, step=4)
+    _finish_update_and_reboot(
+      f"Switched to '{target_branch}'. Device is rebooting now. Please wait for reconnection."
+    )
+  except Exception as exception:
+    _set_fast_update_error_state("Fast branch switch failed.", exception)
 
 def _get_openpilot_root():
   global _openpilot_root_cache
@@ -638,6 +1190,9 @@ def setup(app):
         }
         name = friendly_names.get(key, key)
         return jsonify({"error": f"Cannot change {name} while the car is driving. A reboot is required."}), 403
+
+      if key == "AutomaticUpdates" and params.get_bool("IsOnroad"):
+        return jsonify({"error": "Cannot change Automatic Updates while driving."}), 403
 
       if key == "CarMake":
         catalog = _get_fingerprint_catalog()
@@ -1380,6 +1935,111 @@ def setup(app):
         "versionDate": utilities.format_git_date(build_metadata.openpilot.git_commit_date),
       },
     }
+
+  @app.route("/api/update/fast/status", methods=["GET"])
+  def get_fast_update_status():
+    state_data = _get_fast_update_state()
+    git_data = _collect_fast_update_info(include_remote=not state_data.get("running", False))
+    return jsonify({
+      **state_data,
+      **git_data,
+      "isOnroad": params.get_bool("IsOnroad"),
+      "automaticUpdates": params.get_bool("AutomaticUpdates"),
+      "warning": "Fast update skips backup creation and finalization safeguards.",
+    }), 200
+
+  @app.route("/api/update/branches", methods=["GET"])
+  def get_update_branches():
+    state_data = _get_fast_update_state()
+    repo_path = str(_get_openpilot_root())
+
+    try:
+      current_branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    except Exception as exception:
+      return jsonify({"error": str(exception)}), 500
+
+    branches, remote_error = _list_origin_branches(repo_path, include_remote=not state_data.get("running", False))
+    if current_branch and current_branch not in branches:
+      branches = sorted([*branches, current_branch], key=lambda branch: branch.lower())
+
+    return jsonify({
+      "currentBranch": current_branch,
+      "branches": branches,
+      "remoteError": remote_error,
+      "isOnroad": params.get_bool("IsOnroad"),
+      "running": state_data.get("running", False),
+    }), 200
+
+  @app.route("/api/update/fast", methods=["POST"])
+  def run_fast_update():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot run a fast update while driving."}), 409
+
+    with _fast_update_lock:
+      if _fast_update_state.get("running"):
+        return jsonify({"error": "Fast update already in progress."}), 409
+      _fast_update_state.update({
+        "running": True,
+        "stage": "starting",
+        "message": "Starting fast update...",
+        "lastError": "",
+        "startedAt": time.time(),
+        "finishedAt": 0.0,
+        "progressStep": 1,
+        "progressTotalSteps": _FAST_UPDATE_TOTAL_STEPS,
+        "progressStepPercent": 0.0,
+        "progressPercent": 0.0,
+        "progressLabel": "Preparing update",
+        "progressDetail": "Initializing update process...",
+      })
+
+    threading.Thread(target=_fast_update_worker, daemon=True).start()
+
+    return jsonify({
+      "message": "Fast update started. Device will reboot when complete.",
+      "warning": "Fast update skips backup creation and finalization safeguards.",
+    }), 202
+
+  @app.route("/api/update/branch", methods=["POST"])
+  def run_branch_switch():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot switch branches while driving."}), 409
+
+    request_data = request.get_json() or {}
+    target_branch = str(request_data.get("branch") or "").strip()
+    if not target_branch:
+      return jsonify({"error": "Missing 'branch' in request body."}), 400
+
+    repo_path = str(_get_openpilot_root())
+    if not _is_valid_git_branch_name(repo_path, target_branch):
+      return jsonify({"error": "Invalid branch name."}), 400
+
+    with _fast_update_lock:
+      if _fast_update_state.get("running"):
+        return jsonify({"error": "Another update action is already in progress."}), 409
+      _fast_update_state.update({
+        "running": True,
+        "stage": "starting",
+        "message": f"Starting branch switch to '{target_branch}'...",
+        "lastError": "",
+        "lastBranch": target_branch,
+        "lastMode": "branch-switch",
+        "startedAt": time.time(),
+        "finishedAt": 0.0,
+        "progressStep": 1,
+        "progressTotalSteps": _FAST_UPDATE_TOTAL_STEPS,
+        "progressStepPercent": 0.0,
+        "progressPercent": 0.0,
+        "progressLabel": "Preparing branch switch",
+        "progressDetail": "Initializing branch switch...",
+      })
+
+    threading.Thread(target=_branch_switch_worker, args=(target_branch,), daemon=True).start()
+
+    return jsonify({
+      "message": f"Branch switch started for '{target_branch}'. Device will reboot when complete.",
+      "warning": "Fast update skips backup creation and finalization safeguards.",
+    }), 202
 
   # ── Galaxy pairing (mirrors settings.cc L262-282) ──────────────────
   GALAXY_DIR = Path("/data/galaxy")

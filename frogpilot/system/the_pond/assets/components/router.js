@@ -17,6 +17,7 @@ import { ModelManager } from "/assets/components/tools/model_manager.js?v=202603
 import { ThemeMaker } from "/assets/components/tools/theme_maker.js"
 import { TmuxLog } from "/assets/components/tools/tmux.js"
 import { ToggleControl } from "/assets/components/tools/toggles.js"
+import { UpdateManager } from "/assets/components/tools/update_manager.js"
 
 let router, routerState
 
@@ -45,6 +46,7 @@ function Root() {
     createRoute("thememaker", "/theme_maker", ThemeMaker),
     createRoute("tmux", "/manage_tmux", TmuxLog),
     createRoute("toggles", "/manage_toggles", ToggleControl),
+    createRoute("updates", "/manage_updates", UpdateManager),
     createRoute("vehicle_features", "/vehicle_features", VehicleFeatures),
   ]
 

@@ -23,6 +23,7 @@ const MenuItems = {
     { name: "Theme Maker", link: "/theme_maker", icon: "bi-palette-fill" },
     { name: "Tmux Log", link: "/manage_tmux", icon: "bi-terminal" },
     { name: "Toggles", link: "/manage_toggles", icon: "bi-toggle-on" },
+    { name: "Software", link: "/manage_updates", icon: "bi-arrow-up-circle" },
     { name: "Vehicle Features", link: "/vehicle_features", icon: "bi-car-front" },
   ],
 };
