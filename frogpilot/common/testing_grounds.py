@@ -33,10 +33,10 @@ TESTING_GROUNDS_STATE_PATH = Path("/tmp/the_pond_testing_grounds_slots.json") if
 TESTING_GROUNDS_SLOT_DEFINITIONS = (
   {
     "id": TESTING_GROUND_1,
-    "name": "Unused",
-    "description": "",
-    "aLabel": "A",
-    "bLabel": "B",
+    "name": "GM Long Tune",
+    "description": "BoltLongTune A/B sandbox for GM ACC longitudinal testing.",
+    "aLabel": "A - Installed tune",
+    "bLabel": "B - BoltLongTune test",
   },
   {
     "id": TESTING_GROUND_2,
