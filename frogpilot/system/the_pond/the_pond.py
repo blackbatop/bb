@@ -37,6 +37,14 @@ from openpilot.frogpilot.assets.theme_manager import HOLIDAY_THEME_PATH, THEME_C
 from openpilot.frogpilot.common.frogpilot_utilities import delete_file, get_lock_status, run_cmd, extract_tar
 from openpilot.frogpilot.common.frogpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, THEME_SAVE_PATH,\
                                                            frogpilot_default_params, params, params_memory, update_frogpilot_toggles
+from openpilot.frogpilot.common.testing_grounds import (
+  DEFAULT_TESTING_GROUND_VARIANT as SHARED_DEFAULT_TESTING_GROUND_VARIANT,
+  TESTING_GROUND_VARIANT_LABELS as SHARED_TESTING_GROUND_VARIANT_LABELS,
+  TESTING_GROUND_VARIANTS as SHARED_TESTING_GROUND_VARIANTS,
+  TESTING_GROUNDS_SCHEMA_VERSION as SHARED_TESTING_GROUNDS_SCHEMA_VERSION,
+  TESTING_GROUNDS_SLOT_DEFINITIONS as SHARED_TESTING_GROUNDS_SLOT_DEFINITIONS,
+  TESTING_GROUNDS_STATE_PATH as SHARED_TESTING_GROUNDS_STATE_PATH,
+)
 from openpilot.frogpilot.system.the_pond import utilities
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
@@ -145,6 +153,18 @@ _FAST_UPDATE_FETCH_TIMEOUT_S = 60
 _FAST_BRANCH_SWITCH_FETCH_TIMEOUT_S = 60
 _GIT_PROGRESS_PERCENT_RE = re.compile(r'([A-Za-z][A-Za-z /_-]+):\s*([0-9]{1,3})%')
 _GIT_SUBMODULE_SECTION_RE = re.compile(r'^\s*\[submodule\s+"[^"]+"\]\s*$', re.MULTILINE)
+_TESTING_GROUNDS_SCHEMA_VERSION = SHARED_TESTING_GROUNDS_SCHEMA_VERSION
+_TESTING_GROUNDS_SLOT_COUNT = len(SHARED_TESTING_GROUNDS_SLOT_DEFINITIONS)
+_TESTING_GROUNDS_DEFAULT_VARIANT = SHARED_DEFAULT_TESTING_GROUND_VARIANT
+_TESTING_GROUNDS_VARIANTS = set(SHARED_TESTING_GROUND_VARIANTS) or {_TESTING_GROUNDS_DEFAULT_VARIANT}
+_TESTING_GROUNDS_LOCK = threading.Lock()
+_TESTING_GROUNDS_STATE_PATH = SHARED_TESTING_GROUNDS_STATE_PATH
+# Slot labels live in frogpilot/common/testing_grounds.py.
+_TESTING_GROUNDS_SLOT_DEFINITIONS = [dict(slot) for slot in SHARED_TESTING_GROUNDS_SLOT_DEFINITIONS]
+_TESTING_GROUNDS_VARIANT_LABELS_BY_SLOT = {
+  str(slot_id or "").strip(): dict(labels or {})
+  for slot_id, labels in SHARED_TESTING_GROUND_VARIANT_LABELS.items()
+}
 _fast_update_state = {
   "running": False,
   "stage": "idle",
@@ -1042,6 +1062,256 @@ def _get_param_type_info():
 
     _cached_param_types = types
   return _cached_allowed_keys, _cached_param_types
+
+def _extract_testing_ground_variant_labels(slot_data, include_default=True):
+  labels = {}
+  if not isinstance(slot_data, dict):
+    slot_data = {}
+
+  raw_variant_labels = slot_data.get("variantLabels")
+  if isinstance(raw_variant_labels, dict):
+    for raw_variant, raw_label in raw_variant_labels.items():
+      variant = str(raw_variant or "").strip().upper()
+      label = str(raw_label or "").strip()
+      if len(variant) == 1 and variant.isalpha() and label:
+        labels[variant] = label
+
+  for key, value in slot_data.items():
+    if not isinstance(key, str) or not key.endswith("Label"):
+      continue
+    variant = key[:-5].strip().upper()
+    if len(variant) != 1 or not variant.isalpha():
+      continue
+    label = str(value or "").strip()
+    if label:
+      labels[variant] = label
+
+  if include_default and _TESTING_GROUNDS_DEFAULT_VARIANT not in labels:
+    labels[_TESTING_GROUNDS_DEFAULT_VARIANT] = _TESTING_GROUNDS_DEFAULT_VARIANT
+
+  return dict(sorted(labels.items()))
+
+def _get_testing_ground_variant_labels(slot_id, slot=None):
+  normalized_slot_id = str(slot_id or "").strip()
+  labels = {}
+
+  shared_labels = _TESTING_GROUNDS_VARIANT_LABELS_BY_SLOT.get(normalized_slot_id, {})
+  if shared_labels:
+    labels.update({
+      str(variant or "").strip().upper(): str(label or "").strip()
+      for variant, label in shared_labels.items()
+      if len(str(variant or "").strip().upper()) == 1 and str(variant or "").strip().upper().isalpha() and str(label or "").strip()
+    })
+
+  labels.update(_extract_testing_ground_variant_labels(slot if isinstance(slot, dict) else {}, include_default=False))
+
+  if _TESTING_GROUNDS_DEFAULT_VARIANT not in labels:
+    labels[_TESTING_GROUNDS_DEFAULT_VARIANT] = _TESTING_GROUNDS_DEFAULT_VARIANT
+
+  return dict(sorted(labels.items()))
+
+def _normalize_testing_ground_variant(slot_id, variant, slot=None):
+  allowed_variants = set(_get_testing_ground_variant_labels(slot_id, slot).keys()) or set(_TESTING_GROUNDS_VARIANTS)
+  normalized_variant = str(variant or "").strip().upper()
+  return normalized_variant if normalized_variant in allowed_variants else _TESTING_GROUNDS_DEFAULT_VARIANT
+
+def _build_testing_ground_fallback_slots():
+  definitions_by_id = {}
+
+  for definition in _TESTING_GROUNDS_SLOT_DEFINITIONS:
+    if not isinstance(definition, dict):
+      continue
+
+    slot_id = str(definition.get("id") or "").strip()
+    if not slot_id:
+      continue
+
+    variant_labels = _get_testing_ground_variant_labels(slot_id, definition)
+    definitions_by_id[slot_id] = {
+      "id": slot_id,
+      "name": str(definition.get("name") or "Unused").strip() or "Unused",
+      "description": str(definition.get("description") or "").strip(),
+      "variantLabels": variant_labels,
+      "aLabel": variant_labels.get("A", "A"),
+      "bLabel": variant_labels.get("B", "B"),
+    }
+
+  slots = []
+  for slot_number in range(1, _TESTING_GROUNDS_SLOT_COUNT + 1):
+    slot_id = str(slot_number)
+    default_variant_labels = {
+      _TESTING_GROUNDS_DEFAULT_VARIANT: _TESTING_GROUNDS_DEFAULT_VARIANT,
+      "B": "B",
+    }
+    fallback_slot = definitions_by_id.get(slot_id, {
+      "id": slot_id,
+      "name": "Unused",
+      "description": "",
+      "variantLabels": default_variant_labels,
+      "aLabel": "A",
+      "bLabel": "B",
+    })
+    slot = dict(fallback_slot)
+    slot_variant_labels = _get_testing_ground_variant_labels(slot_id, slot)
+    slot["variantLabels"] = slot_variant_labels
+    slot["aLabel"] = slot_variant_labels.get("A", slot.get("aLabel", "A"))
+    slot["bLabel"] = slot_variant_labels.get("B", slot.get("bLabel", "B"))
+    slots.append(slot)
+
+  return slots
+
+def _default_testing_grounds_state():
+  return {
+    "schemaVersion": _TESTING_GROUNDS_SCHEMA_VERSION,
+    "activeSlot": "1",
+    "activeVariant": _TESTING_GROUNDS_DEFAULT_VARIANT,
+    "slots": _build_testing_ground_fallback_slots(),
+  }
+
+def _normalize_testing_ground_slot(raw_slot, fallback_slot):
+  slot = dict(fallback_slot)
+  if not isinstance(raw_slot, dict):
+    return slot
+
+  name = str(raw_slot.get("name") or "").strip()
+  slot["name"] = name or slot["name"]
+  slot["description"] = str(raw_slot.get("description") or slot["description"]).strip()
+
+  variant_labels = _get_testing_ground_variant_labels(slot.get("id"), raw_slot)
+  if not variant_labels:
+    variant_labels = _get_testing_ground_variant_labels(slot.get("id"), slot)
+  slot["variantLabels"] = variant_labels
+  slot["aLabel"] = variant_labels.get("A", slot.get("aLabel", "A"))
+  slot["bLabel"] = variant_labels.get("B", slot.get("bLabel", "B"))
+
+  return slot
+
+def _load_testing_grounds_state_unlocked():
+  state = _default_testing_grounds_state()
+  fallback_slots = state["slots"]
+  fallback_slot_ids = {slot["id"] for slot in fallback_slots}
+  needs_write = False
+
+  raw_state = {}
+  try:
+    raw_state = json.loads(_TESTING_GROUNDS_STATE_PATH.read_text(encoding="utf-8"))
+    if not isinstance(raw_state, dict):
+      raw_state = {}
+      needs_write = True
+  except FileNotFoundError:
+    needs_write = True
+  except Exception:
+    needs_write = True
+
+  if raw_state.get("schemaVersion") != _TESTING_GROUNDS_SCHEMA_VERSION:
+    needs_write = True
+
+  raw_slots = raw_state.get("slots")
+  if isinstance(raw_slots, list):
+    raw_by_id = {}
+    for index, raw_slot in enumerate(raw_slots, start=1):
+      if not isinstance(raw_slot, dict):
+        needs_write = True
+        continue
+
+      slot_id = str(raw_slot.get("id") or "").strip() or str(index)
+      if slot_id not in fallback_slot_ids:
+        needs_write = True
+        continue
+
+      raw_by_id[slot_id] = raw_slot
+
+    normalized_slots = []
+    for fallback_slot in fallback_slots:
+      slot_id = fallback_slot["id"]
+      normalized_slots.append(_normalize_testing_ground_slot(raw_by_id.get(slot_id), fallback_slot))
+      if slot_id not in raw_by_id:
+        needs_write = True
+
+    state["slots"] = normalized_slots
+  else:
+    needs_write = True
+
+  active_slot = str(raw_state.get("activeSlot") or "").strip()
+  if active_slot not in fallback_slot_ids:
+    active_slot = state["activeSlot"]
+    needs_write = True
+  state["activeSlot"] = active_slot
+
+  active_slot_data = _find_testing_ground_slot(state, active_slot)
+  raw_active_variant = str(raw_state.get("activeVariant") or "").strip().upper()
+  active_variant = _normalize_testing_ground_variant(active_slot, raw_active_variant, active_slot_data)
+  if raw_active_variant != active_variant:
+    needs_write = True
+  state["activeVariant"] = active_variant
+
+  return state, needs_write
+
+def _write_testing_grounds_state_unlocked(state):
+  _TESTING_GROUNDS_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+  tmp_path = _TESTING_GROUNDS_STATE_PATH.with_name(f".tmp_{_TESTING_GROUNDS_STATE_PATH.name}")
+  tmp_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+  os.replace(tmp_path, _TESTING_GROUNDS_STATE_PATH)
+
+def _get_testing_grounds_state():
+  with _TESTING_GROUNDS_LOCK:
+    state, needs_write = _load_testing_grounds_state_unlocked()
+    if needs_write:
+      try:
+        _write_testing_grounds_state_unlocked(state)
+      except Exception:
+        pass
+    return state
+
+def _is_unused_testing_ground_slot(slot):
+  name = str(slot.get("name") or "").strip().lower()
+  return name == "unused" or name.startswith("unused ")
+
+def _find_testing_ground_slot(state, slot_id):
+  for slot in state.get("slots", []):
+    if str(slot.get("id") or "").strip() == slot_id:
+      return slot
+  return {}
+
+def _serialize_testing_grounds_state(state):
+  slots = state.get("slots", [])
+  active_slot_id = str(state.get("activeSlot") or "").strip()
+  active_slot = _find_testing_ground_slot(state, active_slot_id)
+  active_variant = _normalize_testing_ground_variant(active_slot_id, state.get("activeVariant"), active_slot)
+  active_variant_labels = _get_testing_ground_variant_labels(active_slot_id, active_slot)
+
+  return {
+    "schemaVersion": state.get("schemaVersion", _TESTING_GROUNDS_SCHEMA_VERSION),
+    "activeSlot": active_slot_id,
+    "activeVariant": active_variant,
+    "activeVariantLabel": active_variant_labels.get(active_variant, active_variant),
+    "activeSlotName": active_slot.get("name", active_slot_id),
+    "slots": slots,
+    "slotSummaryLines": [f"{slot.get('id', '?')}. {slot.get('name', 'Unused')}" for slot in slots],
+    "selectableSlots": [slot for slot in slots if not _is_unused_testing_ground_slot(slot)],
+  }
+
+def _set_testing_ground_selection(slot_id, variant):
+  normalized_slot_id = str(slot_id or "").strip()
+  requested_variant = str(variant or "").strip().upper()
+
+  with _TESTING_GROUNDS_LOCK:
+    state, _ = _load_testing_grounds_state_unlocked()
+    slot_ids = {slot["id"] for slot in state["slots"]}
+    if normalized_slot_id not in slot_ids:
+      raise ValueError(f"Unknown testing ground slot '{normalized_slot_id}'.")
+
+    slot = _find_testing_ground_slot(state, normalized_slot_id)
+    allowed_variant_labels = _get_testing_ground_variant_labels(normalized_slot_id, slot)
+    if requested_variant not in allowed_variant_labels:
+      allowed_variants = ", ".join(sorted(allowed_variant_labels.keys()))
+      raise ValueError(f"Variant must be one of: {allowed_variants}.")
+
+    normalized_variant = _normalize_testing_ground_variant(normalized_slot_id, requested_variant, slot)
+    state["activeSlot"] = normalized_slot_id
+    state["activeVariant"] = normalized_variant
+    _write_testing_grounds_state_unlocked(state)
+    return state
 
 def setup(app):
   model_status_debug = {
@@ -2133,6 +2403,39 @@ def setup(app):
       "isOnroad": params.get_bool("IsOnroad"),
       "sampleAgeSeconds": round(age_seconds, 3),
       "stale": age_seconds > _PLOTS_SAMPLE_STALE_AFTER_S,
+    }), 200
+
+  @app.route("/api/testing_grounds", methods=["GET"])
+  def get_testing_grounds():
+    state = _get_testing_grounds_state()
+    return jsonify({
+      **_serialize_testing_grounds_state(state),
+      "isOnroad": params.get_bool("IsOnroad"),
+    }), 200
+
+  @app.route("/api/testing_grounds/select", methods=["POST"])
+  def select_testing_ground():
+    request_data = request.get_json() or {}
+    slot_id = str(request_data.get("slotId") or "").strip()
+    variant = str(request_data.get("variant") or "").strip().upper()
+
+    if not slot_id:
+      return jsonify({"error": "Missing 'slotId' in request body."}), 400
+
+    try:
+      state = _set_testing_ground_selection(slot_id, variant)
+    except ValueError as exception:
+      return jsonify({"error": str(exception)}), 400
+    except Exception as exception:
+      return jsonify({"error": str(exception)}), 500
+
+    slot = _find_testing_ground_slot(state, slot_id)
+    slot_name = slot.get("name", f"Testing Ground {slot_id}")
+    selected_variant = str(state.get("activeVariant") or _TESTING_GROUNDS_DEFAULT_VARIANT)
+    return jsonify({
+      "message": f"{slot_name} set to variant {selected_variant}.",
+      **_serialize_testing_grounds_state(state),
+      "isOnroad": params.get_bool("IsOnroad"),
     }), 200
 
   @app.route("/api/update/fast/status", methods=["GET"])

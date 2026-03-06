@@ -16,6 +16,7 @@ import { SpeedLimits } from "/assets/components/tools/speed_limits.js"
 import { ModelManager } from "/assets/components/tools/model_manager.js?v=20260303t"
 import { LivePlots } from "/assets/components/tools/plots.js"
 import { ThemeMaker } from "/assets/components/tools/theme_maker.js"
+import { TestingGround } from "/assets/components/tools/testing_ground.js"
 import { TmuxLog } from "/assets/components/tools/tmux.js"
 import { ToggleControl } from "/assets/components/tools/toggles.js"
 import { UpdateManager } from "/assets/components/tools/update_manager.js"
@@ -46,6 +47,7 @@ function Root() {
     createRoute("model_manager", "/manage_models", ModelManager),
     createRoute("plots", "/plots", LivePlots),
     createRoute("thememaker", "/theme_maker", ThemeMaker),
+    createRoute("testing_ground", "/testing_ground", TestingGround),
     createRoute("tmux", "/manage_tmux", TmuxLog),
     createRoute("toggles", "/manage_toggles", ToggleControl),
     createRoute("updates", "/manage_updates", UpdateManager),
