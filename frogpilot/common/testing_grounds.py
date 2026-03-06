@@ -40,10 +40,11 @@ TESTING_GROUNDS_SLOT_DEFINITIONS = (
   },
   {
     "id": TESTING_GROUND_2,
-    "name": "Unused",
-    "description": "",
-    "aLabel": "A",
-    "bLabel": "B",
+    "name": "Gen1 Bolt Lane Changes",
+    "description": "Gen1 Bolt right-side sigmoid test for smoother right lane changes.",
+    "aLabel": "A - Installed tune",
+    "bLabel": "B - Right sigmoid a -10%",
+    "cLabel": "C - Right sigmoid a -15%",
   },
   {
     "id": TESTING_GROUND_3,

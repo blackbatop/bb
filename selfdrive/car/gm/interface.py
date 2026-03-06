@@ -10,6 +10,7 @@ from openpilot.selfdrive.car.gm.radar_interface import RADAR_HEADER_MSG
 from openpilot.selfdrive.car.gm.values import CAR, CruiseButtons, CarControllerParams, EV_CAR, CAMERA_ACC_CAR, CanBus, GMFlags, CC_ONLY_CAR, SDGM_CAR, ASCM_INT, CC_REGEN_PADDLE_CAR, set_red_panda_canbus
 from openpilot.selfdrive.car.interfaces import CarInterfaceBase, TorqueFromLateralAccelCallbackType, FRICTION_THRESHOLD, LateralAccelFromTorqueCallbackType, get_friction_threshold
 from openpilot.selfdrive.controls.lib.drive_helpers import get_friction
+from openpilot.frogpilot.common.testing_grounds import testing_ground
 
 ButtonType = car.CarState.ButtonEvent.Type
 FrogPilotButtonType = custom.FrogPilotCarState.ButtonEvent.Type
@@ -104,6 +105,11 @@ class CarInterface(CarInterfaceBase):
       # Left is positive
       side_key = "left" if lateral_acceleration >= 0 else "right"
       a, b, c, d = non_linear_torque_params[side_key]
+      if side_key == "right":
+        if testing_ground.use(2, "B"):
+          a *= 0.9
+        elif testing_ground.use(2, "C"):
+          a *= 0.85
       sig_input = a * lateral_acceleration
       sig = np.sign(sig_input) * (1 / (1 + exp(-fabs(sig_input))) - 0.5)
       steer_torque = (sig * b) + (lateral_acceleration * c) + d
