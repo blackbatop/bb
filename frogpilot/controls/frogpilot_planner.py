@@ -53,6 +53,10 @@ class FrogPilotPlanner:
 
     self.tracking_lead_filter = FirstOrderFilter(0, 0.5, DT_MDL)
 
+  def shutdown(self):
+    self.frogpilot_vcruise.slc.executor.shutdown(wait=False, cancel_futures=True)
+    self.frogpilot_weather.executor.shutdown(wait=False, cancel_futures=True)
+
   def update(self, now, time_validated, sm, frogpilot_toggles):
     self.lead_one = sm["radarState"].leadOne
 
