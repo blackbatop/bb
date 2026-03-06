@@ -1102,8 +1102,8 @@ def _get_testing_ground_variant_labels(slot_id, slot=None):
       for variant, label in shared_labels.items()
       if len(str(variant or "").strip().upper()) == 1 and str(variant or "").strip().upper().isalpha() and str(label or "").strip()
     })
-
-  labels.update(_extract_testing_ground_variant_labels(slot if isinstance(slot, dict) else {}, include_default=False))
+  else:
+    labels.update(_extract_testing_ground_variant_labels(slot if isinstance(slot, dict) else {}, include_default=False))
 
   if _TESTING_GROUNDS_DEFAULT_VARIANT not in labels:
     labels[_TESTING_GROUNDS_DEFAULT_VARIANT] = _TESTING_GROUNDS_DEFAULT_VARIANT
@@ -1173,9 +1173,10 @@ def _normalize_testing_ground_slot(raw_slot, fallback_slot):
   if not isinstance(raw_slot, dict):
     return slot
 
-  name = str(raw_slot.get("name") or "").strip()
-  slot["name"] = name or slot["name"]
-  slot["description"] = str(raw_slot.get("description") or slot["description"]).strip()
+  # Slot metadata (name/description) should always come from shared definitions.
+  # Persisted state only owns active selection and per-slot variant labels.
+  slot["name"] = str(slot.get("name") or "Unused").strip() or "Unused"
+  slot["description"] = str(slot.get("description") or "").strip()
 
   variant_labels = _get_testing_ground_variant_labels(slot.get("id"), raw_slot)
   if not variant_labels:
