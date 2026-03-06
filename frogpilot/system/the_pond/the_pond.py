@@ -1733,6 +1733,41 @@ def setup(app):
 
     return jsonify(result), 200
 
+  @app.route("/api/params/defaults", methods=["GET"])
+  def get_default_params():
+    allowed_keys, types = _get_param_type_info()
+    defaults_lookup = {
+      key: default_val
+      for key, default_val, _, _ in frogpilot_default_params
+      if key in allowed_keys
+    }
+
+    result = {}
+    for key in allowed_keys:
+      t = types.get(key, str)
+      default_val = defaults_lookup.get(key)
+
+      try:
+        if t == bool:
+          if isinstance(default_val, bytes):
+            default_str = default_val.decode("utf-8", errors="replace")
+          else:
+            default_str = str(default_val or "")
+          result[key] = default_str in ("1", "true", "True")
+        elif t == float:
+          result[key] = float(default_val)
+        elif t == int:
+          result[key] = int(float(default_val))
+        else:
+          if isinstance(default_val, bytes):
+            result[key] = default_val.decode("utf-8", errors="replace")
+          else:
+            result[key] = str(default_val or "")
+      except Exception:
+        result[key] = None
+
+    return jsonify(result), 200
+
   @app.route("/api/models/installed", methods=["GET"])
   def get_installed_models():
     catalog = get_model_catalog()

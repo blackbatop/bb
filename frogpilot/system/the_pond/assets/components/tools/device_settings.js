@@ -14,12 +14,14 @@ const state = reactive({
   allKeys: [],
   paramMetaByKey: {},
   values: {},
+  defaultValues: {},
   loadingLayout: true,
   loadingValues: true,
   filter: "",
   expanded: {},
   fetched: false,
   activeSectionSlug: "",
+  numericUpdating: {},
 })
 
 function slugifySectionName(name) {
@@ -128,6 +130,18 @@ function syncInputs() {
   }
 }
 
+async function fetchDefaultValues() {
+  try {
+    const defaultsRes = await fetch("/api/params/defaults")
+    if (!defaultsRes.ok) return false
+    const defaultsData = await defaultsRes.json()
+    state.defaultValues = defaultsData || {}
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
 async function fetchLayoutAndParams() {
   state.loadingLayout = true
   state.loadingValues = true
@@ -163,11 +177,17 @@ async function fetchLayoutAndParams() {
 
   // Pull params once at page load; local state handles subsequent edits.
   try {
-    const res = await fetch("/api/params/all")
-    const data = await res.json()
+    const valuesRes = await fetch("/api/params/all")
+
+    const data = await valuesRes.json()
     state.values = data
+
+    if (!(await fetchDefaultValues())) {
+      state.defaultValues = {}
+    }
   } catch (e) {
     console.error("Failed to fetch param values:", e)
+    state.defaultValues = {}
   }
   state.loadingValues = false
 
@@ -248,6 +268,172 @@ function coerceValueByType(rawValue, dataType) {
   return rawValue
 }
 
+function stepPrecision(step, explicitPrecision) {
+  if (explicitPrecision !== undefined && explicitPrecision !== null && explicitPrecision !== "") {
+    const parsed = Number.parseInt(explicitPrecision, 10)
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed
+  }
+
+  const stepStr = String(step ?? "")
+  if (!stepStr.includes(".")) return 0
+  return stepStr.split(".")[1].length
+}
+
+function clampNumeric(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function snapNumericToBoundsAndStep(rawValue, bounds, precision) {
+  const min = Number(bounds.min)
+  const max = Number(bounds.max)
+  const step = Number(bounds.step)
+  const value = Number(rawValue)
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(value)) return null
+
+  const clamped = clampNumeric(value, min, max)
+  if (!Number.isFinite(step) || step <= 0) {
+    return clampNumeric(Number(clamped.toFixed(precision)), min, max)
+  }
+
+  const snapped = min + Math.round((clamped - min) / step) * step
+  return clampNumeric(Number(snapped.toFixed(precision)), min, max)
+}
+
+function resolveCurrentNumericValue(param, bounds) {
+  const raw = state.values[param.key]
+  const precision = stepPrecision(bounds.step, param.precision)
+  const snapped = snapNumericToBoundsAndStep(raw, bounds, precision)
+  if (snapped !== null) return snapped
+
+  const fallback = Number(bounds.min)
+  return Number.isFinite(fallback) ? fallback : 0
+}
+
+function resolveDefaultNumericValue(param, bounds) {
+  const precision = stepPrecision(bounds.step, param.precision)
+  const stockKey = `${param.key}Stock`
+
+  // Prefer live vehicle stock values when available.
+  const liveStock = snapNumericToBoundsAndStep(state.values?.[stockKey], bounds, precision)
+  if (liveStock !== null) return liveStock
+
+  // Fallback to default table stock value if present.
+  const defaultStock = snapNumericToBoundsAndStep(state.defaultValues?.[stockKey], bounds, precision)
+  if (defaultStock !== null) return defaultStock
+
+  // Final fallback: generic param default.
+  return snapNumericToBoundsAndStep(state.defaultValues?.[param.key], bounds, precision)
+}
+
+function isNumericUpdating(key) {
+  return !!state.numericUpdating[key]
+}
+
+function showParamSnackbar(message, level, timeout = 2200) {
+  showSnackbar(message, level, timeout, {
+    key: "device-settings-param-update",
+    replace: true,
+  })
+}
+
+function syncNumericDisplay(param, rawValue) {
+  const displayEl = document.getElementById(`ds-display-${param.key}`)
+  if (!displayEl) return
+
+  const bounds = numericBounds(param)
+  displayEl.textContent = formatSliderValue(
+    rawValue,
+    String(bounds.step),
+    param.precision,
+    param.key,
+  )
+}
+
+async function updateNumericParam(param, numericValue, options = {}) {
+  const key = param.key
+  const current = state.values[key]
+  const successMessage = options.successMessage
+  state.numericUpdating = { ...state.numericUpdating, [key]: true }
+  state.values = { ...state.values, [key]: numericValue }
+  syncNumericDisplay(param, numericValue)
+  try {
+    const res = await fetch("/api/params", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value: coerceValueByType(numericValue, param.data_type) }),
+    })
+    const data = await res.json()
+
+    if (res.ok) {
+      const updated = (data.updated && typeof data.updated === "object") ? data.updated : {}
+      const resolvedValue = Object.prototype.hasOwnProperty.call(updated, key) ? updated[key] : numericValue
+      state.values = { ...state.values, [key]: resolvedValue, ...updated }
+      state.numericUpdating = { ...state.numericUpdating, [key]: false }
+      syncNumericDisplay(param, resolvedValue)
+      showParamSnackbar(successMessage || data.message || `Parameter '${key}' updated.`)
+      scheduleSyncInputs()
+    } else {
+      state.values = { ...state.values, [key]: current }
+      state.numericUpdating = { ...state.numericUpdating, [key]: false }
+      syncNumericDisplay(param, current)
+      showParamSnackbar(data.error || "Failed to update parameter", "error")
+    }
+  } catch (e) {
+    state.values = { ...state.values, [key]: current }
+    state.numericUpdating = { ...state.numericUpdating, [key]: false }
+    syncNumericDisplay(param, current)
+    showParamSnackbar("Network error — is the device reachable?", "error")
+  }
+}
+
+function stepNumericParam(param, direction) {
+  const bounds = numericBounds(param)
+  const min = Number(bounds.min)
+  const max = Number(bounds.max)
+  const step = Number(bounds.step)
+
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || step <= 0) return
+  if (isNumericUpdating(param.key)) return
+
+  const current = resolveCurrentNumericValue(param, bounds)
+  const precision = stepPrecision(step, param.precision)
+  const epsilon = Math.pow(10, -(precision + 2))
+
+  const next = snapNumericToBoundsAndStep(current + (direction * step), bounds, precision)
+  if (next === null) return
+  if (Math.abs(next - current) <= epsilon) return
+
+  updateNumericParam(param, next)
+}
+
+async function resetNumericParam(param) {
+  const bounds = numericBounds(param)
+  let defaultValue = resolveDefaultNumericValue(param, bounds)
+  if (defaultValue === null) {
+    const loaded = await fetchDefaultValues()
+    if (!loaded) {
+      showParamSnackbar("Couldn't load defaults. Try refreshing the page.", "error")
+      return
+    }
+    defaultValue = resolveDefaultNumericValue(param, bounds)
+  }
+
+  if (defaultValue === null) {
+    showParamSnackbar("No default value available for this setting.", "error")
+    return
+  }
+  if (isNumericUpdating(param.key)) return
+
+  const current = resolveCurrentNumericValue(param, bounds)
+  const precision = stepPrecision(bounds.step, param.precision)
+  const epsilon = Math.pow(10, -(precision + 2))
+  if (Math.abs(defaultValue - current) <= epsilon) return
+
+  updateNumericParam(param, defaultValue, {
+    successMessage: `Parameter '${param.key}' reset to default.`,
+  })
+}
+
 async function updateParam(key, elType) {
   const current = state.values[key]
   const el = document.getElementById(`ds-${key}`)
@@ -275,15 +461,15 @@ async function updateParam(key, elType) {
     if (res.ok) {
       const updated = (data.updated && typeof data.updated === "object") ? data.updated : {}
       state.values = { ...state.values, [key]: formattedVal, ...updated }
-      showSnackbar(data.message || `${key} updated`)
+      showParamSnackbar(data.message || `Parameter '${key}' updated.`)
       scheduleSyncInputs()
     } else {
       revertInput(key, current, elType)
-      showSnackbar(data.error || "Failed to update parameter")
+      showParamSnackbar(data.error || "Failed to update parameter", "error")
     }
   } catch (e) {
     revertInput(key, current, elType)
-    showSnackbar("Network error — is the device reachable?")
+    showParamSnackbar("Network error — is the device reachable?", "error")
   }
 }
 
@@ -302,22 +488,6 @@ function revertInput(key, current, elType) {
   }
 
   el.value = current
-  const displayEl = document.getElementById(`ds-display-${key}`)
-  if (displayEl) {
-    const precision = el.getAttribute("data-precision")
-    const pInt = precision ? parseInt(precision, 10) : null
-    displayEl.textContent = formatSliderValue(current, el.getAttribute("step"), pInt, key)
-  }
-}
-
-function handleSliderInput(e, key) {
-  const displayEl = document.getElementById(`ds-display-${key}`)
-  if (!displayEl) return
-
-  const el = e.target
-  const precision = el.getAttribute("data-precision")
-  const pInt = precision ? parseInt(precision, 10) : null
-  displayEl.textContent = formatSliderValue(el.value, el.getAttribute("step"), pInt, key)
 }
 
 function toggleManage(key) {
@@ -354,25 +524,47 @@ function renderSettingRow(p) {
             </div>
           ` : ""}
         </div>
-        ${isNumeric ? html`<span class="ds-row-value" id="ds-display-${p.key}">${state.values[p.key] !== undefined ? formatSliderValue(state.values[p.key], p.step !== undefined ? String(p.step) : undefined, p.precision, p.key) : ".."}</span>` : ""}
+        ${isNumeric ? html`<span class="ds-row-value" id="ds-display-${p.key}">${() => {
+            const currentValue = state.values[p.key]
+            const bounds = numericBounds(p)
+            return currentValue !== undefined ? formatSliderValue(currentValue, String(bounds.step), p.precision, p.key) : ".."
+          }}</span>` : ""}
       </div>
 
       ${isNumeric ? html`
-        <div class="ds-slider-container">
+        <div class="ds-stepper-container">
           ${(() => {
         const bounds = numericBounds(p)
+        const currentNumeric = resolveCurrentNumericValue(p, bounds)
+        const precision = stepPrecision(bounds.step, p.precision)
+        const epsilon = Math.pow(10, -(precision + 2))
+        const updating = isNumericUpdating(p.key)
+        const canDecrease = !updating && currentNumeric > (Number(bounds.min) + epsilon)
+        const canIncrease = !updating && currentNumeric < (Number(bounds.max) - epsilon)
+        const defaultNumeric = resolveDefaultNumericValue(p, bounds)
+        const defaultLabel = defaultNumeric !== null
+          ? formatSliderValue(defaultNumeric, String(bounds.step), p.precision, p.key)
+          : "N/A"
+        const canReset = !updating && defaultNumeric !== null && Math.abs(defaultNumeric - currentNumeric) > epsilon
         return html`
-              <input
-                type="range"
-                class="ds-slider"
-                id="ds-${p.key}"
-                min="${bounds.min}"
-                max="${bounds.max}"
-                step="${bounds.step}"
-                data-precision="${p.precision !== undefined ? p.precision : ""}"
-                value="${state.values[p.key] !== undefined ? state.values[p.key] : ""}"
-                @input="${(e) => handleSliderInput(e, p.key)}"
-                @change="${() => updateParam(p.key, "numeric")}" />
+              <div class="ds-stepper">
+                <button
+                  class="ds-stepper-btn"
+                  ?disabled="${!canDecrease}"
+                  @click="${() => stepNumericParam(p, -1)}">-</button>
+                <div class="ds-stepper-meta">
+                  <span>${formatSliderValue(bounds.min, String(bounds.step), p.precision, p.key)} to ${formatSliderValue(bounds.max, String(bounds.step), p.precision, p.key)}</span>
+                  <span class="ds-default-value">Default: ${defaultLabel}</span>
+                  <button
+                    class="ds-reset-btn"
+                    ?disabled="${!canReset}"
+                    @click="${() => resetNumericParam(p)}">Reset to Default</button>
+                </div>
+                <button
+                  class="ds-stepper-btn"
+                  ?disabled="${!canIncrease}"
+                  @click="${() => stepNumericParam(p, 1)}">+</button>
+              </div>
             `
       })()}
         </div>
