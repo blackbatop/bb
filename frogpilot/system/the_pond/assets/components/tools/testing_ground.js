@@ -1,4 +1,5 @@
 import { html, reactive } from "https://esm.sh/@arrow-js/core"
+import { Link } from "/assets/components/router.js"
 
 const state = reactive({
   loading: true,
@@ -43,6 +44,10 @@ function getActiveSlot() {
   const activeId = String(state.data?.activeSlot || "").trim()
   if (!activeId) return null
   return slots.find((slot) => slotId(slot) === activeId) || null
+}
+
+function isOffsetTestingSlot(slot) {
+  return String(slot?.id || "").trim() === "2"
 }
 
 function getVariantLabels(slot) {
@@ -257,6 +262,10 @@ export function TestingGround() {
             <div class="testingGroundDetails">
               <h3>${getSelectedSlot().name}</h3>
               ${() => getSelectedSlot().description ? html`<p>${getSelectedSlot().description}</p>` : ""}
+              ${() => isOffsetTestingSlot(getSelectedSlot())
+                ? html`<p class="testingGroundPlotsLink">${Link("/plots", html`Open Plots to watch I term`, null, "testingGroundInlineLink")}</p>`
+                : ""
+              }
             </div>
           ` : ""}
 
