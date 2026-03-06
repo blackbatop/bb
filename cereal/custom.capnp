@@ -76,10 +76,11 @@ struct FrogPilotCarState @0xf35cc4560bbf6ec2 {
   distanceVeryLongPressed @7 :Bool;
   ecoGear @8 :Bool;
   forceCoast @9 :Bool;
-  pauseLateral @10 :Bool;
-  pauseLongitudinal @11 :Bool;
-  sportGear @12 :Bool;
-  trafficModeEnabled @13 :Bool;
+  isParked @10 :Bool;
+  pauseLateral @11 :Bool;
+  pauseLongitudinal @12 :Bool;
+  sportGear @13 :Bool;
+  trafficModeEnabled @14 :Bool;
 }
 
 struct FrogPilotDeviceState @0xda96579883444c35 {
@@ -108,8 +109,8 @@ struct FrogPilotOnroadEvent @0xa5cd762cd951a455 {
   immediateDisable @6 :Bool;
   preEnable @7 :Bool;
   permanent @8 :Bool;
-  overrideLateral @10 :Bool;
-  overrideLongitudinal @9 :Bool;
+  overrideLateral @9 :Bool;
+  overrideLongitudinal @10 :Bool;
 
   enum EventName {
     blockUser @0;
@@ -194,16 +195,18 @@ struct FrogPilotRadarState @0xb86e6369214c01c8 {
     vRel @2 :Float32;
     aRel @3 :Float32;
     vLead @4 :Float32;
-    dPath @5 :Float32;
-    vLat @6 :Float32;
-    vLeadK @7 :Float32;
-    aLeadK @8 :Float32;
-    fcw @9 :Bool;
-    status @10 :Bool;
-    aLeadTau @11 :Float32;
-    modelProb @12 :Float32;
-    radar @13 :Bool;
-    radarTrackId @14 :Int32 = -1;
+    dPath @6 :Float32;
+    vLat @7 :Float32;
+    vLeadK @8 :Float32;
+    aLeadK @9 :Float32;
+    fcw @10 :Bool;
+    status @11 :Bool;
+    aLeadTau @12 :Float32;
+    modelProb @13 :Float32;
+    radar @14 :Bool;
+    radarTrackId @15 :Int32 = -1;
+
+    aLeadDEPRECATED @5 :Float32;
   }
 }
 
