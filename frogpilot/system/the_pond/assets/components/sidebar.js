@@ -15,7 +15,7 @@ const MenuItems = {
     { name: "Screen Recordings", link: "/screen_recordings", icon: "bi-record-circle" },
   ],
   tools: [
-    { name: "Device Settings", link: "/device_settings", icon: "bi-sliders" },
+    { name: "Toggles", link: "/device_settings", icon: "bi-toggle-on" },
     { name: "Download Speed Limits", link: "/download_speed_limits", icon: "bi-download" },
     { name: "Error Logs", link: "/manage_error_logs", icon: "bi-exclamation-triangle" },
     { name: "Galaxy", link: "/galaxy", icon: "bi-globe2" },
@@ -24,7 +24,7 @@ const MenuItems = {
     { name: "Testing Ground", link: "/testing_ground", icon: "bi-bezier2" },
     { name: "Theme Maker", link: "/theme_maker", icon: "bi-palette-fill" },
     { name: "Tmux Log", link: "/manage_tmux", icon: "bi-terminal" },
-    { name: "Toggles", link: "/manage_toggles", icon: "bi-toggle-on" },
+    { name: "Backup and Restore", link: "/manage_toggles", icon: "bi-arrow-repeat" },
     { name: "Software", link: "/manage_updates", icon: "bi-arrow-up-circle" },
     { name: "Vehicle Features", link: "/vehicle_features", icon: "bi-car-front" },
   ],

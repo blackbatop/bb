@@ -3385,15 +3385,40 @@ def setup(app):
 
     def generate():
       last_output = ""
+      last_keepalive = 0.0
       while True:
         output = subprocess.check_output(["tmux", "capture-pane", "-t", "comma:0", "-p", "-S", "-1000"], text=True)
 
         if output != last_output:
           yield "data: " + "\n".join(reversed(output.splitlines())).replace("\n", "\ndata: ") + "\n\n"
           last_output = output
+          last_keepalive = time.monotonic()
+        elif (time.monotonic() - last_keepalive) >= 5.0:
+          # Keep SSE alive through proxies/tunnels even when output is unchanged.
+          yield ": keepalive\n\n"
+          last_keepalive = time.monotonic()
 
         time.sleep(0.5)
-    return Response(generate(), mimetype="text/event-stream")
+    response = Response(generate(), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Accel-Buffering"] = "no"
+    return response
+
+  @app.route("/api/tmux_log/snapshot", methods=["GET"])
+  def snapshot_tmux_log():
+    try:
+      output = subprocess.check_output(["tmux", "capture-pane", "-t", "comma:0", "-p", "-S", "-1000"], text=True)
+    except subprocess.CalledProcessError:
+      run_cmd(["tmux", "new-session", "-d", "-s", "comma", "-x", "240", "-y", "70", "bash"], "Started tmux session", "Failed to start tmux session")
+      output = subprocess.check_output(["tmux", "capture-pane", "-t", "comma:0", "-p", "-S", "-1000"], text=True)
+    except Exception as e:
+      return jsonify({"error": str(e)}), 500
+
+    try:
+      live_text = "\n".join(reversed(output.splitlines()))
+      return jsonify({"data": live_text}), 200
+    except Exception as e:
+      return jsonify({"error": str(e)}), 500
 
   @app.route("/api/tmux_log/rename/<old>/<new>", methods=["PUT"])
   def rename_tmux_log_path_params(old, new):

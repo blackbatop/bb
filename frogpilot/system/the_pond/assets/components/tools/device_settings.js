@@ -617,7 +617,7 @@ export function DeviceSettings({ params }) {
 
   return html`
     <div class="ds-wrapper">
-      <h2>Device Settings</h2>
+      <h2>Toggles</h2>
 
       <input
         class="ds-search"
