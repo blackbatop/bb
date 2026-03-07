@@ -69,16 +69,16 @@ def manager_init() -> None:
   params.put_bool("IsReleaseSpBranch", build_metadata.release_sp_channel)
   params.put("HardwareSerial", serial)
 
-  bolt_platform_bundle = {
-    "platform": "CHEVROLET_BOLT_NON_ACC_1ST_GEN",
+  malibu_platform_bundle = {
+    "platform": "CHEVROLET_MALIBU",
     "make": "Chevrolet",
     "brand": "gm",
-    "model": "Bolt EV Non-ACC",
-    "year": ["2018", "2019", "2020", "2021"],
+    "model": "Malibu Premier",
+    "year": ["2019"],
     "package": "Adaptive Cruise Control (ACC)",
-    "name": "Chevrolet Bolt EV Non-ACC 2018-21",
+    "name": "Chevrolet Malibu Premier 2019",
   }
-  params.put("CarPlatformBundle", bolt_platform_bundle)
+  params.put("CarPlatformBundle", malibu_platform_bundle)
 
   # set dongle id
   reg_res = register(show_spinner=True)
