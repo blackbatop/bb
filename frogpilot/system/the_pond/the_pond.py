@@ -183,6 +183,8 @@ _fast_update_state = {
 }
 
 _PLOTS_POLL_INTERVAL_S = 0.5
+_PLOTS_BOOT_STABILIZATION_WINDOW_S = 45.0
+_PLOTS_BOOT_POLL_INTERVAL_S = 1.0
 _PLOTS_CLIENT_IDLE_TIMEOUT_S = 15.0
 _PLOTS_SAMPLE_STALE_AFTER_S = 1.5
 
@@ -219,6 +221,18 @@ def _safe_float(value, default=0.0):
     return float(value)
   except Exception:
     return float(default)
+
+def _get_system_uptime_seconds():
+  try:
+    with open("/proc/uptime", "r", encoding="utf-8") as uptime_file:
+      return _safe_float((uptime_file.read().split() or ["0"])[0], 0.0)
+  except Exception:
+    return 0.0
+
+def _is_plots_boot_stabilizing():
+  if not params.get_bool("IsOnroad"):
+    return False
+  return _get_system_uptime_seconds() < _PLOTS_BOOT_STABILIZATION_WINDOW_S
 
 def _extract_lateral_accel_values(controls_state, speed_mps):
   v_ego = max(0.0, _safe_float(speed_mps))
@@ -353,7 +367,10 @@ def _plots_worker():
       with _plots_lock:
         _plots_state["lastError"] = str(exception)
 
-    time.sleep(_PLOTS_POLL_INTERVAL_S)
+    sleep_interval = _PLOTS_POLL_INTERVAL_S
+    if _is_plots_boot_stabilizing():
+      sleep_interval = max(_PLOTS_POLL_INTERVAL_S, _PLOTS_BOOT_POLL_INTERVAL_S)
+    time.sleep(sleep_interval)
 
   with _plots_lock:
     _plots_worker_thread = None
@@ -2547,6 +2564,7 @@ def setup(app):
     return jsonify({
       **payload,
       "isOnroad": params.get_bool("IsOnroad"),
+      "bootStabilizing": _is_plots_boot_stabilizing(),
       "sampleAgeSeconds": round(age_seconds, 3),
       "stale": age_seconds > _PLOTS_SAMPLE_STALE_AFTER_S,
     }), 200
