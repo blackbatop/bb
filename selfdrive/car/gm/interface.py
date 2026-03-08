@@ -5,6 +5,7 @@ import numpy as np
 from panda import Panda
 
 from openpilot.common.conversions import Conversions as CV
+from openpilot.common.numpy_fast import interp
 from openpilot.selfdrive.car import create_button_events, get_safety_config
 from openpilot.selfdrive.car.gm.radar_interface import RADAR_HEADER_MSG
 from openpilot.selfdrive.car.gm.values import CAR, CruiseButtons, CarControllerParams, EV_CAR, CAMERA_ACC_CAR, CanBus, GMFlags, CC_ONLY_CAR, SDGM_CAR, ASCM_INT, CC_REGEN_PADDLE_CAR, set_red_panda_canbus
@@ -37,6 +38,13 @@ VOLT_LIKE_CARS = {
   CAR.CHEVROLET_MALIBU_SDGM,
   CAR.CHEVROLET_MALIBU_CC,
   CAR.CHEVROLET_MALIBU_HYBRID_CC,
+}
+
+BOLT_PEDAL_LONG_CARS = {
+  CAR.CHEVROLET_BOLT_CC_2017,
+  CAR.CHEVROLET_BOLT_CC_2019_2021,
+  CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL,
+  CAR.CHEVROLET_BOLT_CC_2022_2023,
 }
 
 NON_LINEAR_TORQUE_PARAMS = {
@@ -78,6 +86,18 @@ class CarInterface(CarInterfaceBase):
 
   @staticmethod
   def get_pid_accel_limits(CP, current_speed, cruise_speed):
+    if CP.enableGasInterceptor and bool(CP.flags & GMFlags.PEDAL_LONG.value):
+      if CP.carFingerprint in BOLT_PEDAL_LONG_CARS:
+        accel_min = interp(current_speed, [0.0, 1.5, 4.0, 8.0, 15.0, 30.0],
+                           [-0.85, -1.2, -1.90, -2.50, -2.82, -2.95])
+        accel_max = interp(current_speed, [0.0, 1.5, 4.0, 8.0, 15.0],
+                           [0.54, 0.74, 1.03, 1.46, CarControllerParams.ACCEL_MAX])
+      else:
+        accel_min = interp(current_speed, [0.0, 1.5, 4.0, 8.0, 15.0, 30.0],
+                           [-0.95, -1.3, -1.85, -2.3, -2.6, -2.8])
+        accel_max = interp(current_speed, [0.0, 1.5, 4.0, 8.0, 15.0],
+                           [0.60, 0.85, 1.15, 1.60, CarControllerParams.ACCEL_MAX])
+      return accel_min, accel_max
     return CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX
 
   # Determined by iteratively plotting and minimizing error for f(angle, speed) = steer.
@@ -483,17 +503,26 @@ class CarInterface(CarInterfaceBase):
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_PEDAL_LONG
         # Note: Low speed, stop and go not tested. Should be fairly smooth on highway
         if candidate in (CAR.CHEVROLET_MALIBU_CC, CAR.CHEVROLET_MALIBU_HYBRID_CC):
+          ret.longitudinalTuning.kpBP = [0.0, 5.0, 35.0]
+          ret.longitudinalTuning.kpV = [0.06, 0.05, 0.04]
           ret.longitudinalTuning.kiBP = [0.0, 5., 35.]
-          ret.longitudinalTuning.kiV = [0.0, 0.35, 0.5]
+          ret.longitudinalTuning.kiV = [0.0, 0.30, 0.45]
           ret.longitudinalTuning.kfDEPRECATED = 0.15
           ret.stoppingDecelRate = 0.8
           ret.minEnableSpeed = -1
           ret.pcmCruise = False
           ret.openpilotLongitudinalControl = not frogpilot_toggles.disable_openpilot_long
         else:
-          ret.longitudinalTuning.kiBP = [0., 3., 6., 35.]
-          ret.longitudinalTuning.kiV = [0.125, 0.175, 0.225, 0.33]
-          ret.longitudinalTuning.kfDEPRECATED = 0.25
+          ret.longitudinalTuning.kpBP = [0.0, 5.0, 15.0, 35.0]
+          ret.longitudinalTuning.kpV = [0.09, 0.08, 0.06, 0.045]
+          ret.longitudinalTuning.kiBP = [0.0, 3.0, 6.0, 35.0]
+          ret.longitudinalTuning.kiV = [0.09, 0.13, 0.19, 0.28]
+          if candidate in BOLT_PEDAL_LONG_CARS:
+            ret.longitudinalTuning.kpV = [0.095, 0.085, 0.065, 0.050]
+            ret.longitudinalTuning.kiV = [0.07, 0.10, 0.15, 0.24]
+            ret.longitudinalTuning.kfDEPRECATED = 0.20
+          else:
+            ret.longitudinalTuning.kfDEPRECATED = 0.25
           ret.stoppingDecelRate = 0.8
       else:  # Pedal used for SNG, ACC for longitudinal control otherwise
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_HW_CAM_LONG
@@ -504,8 +533,10 @@ class CarInterface(CarInterfaceBase):
     if ret.enableGasInterceptor and candidate == CAR.CHEVROLET_MALIBU_HYBRID_CC:
       ret.flags |= GMFlags.PEDAL_LONG.value
       gm_safety_cfg.safetyParam |= Panda.FLAG_GM_PEDAL_LONG
+      ret.longitudinalTuning.kpBP = [0.0, 5.0, 35.0]
+      ret.longitudinalTuning.kpV = [0.06, 0.05, 0.04]
       ret.longitudinalTuning.kiBP = [0.0, 5., 35.]
-      ret.longitudinalTuning.kiV = [0.0, 0.18, 0.25]
+      ret.longitudinalTuning.kiV = [0.0, 0.30, 0.45]
       ret.longitudinalTuning.kfDEPRECATED = 0.15
       ret.stoppingDecelRate = 0.8
       ret.minEnableSpeed = -1
