@@ -812,11 +812,51 @@
         "is_parent_toggle": true
       },
       {
+        "key": "AccelerationProfile",
+        "label": "Acceleration Profile",
+        "description": "How quickly openpilot speeds up: Eco, Normal, Sport, or Sport+.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "Normal"
+          },
+          {
+            "value": 1,
+            "label": "Eco"
+          },
+          {
+            "value": 2,
+            "label": "Sport"
+          },
+          {
+            "value": 3,
+            "label": "Sport+"
+          }
+        ],
+        "parent_key": "LongitudinalTune"
+      },
+      {
         "key": "DecelerationProfile",
         "label": "Deceleration Profile",
-        "description": "How firmly openpilot slows down. \"Eco\" favors",
-        "data_type": "bool",
-        "ui_type": "toggle",
+        "description": "How firmly openpilot slows down: Eco, Normal, or Sport.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "Normal"
+          },
+          {
+            "value": 1,
+            "label": "Eco"
+          },
+          {
+            "value": 2,
+            "label": "Sport"
+          }
+        ],
         "parent_key": "LongitudinalTune"
       },
       {
