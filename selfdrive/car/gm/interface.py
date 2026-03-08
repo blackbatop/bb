@@ -417,10 +417,10 @@ class CarInterface(CarInterfaceBase):
                        CAR.CHEVROLET_BOLT_ACC_2022_2023,
                        CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL,
                        CAR.CHEVROLET_BOLT_CC_2022_2023):
-        # Apply 2019-style negative FF and Ki-mult tweaks to 2019-2021 and 2022 variants.
+        # Apply 2019+/2022 generation-specific FF and Ki/Kd tweaks.
         ret.lateralTuning.torque.ki *= 1.07
         ret.lateralTuning.torque.kd *= 0.93
-        ret.lateralTuning.torque.kfDEPRECATED *= 1.20
+        ret.lateralTuning.torque.kfDEPRECATED *= 0.75
 
       if candidate == CAR.CHEVROLET_BOLT_CC_2017:
         ret.lateralTuning.torque.kp *= 1.0
