@@ -1314,6 +1314,116 @@ def _set_testing_ground_selection(slot_id, variant):
     _write_testing_grounds_state_unlocked(state)
     return state
 
+def _default_longitudinal_maneuver_status():
+  return {
+    "state": "idle",
+    "phase": "",
+    "paddleMode": "auto",
+    "maneuver": "",
+    "runIndex": 0,
+    "runTotal": 0,
+    "stepIndex": 0,
+    "stepTotal": 0,
+    "phaseStepIndex": 0,
+    "phaseStepTotal": 0,
+    "uiShow": False,
+    "uiSize": "small",
+    "uiText1": "Long Maneuvers",
+    "uiText2": "",
+    "updatedAtSec": 0.0,
+    "history": [],
+  }
+
+def _load_longitudinal_maneuver_status():
+  status = _default_longitudinal_maneuver_status()
+  raw = params.get("LongitudinalManeuverStatus", encoding="utf-8") or ""
+  if raw:
+    try:
+      payload = json.loads(raw)
+      if isinstance(payload, dict):
+        status.update(payload)
+    except Exception:
+      pass
+
+  history = status.get("history")
+  if not isinstance(history, list):
+    history = []
+  status["history"] = [str(line) for line in history if str(line).strip()][-120:]
+
+  try:
+    status["updatedAtSec"] = float(status.get("updatedAtSec") or 0.0)
+  except Exception:
+    status["updatedAtSec"] = 0.0
+
+  return status
+
+def _save_longitudinal_maneuver_status(status):
+  status_copy = dict(status)
+  history = status_copy.get("history")
+  if not isinstance(history, list):
+    history = []
+  status_copy["history"] = [str(line) for line in history if str(line).strip()][-120:]
+  status_copy["updatedAtSec"] = float(status_copy.get("updatedAtSec") or time.time())
+  params.put("LongitudinalManeuverStatus", json.dumps(status_copy, separators=(",", ":")))
+  return status_copy
+
+def _append_longitudinal_maneuver_history(status, line):
+  if not line:
+    return status
+  history = list(status.get("history", []))
+  history.append(str(line))
+  status["history"] = history[-120:]
+  return status
+
+def _serialize_longitudinal_maneuver_status(status):
+  updated_at = _safe_float(status.get("updatedAtSec"), 0.0)
+  age_seconds = max(0.0, time.time() - updated_at) if updated_at > 0 else None
+  mode_enabled = params.get_bool("LongitudinalManeuverMode")
+  paddle_mode = params.get("LongitudinalManeuverPaddleMode", encoding="utf-8") or str(status.get("paddleMode") or "auto")
+  return {
+    **status,
+    "modeEnabled": mode_enabled,
+    "paddleMode": paddle_mode,
+    "isOnroad": params.get_bool("IsOnroad"),
+    "isEngaged": params.get_bool("IsEngaged"),
+    "updatedAgeSec": age_seconds,
+  }
+
+def _set_longitudinal_maneuver_mode(enabled):
+  status = _load_longitudinal_maneuver_status()
+  if enabled:
+    params.put_bool("LongitudinalManeuverMode", True)
+    params.put("LongitudinalManeuverPaddleMode", "auto")
+    status.update({
+      "state": "armed",
+      "phase": "",
+      "maneuver": "",
+      "runIndex": 0,
+      "runTotal": 0,
+      "stepIndex": 0,
+      "phaseStepIndex": 0,
+      "uiShow": True,
+      "uiSize": "small",
+      "uiText1": "Long Maneuvers Armed",
+      "uiText2": "Engage with SET to start the test suite.",
+      "updatedAtSec": time.time(),
+    })
+    _append_longitudinal_maneuver_history(status, "Armed from The Pond. Engage with SET to start.")
+  else:
+    params.put_bool("LongitudinalManeuverMode", False)
+    params.put("LongitudinalManeuverPaddleMode", "auto")
+    status.update({
+      "state": "stopped",
+      "uiShow": True,
+      "uiSize": "small",
+      "uiText1": "Long Maneuvers Stopped",
+      "uiText2": "Test mode disabled.",
+      "updatedAtSec": time.time(),
+    })
+    _append_longitudinal_maneuver_history(status, "Stopped from The Pond.")
+
+  return _save_longitudinal_maneuver_status(status)
+
 def setup(app):
   model_status_debug = {
     "last_signature": None,
@@ -2472,6 +2582,27 @@ def setup(app):
       "message": f"{slot_name} set to variant {selected_variant}.",
       **_serialize_testing_grounds_state(state),
       "isOnroad": params.get_bool("IsOnroad"),
+    }), 200
+
+  @app.route("/api/longitudinal_maneuvers/status", methods=["GET"])
+  def get_longitudinal_maneuvers_status():
+    status = _load_longitudinal_maneuver_status()
+    return jsonify(_serialize_longitudinal_maneuver_status(status)), 200
+
+  @app.route("/api/longitudinal_maneuvers/start", methods=["POST"])
+  def start_longitudinal_maneuvers():
+    status = _set_longitudinal_maneuver_mode(True)
+    return jsonify({
+      "message": "Longitudinal maneuver mode armed. Engage with SET to start.",
+      **_serialize_longitudinal_maneuver_status(status),
+    }), 200
+
+  @app.route("/api/longitudinal_maneuvers/stop", methods=["POST"])
+  def stop_longitudinal_maneuvers():
+    status = _set_longitudinal_maneuver_mode(False)
+    return jsonify({
+      "message": "Longitudinal maneuver mode disabled.",
+      **_serialize_longitudinal_maneuver_status(status),
     }), 200
 
   @app.route("/api/update/fast/status", methods=["GET"])
