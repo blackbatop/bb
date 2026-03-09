@@ -245,6 +245,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("GithubSshKeys", "", 0, ""),
   ("GithubUsername", "", 0, ""),
   ("GoatScream", "0", 1, "0"),
+  ("GoatScreamCriticalAlerts", "0", 1, "0"),
   ("GreenLightAlert", "0", 0, "0"),
   ("GsmApn", "", 0, ""),
   ("GsmRoaming", "1", 0, "0"),
@@ -707,6 +708,7 @@ class FrogPilotVariables:
 
     toggle.custom_alerts = params.get_bool("CustomAlerts") if tuning_level >= level["CustomAlerts"] else default.get_bool("CustomAlerts")
     toggle.goat_scream_alert = toggle.custom_alerts and (params.get_bool("GoatScream") if tuning_level >= level["GoatScream"] else default.get_bool("GoatScream"))
+    toggle.goat_scream_critical_alerts = toggle.custom_alerts and (params.get_bool("GoatScreamCriticalAlerts") if tuning_level >= level["GoatScreamCriticalAlerts"] else default.get_bool("GoatScreamCriticalAlerts"))
     toggle.green_light_alert = toggle.custom_alerts and (params.get_bool("GreenLightAlert") if tuning_level >= level["GreenLightAlert"] else default.get_bool("GreenLightAlert"))
     toggle.lead_departing_alert = toggle.custom_alerts and (params.get_bool("LeadDepartingAlert") if tuning_level >= level["LeadDepartingAlert"] else default.get_bool("LeadDepartingAlert"))
     toggle.loud_blindspot_alert = has_bsm and toggle.custom_alerts and (params.get_bool("LoudBlindspotAlert") if tuning_level >= level["LoudBlindspotAlert"] else default.get_bool("LoudBlindspotAlert"))
