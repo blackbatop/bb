@@ -174,7 +174,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("CECurves", "0", 1, "0"),
   ("CECurvesLead", "0", 1, "0"),
   ("CELead", "0", 1, "0"),
-  ("CEModelStopTime", str(PLANNER_TIME - 2), 2, "0"),
+  ("CEModelStopTime", "7", 2, "0"),
   ("CENavigation", "0", 2, "0"),
   ("CENavigationIntersections", "1", 2, "0"),
   ("CENavigationLead", "1", 2, "0"),
