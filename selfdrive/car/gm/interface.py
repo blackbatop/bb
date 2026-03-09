@@ -45,6 +45,7 @@ BOLT_PEDAL_LONG_CARS = {
   CAR.CHEVROLET_BOLT_CC_2019_2021,
   CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL,
   CAR.CHEVROLET_BOLT_CC_2022_2023,
+  CAR.CHEVROLET_MALIBU_HYBRID_CC,
 }
 
 NON_LINEAR_TORQUE_PARAMS = {
@@ -502,7 +503,7 @@ class CarInterface(CarInterfaceBase):
         ret.flags |= GMFlags.PEDAL_LONG.value
         gm_safety_cfg.safetyParam |= Panda.FLAG_GM_PEDAL_LONG
         # Note: Low speed, stop and go not tested. Should be fairly smooth on highway
-        if candidate in (CAR.CHEVROLET_MALIBU_CC, CAR.CHEVROLET_MALIBU_HYBRID_CC):
+        if candidate == CAR.CHEVROLET_MALIBU_CC:
           ret.longitudinalTuning.kpBP = [0.0, 5.0, 35.0]
           ret.longitudinalTuning.kpV = [0.06, 0.05, 0.04]
           ret.longitudinalTuning.kiBP = [0.0, 5., 35.]
@@ -533,11 +534,12 @@ class CarInterface(CarInterfaceBase):
     if ret.enableGasInterceptor and candidate == CAR.CHEVROLET_MALIBU_HYBRID_CC:
       ret.flags |= GMFlags.PEDAL_LONG.value
       gm_safety_cfg.safetyParam |= Panda.FLAG_GM_PEDAL_LONG
-      ret.longitudinalTuning.kpBP = [0.0, 5.0, 35.0]
-      ret.longitudinalTuning.kpV = [0.06, 0.05, 0.04]
-      ret.longitudinalTuning.kiBP = [0.0, 5., 35.]
-      ret.longitudinalTuning.kiV = [0.0, 0.30, 0.45]
-      ret.longitudinalTuning.kfDEPRECATED = 0.15
+      # Keep Malibu Hybrid pedal on the same longitudinal tune as Bolt pedal cars.
+      ret.longitudinalTuning.kpBP = [0.0, 5.0, 15.0, 35.0]
+      ret.longitudinalTuning.kpV = [0.095, 0.085, 0.065, 0.050]
+      ret.longitudinalTuning.kiBP = [0.0, 3.0, 6.0, 35.0]
+      ret.longitudinalTuning.kiV = [0.07, 0.10, 0.15, 0.24]
+      ret.longitudinalTuning.kfDEPRECATED = 0.20
       ret.stoppingDecelRate = 0.8
       ret.minEnableSpeed = -1
       ret.pcmCruise = False
