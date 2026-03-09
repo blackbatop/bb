@@ -413,11 +413,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Enter 6-digit PIN</source>
+        <source>Enter Password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Please enter a 6-digit PIN to secure your Galaxy access.</source>
+        <source>Please enter a password to secure your Galaxy access. (Min 6 characters)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -959,6 +959,14 @@
     <message>
         <source> seconds</source>
         <translation type="gpt-5-generated"> seconds</translation>
+    </message>
+    <message>
+        <source>Always Allow Uploads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Force driving data uploads regardless of network type, metered status, and upload restrictions.&lt;/b&gt; This overrides normal upload blocking checks.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
