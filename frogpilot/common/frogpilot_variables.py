@@ -577,6 +577,7 @@ class FrogPilotVariables:
     toggle.has_cc_long = toggle.car_make == "gm" and bool(CP.flags & GMFlags.CC_LONG.value)
     has_nnff = nnff_supported(toggle.car_model)
     toggle.has_pedal = CP.enableGasInterceptor
+    params_default.put("IncreasedStoppedDistance", "4" if toggle.has_pedal else "0")
     has_radar = not CP.radarUnavailable
     toggle.has_sdsu = toggle.car_make == "toyota" and bool(CP.flags & ToyotaFlags.SMART_DSU.value)
     toggle.has_sascm = toggle.car_make == "gm" and bool(CP.flags & GMFlags.SASCM.value)
