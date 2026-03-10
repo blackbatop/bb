@@ -239,6 +239,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("FullMap", "0", 2, "0"),
   ("GasRegenCmd", "1", 2, "0"),
   ("GMPedalLongitudinal", "1", 2, "1"),
+  ("RemapCancelToDistance", "0", 2, "0"),
   ("RedPanda", "0", 3, "0"),
   ("RemoteStartBootsComma", "0", 3, "0"),
   ("GithubSshKeys", "", 0, ""),
@@ -828,6 +829,9 @@ class FrogPilotVariables:
 
     toggle.red_panda = toggle.car_make == "gm" and (params.get_bool("RedPanda") if tuning_level >= level["RedPanda"] else default.get_bool("RedPanda"))
     toggle.remote_start_boots_comma = toggle.car_make == "gm" and (params.get_bool("RemoteStartBootsComma") if tuning_level >= level["RemoteStartBootsComma"] else default.get_bool("RemoteStartBootsComma"))
+    toggle.remap_cancel_to_distance = toggle.car_make == "gm" and toggle.openpilot_longitudinal and (
+      params.get_bool("RemapCancelToDistance") if tuning_level >= level["RemapCancelToDistance"] else default.get_bool("RemapCancelToDistance")
+    )
 
     toggle.force_fingerprint = (params.get_bool("ForceFingerprint") if tuning_level >= level["ForceFingerprint"] else default.get_bool("ForceFingerprint")) and toggle.car_model is not None
 
