@@ -400,6 +400,54 @@
         <source>Pair your device with Konik connect (stable.konik.ai).</source>
         <translation type="gpt-5-generated">將您的裝置與 Konik connect（stable.konik.ai）配對。</translation>
     </message>
+    <message>
+        <source>Galaxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair your device with Galaxy for remote access to The Pond.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter Password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please enter a password to secure your Galaxy access. (Min 6 characters)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unpair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing successful! Visit galaxy.firestar.link/</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> to connect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to unpair from Galaxy?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Galaxy QR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SHOW</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show a QR code to quickly open Galaxy on your phone.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DriveStats</name>
@@ -429,6 +477,41 @@
     <message>
         <source>camera starting</source>
         <translation>開啟相機中</translation>
+    </message>
+</context>
+<context>
+    <name>ExpandableMultiOptionDialog</name>
+    <message>
+        <source>Sort by:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Alphabetical</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Date (Newest)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Date (Oldest)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites First</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation type="unfinished">選擇</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished">取消</translation>
+    </message>
+    <message>
+        <source>%1 (Community Fav)</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -873,6 +956,14 @@
         <source> seconds</source>
         <translation type="gpt-5-generated"> 秒</translation>
     </message>
+    <message>
+        <source>Always Allow Uploads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Force driving data uploads regardless of network type, metered status, and upload restrictions.&lt;/b&gt; This overrides normal upload blocking checks.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotLateralPanel</name>
@@ -1163,6 +1254,22 @@
     <message>
         <source>&lt;b&gt;Twilsonco's torque-based adjustments to smoothen out steering in curves.&lt;/b&gt;</source>
         <translation type="gpt-5-generated">&lt;b&gt;Twilsonco 的扭力式調整，可在轉彎時讓轉向更平順。&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>Steer Offset (Default: %1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Steer Offset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Offsets steering torque to help compensate for alignment or tire issues.&lt;/b&gt; More negative pulls the car right; more positive pulls it left. Most users should not need to touch this.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset &lt;b&gt;Steer Offset&lt;/b&gt; to its default value?</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2075,6 +2182,50 @@
         <source>&lt;b&gt;Following behavior that mimics human drivers&lt;/b&gt; by closing gaps behind faster vehicles for quicker takeoffs and dynamically adjusting the desired following distance for gentler, more efficient braking.</source>
         <translation type="gpt-5-generated">&lt;b&gt;模仿人類駕駛的跟車行為&lt;/b&gt;，在後方有更快車輛時縮小間距以更快起步，並動態調整期望跟車距離，以實現更柔順且更高效的制動。</translation>
     </message>
+    <message>
+        <source>EV Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use acceleration profiles tuned for EVs.&lt;/b&gt; Defaults to the vehicle's detected powertrain type but can be overridden if the automatic choice doesn't match.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Truck Tuning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use aggressive acceleration profiles tuned for trucks.&lt;/b&gt; Intended for heavy vehicles that need stronger throttle.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>High Speed Following Distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Aggressive" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.25 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Standard" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.45 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;How many seconds openpilot follows behind lead vehicles when using the "Relaxed" profile at high speeds.&lt;/b&gt; Increase for more space; decrease for tighter gaps.&lt;br&gt;&lt;br&gt;Default: 1.75 seconds.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Trailer Load</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Increase the vehicle mass to account for towing.&lt;/b&gt; Adjust in 500 lb steps up to 15,000 lbs to fine-tune gas and brake behavior when pulling a trailer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> lbs</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotManageControl</name>
@@ -2475,6 +2626,94 @@
     <message>
         <source>Select a Model — 🗺️ = Navigation | 📡 = Radar | 👀 = VOACC</source>
         <translation type="gpt-5-generated">選擇模型 — 🗺️ = 導航 | 📡 = 雷達 | 👀 = VOACC</translation>
+    </message>
+    <message>
+        <source>Automatically download new driving models as they become available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete driving models from the device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Download driving models to the device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Driving models are chosen at random each drive and feedback prompts are used to find the model that best suits your needs.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Recovery Power</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Adjust the strength of planplus lane recovery corrections (0.5 to 2.0).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop Distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Adjust the model's stopping distance in meters (minimum 4 for safety). Most users prefer 6.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add or remove models from the &lt;b&gt;Model Randomizer&lt;/b&gt;'s blacklist list.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset or view the saved ratings for the driving models.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select the active driving model.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Custom Series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no more models to blacklist! The only available model is "%1"!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a model to add to the blacklist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a model to remove from the blacklist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to remove all of your blacklisted models?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset all of your model drives and scores?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a model - 🗺️ = Navigation | 📡 = Radar | 👀 = VOACC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The "Model Randomizer" only works with downloaded models. Do you want to download all the driving models?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset your &lt;b&gt;Recovery Power&lt;/b&gt; to the default of 1.0?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation type="unfinished">重設</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to reset your &lt;b&gt;Stop Distance&lt;/b&gt; to the default of 6 meters?</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2934,6 +3173,14 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
         <source>Test</source>
         <translation type="gpt-5-generated">測試</translation>
     </message>
+    <message>
+        <source>Goat Scream Critical Alerts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Play the infamous "Goat Scream" for full-screen critical alerts that require immediate takeover.&lt;/b&gt;&lt;br&gt;&lt;br&gt;Examples include: "TAKE CONTROL IMMEDIATELY" and "Stock AEB: Risk of Collision".</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotThemesPanel</name>
@@ -3188,6 +3435,30 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
     <message>
         <source>CANCEL</source>
         <translation type="gpt-5-generated">取消</translation>
+    </message>
+    <message>
+        <source>Boot Logo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;The boot logo shown while the device starts.&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a boot logo to delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete the "%1" boot logo?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a boot logo to download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a boot logo</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3630,6 +3901,50 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
     <message>
         <source>comma Pedal Support</source>
         <translation type="gpt-5-generated">comma Pedal 支援</translation>
+    </message>
+    <message>
+        <source>Use Pedal for Longitudinal Control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use the pedal interceptor for longitudinal control&lt;/b&gt; instead of camera ACC/Redneck when available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remap cancel to distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Treat CANCEL as distance-button input&lt;/b&gt; on supported pedal-long GM platforms. Toggle requires a reboot to take effect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Red Panda</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Enable Red Panda behavior&lt;/b&gt; for GM (alternate safety config and bus numbering). Requires a reboot to take effect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remote Start Boots Comma</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Use GM C9 SystemPowerMode&lt;/b&gt; for ignition detection. Toggle requires a panda firmware update and a reboot to take effect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SASCM Support</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Does your vehicle support "SASCMs"?&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remote Start requires a Panda firmware update. Flash the Panda now?</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -4322,6 +4637,10 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
         <source>&lt;b&gt;Set the road-edge thickness.&lt;/b&gt;&lt;br&gt;&lt;br&gt;Default matches half of the MUTCD lane-line width standard of 10 centimeters.</source>
         <translation type="gpt-5-generated">&lt;b&gt;設定道路邊緣粗細。&lt;/b&gt;&lt;br&gt;&lt;br&gt;預設值相當於符合 MUTCD 車道線標準 10 公分的一半。</translation>
     </message>
+    <message>
+        <source>Driving Model: Current</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotWheelPanel</name>
@@ -4392,6 +4711,17 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
     <message>
         <source>Select a function to assign to this button</source>
         <translation type="gpt-5-generated">選擇要指派給此按鈕的功能</translation>
+    </message>
+</context>
+<context>
+    <name>GalaxyQRPopup</name>
+    <message>
+        <source>Scan to open Galaxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tap anywhere to dismiss</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -4555,6 +4885,10 @@ Developer - 為資深愛好者提供高度自訂的設定</translation>
     <message>
         <source> ALERT</source>
         <translation> 提醒</translation>
+    </message>
+    <message>
+        <source>Branch Merge Notice: This branch is deprecated and has been merged into StarPilot. Please switch to the StarPilot branch.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
