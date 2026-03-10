@@ -619,6 +619,11 @@ class CarInterface(CarInterfaceBase):
                               {1: FrogPilotButtonType.lkas}),
       ]
 
+    # Malibu Hybrid only: allow physical CANCEL to cancel stock cruise without disabling OP long.
+    # Brake still disengages through normal common-event handling.
+    if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC and self.CP.openpilotLongitudinalControl:
+      ret.buttonEvents = [b for b in ret.buttonEvents if b.type != ButtonType.cancel]
+
     # The ECM allows enabling on falling edge of set, but only rising edge of resume
     events = self.create_common_events(ret, extra_gears=[GearShifter.sport, GearShifter.low,
                                                          GearShifter.eco, GearShifter.manumatic],
