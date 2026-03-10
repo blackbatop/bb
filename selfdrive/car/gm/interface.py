@@ -90,7 +90,7 @@ class CarInterface(CarInterfaceBase):
     if CP.enableGasInterceptor and bool(CP.flags & GMFlags.PEDAL_LONG.value):
       if CP.carFingerprint in BOLT_PEDAL_LONG_CARS:
         accel_min = interp(current_speed, [0.0, 1.5, 4.0, 8.0, 15.0, 30.0],
-                           [-0.85, -1.2, -1.90, -2.50, -2.82, -2.95])
+                           [-0.93, -1.28, -1.98, -2.58, -2.86, -2.95])
         accel_max = interp(current_speed, [0.0, 1.5, 4.0, 8.0, 15.0],
                            [0.54, 0.74, 1.03, 1.46, CarControllerParams.ACCEL_MAX])
       else:

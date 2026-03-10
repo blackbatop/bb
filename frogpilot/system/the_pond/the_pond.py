@@ -182,10 +182,10 @@ _fast_update_state = {
   "progressDetail": "",
 }
 
-_PLOTS_POLL_INTERVAL_S = 0.5
+_PLOTS_POLL_INTERVAL_S = 0.75
 _PLOTS_BOOT_STABILIZATION_WINDOW_S = 45.0
 _PLOTS_BOOT_POLL_INTERVAL_S = 1.0
-_PLOTS_CLIENT_IDLE_TIMEOUT_S = 15.0
+_PLOTS_CLIENT_IDLE_TIMEOUT_S = 6.0
 _PLOTS_SAMPLE_STALE_AFTER_S = 1.5
 
 _plots_lock = threading.Lock()
@@ -197,6 +197,8 @@ _plots_state = {
   "actualLateralAccel": 0.0,
   "desiredLongitudinalAccel": 0.0,
   "actualLongitudinalAccel": 0.0,
+  "controlsActive": False,
+  "longitudinalControlActive": False,
   "lateralP": 0.0,
   "lateralI": 0.0,
   "lateralD": 0.0,
@@ -369,12 +371,10 @@ def _extract_lateral_accel_values(controls_state, speed_mps):
   return desired_curvature * speed_sq, actual_curvature * speed_sq, "curvature"
 
 def _extract_longitudinal_accel_values(controls_state, live_location_kalman):
-  desired = _safe_float(getattr(controls_state, "upAccelCmd", 0.0)) + \
-            _safe_float(getattr(controls_state, "uiAccelCmd", 0.0)) + \
-            _safe_float(getattr(controls_state, "ufAccelCmd", 0.0))
+  desired = _safe_float(getattr(controls_state, "aTarget", 0.0))
+  source = "controlsState.aTarget + liveLocationKalman"
 
   actual = 0.0
-  source = "controlsState + liveLocationKalman"
   try:
     accel_calibrated = getattr(live_location_kalman, "accelerationCalibrated", None)
     if accel_calibrated and getattr(accel_calibrated, "valid", False):
@@ -382,7 +382,17 @@ def _extract_longitudinal_accel_values(controls_state, live_location_kalman):
       if len(accel_values) > 0:
         actual = _safe_float(accel_values[0], 0.0)
   except Exception:
-    source = "controlsState"
+    source = "controlsState.aTarget"
+
+  # Fallback only if aTarget is unavailable/legacy-zero while PID terms are present.
+  if abs(desired) < 1e-6:
+    up = _safe_float(getattr(controls_state, "upAccelCmd", 0.0))
+    ui = _safe_float(getattr(controls_state, "uiAccelCmd", 0.0))
+    uf = _safe_float(getattr(controls_state, "ufAccelCmd", 0.0))
+    pid_sum = up + ui + uf
+    if abs(pid_sum) > 1e-6:
+      desired = pid_sum
+      source = "controlsState PID sum + liveLocationKalman"
 
   return desired, actual, source
 
@@ -450,6 +460,9 @@ def _plots_worker():
       controls_state = sm["controlsState"]
       live_location_kalman = sm["liveLocationKalman"]
       speed = _safe_float(getattr(controls_state, "vPid", 0.0))
+      controls_active = bool(getattr(controls_state, "active", False))
+      long_control_state = int(_safe_float(getattr(controls_state, "longControlState", 0)))
+      longitudinal_control_active = controls_active and long_control_state != 0
 
       desired_lateral, actual_lateral, lateral_source = _extract_lateral_accel_values(controls_state, speed)
       desired_longitudinal, actual_longitudinal, longitudinal_source = _extract_longitudinal_accel_values(controls_state, live_location_kalman)
@@ -463,6 +476,8 @@ def _plots_worker():
           "actualLateralAccel": round(actual_lateral, 4),
           "desiredLongitudinalAccel": round(desired_longitudinal, 4),
           "actualLongitudinalAccel": round(actual_longitudinal, 4),
+          "controlsActive": controls_active,
+          "longitudinalControlActive": longitudinal_control_active,
           "lateralP": round(lateral_terms["lateralP"], 4),
           "lateralI": round(lateral_terms["lateralI"], 4),
           "lateralD": round(lateral_terms["lateralD"], 4),

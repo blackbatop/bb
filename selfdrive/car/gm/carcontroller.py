@@ -105,67 +105,83 @@ class CarController(CarControllerBase):
       self.pedal_steady = 0.0
       return 0., False
 
-    # Regen paddle state machine: speed-aware thresholds + min on/off duration for robust paddle transitions.
-    press_cmd_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.90, -0.82, -0.72, -0.65])
-    release_cmd_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.10, -0.17, -0.24, -0.30])
-    press_aego_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.95, -0.86, -0.76, -0.70])
-    release_aego_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.16, -0.23, -0.30, -0.36])
-
-    press_confirm_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [8.0, 6.0, 5.0, 4.0])))
-    release_confirm_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [18.0, 15.0, 12.0, 10.0])))
-    min_on_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [34.0, 27.0, 20.0, 16.0])))
-    min_off_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [16.0, 14.0, 12.0, 10.0])))
-
-    want_press = self.planner_regen_hold or accel <= press_cmd_threshold or self.aego <= press_aego_threshold
-    want_release = (not self.planner_regen_hold) and accel >= release_cmd_threshold and self.aego >= release_aego_threshold
-
-    if want_press:
-      self.regen_press_counter += 1
-    else:
-      self.regen_press_counter = max(self.regen_press_counter - 1, 0)
-
-    if want_release:
-      self.regen_release_counter += 1
-    else:
-      self.regen_release_counter = max(self.regen_release_counter - 1, 0)
-
-    # Strong planner request can skip most of debounce delay.
-    if self.planner_regen_hold and accel <= (press_cmd_threshold - 0.30):
-      self.regen_press_counter = max(self.regen_press_counter, press_confirm_frames)
-
-    if self.regen_min_on_frames > 0:
-      self.regen_min_on_frames -= 1
-    if self.regen_min_off_frames > 0:
-      self.regen_min_off_frames -= 1
-
+    supports_regen_paddle = self.CP.carFingerprint in CC_REGEN_PADDLE_CAR
     switched_state = False
-    if self.regen_paddle_pressed:
-      if self.regen_min_on_frames == 0 and self.regen_release_counter >= release_confirm_frames:
+    press_regen_paddle = False
+    if supports_regen_paddle:
+      # Regen paddle state machine: speed-aware thresholds + min on/off duration for robust paddle transitions.
+      press_cmd_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.90, -0.82, -0.72, -0.65])
+      release_cmd_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.10, -0.17, -0.24, -0.30])
+      press_aego_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.95, -0.86, -0.76, -0.70])
+      release_aego_threshold = interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [-0.16, -0.23, -0.30, -0.36])
+
+      press_confirm_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [8.0, 6.0, 5.0, 4.0])))
+      release_confirm_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [18.0, 15.0, 12.0, 10.0])))
+      min_on_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [34.0, 27.0, 20.0, 16.0])))
+      min_off_frames = int(round(interp(car_velocity, [0.0, 4.0, 12.0, 25.0], [16.0, 14.0, 12.0, 10.0])))
+      # Extra hysteresis in the 8-20 mph band to reduce paddle edge pulsing.
+      confirm_boost = int(round(interp(car_velocity, [0.0, 6.0, 8.0, 20.0, 25.0], [0.0, 0.0, 3.0, 3.0, 0.0])))
+      press_confirm_frames += confirm_boost
+      release_confirm_frames += confirm_boost
+
+      want_press = self.planner_regen_hold or accel <= press_cmd_threshold or self.aego <= press_aego_threshold
+      want_release = (not self.planner_regen_hold) and accel >= release_cmd_threshold and self.aego >= release_aego_threshold
+
+      if want_press:
+        self.regen_press_counter += 1
+      else:
+        self.regen_press_counter = max(self.regen_press_counter - 1, 0)
+
+      if want_release:
+        self.regen_release_counter += 1
+      else:
+        self.regen_release_counter = max(self.regen_release_counter - 1, 0)
+
+      # Strong planner request can skip most of debounce delay.
+      if self.planner_regen_hold and accel <= (press_cmd_threshold - 0.30):
+        self.regen_press_counter = max(self.regen_press_counter, press_confirm_frames)
+
+      if self.regen_min_on_frames > 0:
+        self.regen_min_on_frames -= 1
+      if self.regen_min_off_frames > 0:
+        self.regen_min_off_frames -= 1
+
+      if self.regen_paddle_pressed:
+        if self.regen_min_on_frames == 0 and self.regen_release_counter >= release_confirm_frames:
+          self.regen_paddle_pressed = False
+          self.regen_min_off_frames = min_off_frames
+          self.regen_release_counter = 0
+          switched_state = True
+      else:
+        if self.regen_min_off_frames == 0 and self.regen_press_counter >= press_confirm_frames:
+          self.regen_paddle_pressed = True
+          self.regen_min_on_frames = min_on_frames
+          self.regen_press_counter = 0
+          switched_state = True
+
+      self.regen_paddle_timer = self.regen_press_counter
+      press_regen_paddle = self.regen_paddle_pressed
+
+      if self.maneuver_paddle_mode == "off":
         self.regen_paddle_pressed = False
-        self.regen_min_off_frames = min_off_frames
-        self.regen_release_counter = 0
-        switched_state = True
-    else:
-      if self.regen_min_off_frames == 0 and self.regen_press_counter >= press_confirm_frames:
-        self.regen_paddle_pressed = True
-        self.regen_min_on_frames = min_on_frames
         self.regen_press_counter = 0
-        switched_state = True
-
-    self.regen_paddle_timer = self.regen_press_counter
-    press_regen_paddle = self.regen_paddle_pressed
-
-    if self.maneuver_paddle_mode == "off":
+        self.regen_release_counter = 0
+        self.regen_min_on_frames = 0
+        self.regen_mode_blend = 0.0
+        press_regen_paddle = False
+      elif self.maneuver_paddle_mode == "force":
+        forced_press = accel < -0.02
+        self.regen_paddle_pressed = forced_press
+        press_regen_paddle = forced_press
+    else:
+      self.planner_regen_hold = False
       self.regen_paddle_pressed = False
+      self.regen_paddle_timer = 0
       self.regen_press_counter = 0
       self.regen_release_counter = 0
       self.regen_min_on_frames = 0
+      self.regen_min_off_frames = 0
       self.regen_mode_blend = 0.0
-      press_regen_paddle = False
-    elif self.maneuver_paddle_mode == "force":
-      forced_press = accel < -0.02
-      self.regen_paddle_pressed = forced_press
-      press_regen_paddle = forced_press
 
     # Regen gain ratios from bin-averaged 60–0 deceleration sweep; Calculates stronger decel from paddle
     speed_mps = [0.559, 1.678, 2.797, 3.916, 5.035, 6.154, 7.273, 8.392, 9.511, 10.63,
@@ -177,6 +193,8 @@ class CarController(CarControllerBase):
                         1.44, 1.45, 1.45]
 
     gain = interp(car_velocity, speed_mps, regen_gain_ratio)
+    # Terminal-stop authority boost for paddle+pedal mode: lower gain at low speed => stronger net decel.
+    gain *= interp(car_velocity, [0.0, 2.0, 4.0, 5.5, 8.0, 12.0], [0.92, 0.92, 0.93, 0.94, 0.96, 1.0])
     accel_gain = interp(car_velocity, [0.0, 3.0, 8.0, 20.0], [0.47, 0.52, 0.57, 0.61])
     pedaloffset = interp(car_velocity, [0.0, 1.0, 3.0, 6.0, 15.0, 30.0], [0.085, 0.11, 0.17, 0.23, 0.235, 0.23])
 

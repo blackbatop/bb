@@ -917,6 +917,8 @@ class Controls:
     controlsState.vPid = float(self.LoC.v_pid)
     controlsState.vCruise = float(self.v_cruise_helper.v_cruise_kph)
     controlsState.vCruiseCluster = float(self.v_cruise_helper.v_cruise_cluster_kph)
+    # Publish planner intent explicitly so tools can compare "model wants" vs measured accel.
+    controlsState.aTarget = float(self.sm['longitudinalPlan'].aTarget)
     controlsState.upAccelCmd = float(self.LoC.pid.p)
     controlsState.uiAccelCmd = float(self.LoC.pid.i)
     controlsState.ufAccelCmd = float(self.LoC.pid.f)
