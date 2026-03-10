@@ -609,20 +609,21 @@ class CarInterface(CarInterfaceBase):
     ret, fp_ret = self.CS.update(self.cp, self.cp_cam, self.cp_loopback, frogpilot_toggles)
 
     # Don't add event if transitioning from INIT, unless it's to an actual button
+    cruise_button_map = BUTTONS_DICT
+    if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC and self.CP.openpilotLongitudinalControl:
+      # Malibu Hybrid only: keep all wheel-button functionality, but don't map CANCEL
+      # to ButtonType.cancel so OP long isn't disengaged by the physical cancel button.
+      cruise_button_map = {k: v for k, v in BUTTONS_DICT.items() if k != CruiseButtons.CANCEL}
+
     if self.CS.cruise_buttons != CruiseButtons.UNPRESS or self.CS.prev_cruise_buttons != CruiseButtons.INIT:
       ret.buttonEvents = [
-        *create_button_events(self.CS.cruise_buttons, self.CS.prev_cruise_buttons, BUTTONS_DICT,
+        *create_button_events(self.CS.cruise_buttons, self.CS.prev_cruise_buttons, cruise_button_map,
                               unpressed_btn=CruiseButtons.UNPRESS),
         *create_button_events(self.CS.distance_button, self.CS.prev_distance_button,
                               {1: ButtonType.gapAdjustCruise}),
         *create_button_events(self.CS.lkas_enabled, self.CS.lkas_previously_enabled,
                               {1: FrogPilotButtonType.lkas}),
       ]
-
-    # Malibu Hybrid only: allow physical CANCEL to cancel stock cruise without disabling OP long.
-    # Brake still disengages through normal common-event handling.
-    if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC and self.CP.openpilotLongitudinalControl:
-      ret.buttonEvents = [b for b in ret.buttonEvents if b.type != ButtonType.cancel]
 
     # The ECM allows enabling on falling edge of set, but only rising edge of resume
     events = self.create_common_events(ret, extra_gears=[GearShifter.sport, GearShifter.low,
