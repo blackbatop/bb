@@ -222,7 +222,6 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("DynamicPathWidth", "0", 2, "0"),
   ("DynamicPedalsOnUI", "1", 2, "0"),
   ("EngageVolume", "101", 2, "101"),
-  ("ExperimentalGMTune", "0", 2, "0"),
   ("ExperimentalLongitudinalEnabled", "0", 0, "0"),
   ("ExperimentalModeConfirmed", "0", 0, "0"),
   ("Fahrenheit", "0", 3, "0"),
@@ -826,11 +825,6 @@ class FrogPilotVariables:
     toggle.pause_longitudinal_via_distance_very_long = toggle.openpilot_longitudinal and distance_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
     toggle.personality_profile_via_distance_very_long = toggle.openpilot_longitudinal and distance_button_control_very_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
     toggle.traffic_mode_via_distance_very_long = toggle.openpilot_longitudinal and distance_button_control_very_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
-
-    toggle.experimental_gm_tune = toggle.openpilot_longitudinal and toggle.car_make == "gm" and (params.get_bool("ExperimentalGMTune") if tuning_level >= level["ExperimentalGMTune"] else default.get_bool("ExperimentalGMTune"))
-    toggle.stoppingDecelRate = 0.3 if toggle.experimental_gm_tune else toggle.stoppingDecelRate
-    toggle.vEgoStarting = 0.15 if toggle.experimental_gm_tune else toggle.vEgoStarting
-    toggle.vEgoStopping = 0.15 if toggle.experimental_gm_tune else toggle.vEgoStopping
 
     toggle.red_panda = toggle.car_make == "gm" and (params.get_bool("RedPanda") if tuning_level >= level["RedPanda"] else default.get_bool("RedPanda"))
     toggle.remote_start_boots_comma = toggle.car_make == "gm" and (params.get_bool("RemoteStartBootsComma") if tuning_level >= level["RemoteStartBootsComma"] else default.get_bool("RemoteStartBootsComma"))

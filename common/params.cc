@@ -328,7 +328,6 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"DynamicPathWidth", PERSISTENT},
     {"DynamicPedalsOnUI", PERSISTENT},
     {"EngageVolume", PERSISTENT},
-    {"ExperimentalGMTune", PERSISTENT},
     {"EVTuning", PERSISTENT},
     {"TruckTuning", PERSISTENT},
     {"Fahrenheit", PERSISTENT},
