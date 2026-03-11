@@ -23,6 +23,7 @@ A_CRUISE_MAX_VALS = [1.125, 1.125, 1.125, 1.125, 1.25, 1.25, 1.5]
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
 ALLOW_THROTTLE_THRESHOLD = 0.4
 MIN_ALLOW_THROTTLE_SPEED = 2.5
+COMFORT_BRAKE_MPS2 = 2.5
 
 # Uncertainty-based filter disable thresholds
 # Lookup table for turns
@@ -49,6 +50,30 @@ def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   a_x_allowed = math.sqrt(max(a_total_max ** 2 - a_y ** 2, 0.))
 
   return [a_target[0], min(a_target[1], a_x_allowed)]
+
+
+def get_vehicle_min_accel(CP, v_ego):
+  # Planner-side physical decel capability estimate used for safety bounds.
+  # Keep this aligned with GM pedal-long limits used by car interface.
+  if getattr(CP, "carName", "") == "gm" and getattr(CP, "enableGasInterceptor", False):
+    try:
+      from openpilot.selfdrive.car.gm.values import GMFlags, CAR
+      if bool(CP.flags & GMFlags.PEDAL_LONG.value):
+        bolt_pedal_long_cars = {
+          CAR.CHEVROLET_BOLT_CC_2017,
+          CAR.CHEVROLET_BOLT_CC_2019_2021,
+          CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL,
+          CAR.CHEVROLET_BOLT_CC_2022_2023,
+          CAR.CHEVROLET_MALIBU_HYBRID_CC,
+        }
+        if CP.carFingerprint in bolt_pedal_long_cars:
+          return float(interp(v_ego, [0.0, 1.5, 4.0, 8.0, 15.0, 30.0],
+                              [-0.93, -1.28, -1.98, -2.58, -2.86, -2.95]))
+        return float(interp(v_ego, [0.0, 1.5, 4.0, 8.0, 15.0, 30.0],
+                            [-0.95, -1.3, -1.85, -2.3, -2.6, -2.8]))
+    except Exception:
+      pass
+  return float(ACCEL_MIN)
 
 
 def get_accel_from_plan_classic(CP, speeds, accels, vEgoStopping):
@@ -200,6 +225,7 @@ class LongitudinalPlanner:
       accel_limits = [sm['frogpilotPlan'].minAcceleration, sm['frogpilotPlan'].maxAcceleration]
       steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
       accel_limits_turns = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_limits, self.CP)
+      vehicle_min_accel = get_vehicle_min_accel(self.CP, v_ego)
 
       # Safety override: keep profile comfort limits, but increase available braking
       # when lead-closing risk rises so chill profiles cannot under-brake.
@@ -211,15 +237,29 @@ class LongitudinalPlanner:
         desired_gap = sm['frogpilotPlan'].tFollow * v_ego + 6.0
 
         floor_ttc = interp(ttc, [1.6, 2.8, 4.0, 6.0, 10.0],
-                           [ACCEL_MIN, -2.6, -1.8, -1.2, accel_limits_turns[0]])
+                           [vehicle_min_accel, -2.6, -1.8, -1.2, accel_limits_turns[0]])
         floor_rel_v = interp(rel_v, [0.0, 1.0, 2.5, 5.0, 8.0],
-                             [accel_limits_turns[0], -1.1, -1.7, -2.5, ACCEL_MIN])
+                             [accel_limits_turns[0], -1.1, -1.7, -2.5, vehicle_min_accel])
         gap_shortfall = max(0.0, desired_gap - lead_dist)
         floor_gap = interp(gap_shortfall, [0.0, 2.0, 5.0, 9.0],
                            [accel_limits_turns[0], -1.2, -2.0, -2.8])
 
+        # Approaching a near-stationary lead close to the stopping envelope:
+        # disallow positive accel and bias toward stronger decel in the final meters.
+        if float(lead_one.vLead) < 1.0:
+          stopped_lead_req_dist = (v_ego ** 2) / (2 * COMFORT_BRAKE_MPS2) + desired_gap
+          no_accel_margin = interp(v_ego, [0.0, 8.0, 15.0, 25.0, 35.0], [2.0, 3.5, 6.0, 9.0, 12.0])
+          if lead_dist < (stopped_lead_req_dist + no_accel_margin):
+            accel_limits_turns[1] = min(accel_limits_turns[1], 0.0)
+
+          floor_stopped_lead = interp(lead_dist, [0.4, 0.8, 1.5, 3.0, 6.0, 12.0],
+                                      [vehicle_min_accel, -2.4, -2.0, -1.5, -1.0, accel_limits_turns[0]])
+          floor_ttc = min(floor_ttc, floor_stopped_lead)
+
         safety_floor = min(accel_limits_turns[0], floor_ttc, floor_rel_v, floor_gap)
-        accel_limits_turns[0] = max(ACCEL_MIN, safety_floor)
+        accel_limits_turns[0] = max(vehicle_min_accel, safety_floor)
+      else:
+        accel_limits_turns[0] = max(vehicle_min_accel, accel_limits_turns[0])
     else:
       accel_limits = [ACCEL_MIN, ACCEL_MAX]
       accel_limits_turns = [ACCEL_MIN, ACCEL_MAX]

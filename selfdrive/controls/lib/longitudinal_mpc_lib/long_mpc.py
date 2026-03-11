@@ -150,7 +150,18 @@ def get_stopped_equivalence_factor(v_lead):
 def get_safe_obstacle_distance(v_ego, t_follow):
   from openpilot.common.params import Params
   params = Params()
-  stop_str = params.get("StopDistance", encoding="utf8")
+  stop_str = None
+  try:
+    stop_str = params.get("StopDistance", encoding="utf8")
+  except TypeError:
+    # Compatibility with older params_pyx signatures that do not support encoding kwarg.
+    try:
+      raw = params.get("StopDistance")
+      stop_str = raw.decode("utf8") if isinstance(raw, (bytes, bytearray)) else raw
+    except Exception:
+      stop_str = None
+  except Exception:
+    stop_str = None
   stop_distance = float(stop_str) if stop_str else 6.0
   return (v_ego**2) / (2 * COMFORT_BRAKE) + t_follow * v_ego + stop_distance
 
@@ -439,8 +450,10 @@ class LongitudinalMpc:
       a_lead_tau = LEAD_ACCEL_TAU
 
     # MPC will not converge if immediate crash is expected
-    # Clip lead distance to what is still possible to brake for
-    min_x_lead = ((v_ego + v_lead)/2) * (v_ego - v_lead) / (-ACCEL_MIN * 2)
+    # Clip lead distance using the currently active vehicle decel capability.
+    # This keeps MPC safety math aligned with per-car/per-speed braking limits.
+    min_decel = min(float(self.cruise_min_a), -0.1)
+    min_x_lead = ((v_ego + v_lead)/2) * (v_ego - v_lead) / (-min_decel * 2)
     x_lead = clip(x_lead, min_x_lead, 1e8)
     v_lead = clip(v_lead, 0.0, 1e8)
     a_lead = clip(a_lead, -10., 5.)
@@ -472,7 +485,9 @@ class LongitudinalMpc:
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
 
-    self.params[:,0] = ACCEL_MIN
+    # Apply the live min-accel envelope from planner/car interface rather than
+    # a single global constant (important for regen-limited low-speed behavior).
+    self.params[:,0] = self.cruise_min_a
     # negative accel constraint causes problems because negative speed is not allowed
     self.params[:,1] = max(0.0, self.max_a)
 
