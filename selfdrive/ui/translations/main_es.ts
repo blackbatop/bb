@@ -425,27 +425,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Pairing successful! Visit galaxy.firestar.link/</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source> to connect.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Are you sure you want to unpair from Galaxy?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Galaxy QR</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>SHOW</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Show a QR code to quickly open Galaxy on your phone.</source>
+        <source>QR</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
