@@ -1,4 +1,4 @@
-import { html, reactive } from "https://esm.sh/@arrow-js/core"
+import { html, reactive } from "/assets/vendor/arrow-core.js"
 
 const endpointOptionsCache = {}
 const endpointOptionsInflight = {}
@@ -220,6 +220,18 @@ function formatSliderValue(val, stepStr, precisionInt, key) {
   return Number(v.toFixed(dec)).toString()
 }
 
+function formatNumericForInput(value, precision) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return ""
+  return Number(n.toFixed(precision)).toString()
+}
+
+function formatStepValue(step, precision) {
+  const n = Number(step)
+  if (!Number.isFinite(n)) return "1"
+  return Number(n.toFixed(Math.max(0, precision))).toString()
+}
+
 function numericBounds(param) {
   const defaultBounds = {
     min: param.min !== undefined ? param.min : (param.data_type === "float" ? 0.0 : 0),
@@ -412,6 +424,41 @@ function stepNumericParam(param, direction) {
   updateNumericParam(param, next)
 }
 
+function applyManualNumericParam(param) {
+  if (isNumericUpdating(param.key)) return
+
+  const inputEl = document.getElementById(`ds-manual-${param.key}`)
+  if (!inputEl) return
+
+  const raw = String(inputEl.value ?? "").trim()
+  if (!raw) {
+    showParamSnackbar("Enter a value first.", "error")
+    return
+  }
+
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed)) {
+    showParamSnackbar("Enter a valid number.", "error")
+    return
+  }
+
+  const bounds = numericBounds(param)
+  const precision = stepPrecision(bounds.step, param.precision)
+  const snapped = snapNumericToBoundsAndStep(parsed, bounds, precision)
+  if (snapped === null) {
+    showParamSnackbar("Value is out of range.", "error")
+    return
+  }
+
+  inputEl.value = formatNumericForInput(snapped, precision)
+
+  const current = resolveCurrentNumericValue(param, bounds)
+  const epsilon = Math.pow(10, -(precision + 2))
+  if (Math.abs(snapped - current) <= epsilon) return
+
+  updateNumericParam(param, snapped)
+}
+
 async function resetNumericParam(param) {
   const bounds = numericBounds(param)
   let defaultValue = resolveDefaultNumericValue(param, bounds)
@@ -575,6 +622,7 @@ function renderSettingRow(p) {
           ? formatSliderValue(defaultNumeric, String(bounds.step), p.precision, p.key)
           : "N/A"
         const canReset = !updating && defaultNumeric !== null && Math.abs(defaultNumeric - currentNumeric) > epsilon
+        const stepLabel = formatStepValue(bounds.step, precision)
         return html`
               <div class="ds-stepper">
                 <button
@@ -583,7 +631,28 @@ function renderSettingRow(p) {
                   @click="${() => stepNumericParam(p, -1)}">-</button>
                 <div class="ds-stepper-meta">
                   <span>${formatSliderValue(bounds.min, String(bounds.step), p.precision, p.key)} to ${formatSliderValue(bounds.max, String(bounds.step), p.precision, p.key)}</span>
+                  <span class="ds-step-value">Step: ${stepLabel} per click</span>
                   <span class="ds-default-value">Default: ${defaultLabel}</span>
+                  <div class="ds-manual-row">
+                    <input
+                      type="number"
+                      class="ds-manual-input"
+                      id="ds-manual-${p.key}"
+                      min="${bounds.min}"
+                      max="${bounds.max}"
+                      step="${bounds.step}"
+                      ?disabled="${updating}"
+                      value="${() => formatNumericForInput(resolveCurrentNumericValue(p, numericBounds(p)), precision)}"
+                      @keydown="${(e) => {
+                        if (e.key !== "Enter") return
+                        e.preventDefault()
+                        applyManualNumericParam(p)
+                      }}" />
+                    <button
+                      class="ds-apply-btn"
+                      ?disabled="${updating}"
+                      @click="${() => applyManualNumericParam(p)}">Apply</button>
+                  </div>
                   <button
                     class="ds-reset-btn"
                     ?disabled="${!canReset}"

@@ -41,7 +41,20 @@
   <link rel="stylesheet" href="/assets/components/tools/longitudinal_maneuvers.css">
   <link rel="stylesheet" href="/assets/components/tools/tsk_manager.css">
 
-  <script type="module" src="/assets/components/router.js"></script>
+  <script type="module">
+    import("/assets/components/router.js").catch((err) => {
+      console.error("[the_pond] bootstrap failed", err);
+      const target = document.getElementById("app") || document.body;
+      const pre = document.createElement("pre");
+      pre.style.whiteSpace = "pre-wrap";
+      pre.style.color = "#ff8080";
+      pre.style.background = "#200";
+      pre.style.padding = "12px";
+      pre.style.margin = "12px";
+      pre.textContent = `[the_pond] failed to load router:\n${err?.stack || err}`;
+      target.appendChild(pre);
+    });
+  </script>
   <script src="/assets/js/snackbar.js"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
