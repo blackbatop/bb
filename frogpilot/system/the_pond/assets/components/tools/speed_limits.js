@@ -1,4 +1,4 @@
-import { html } from "https://esm.sh/@arrow-js/core"
+import { html } from "@arrow-js/core"
 
 export function SpeedLimits() {
   function handleDownload() {
