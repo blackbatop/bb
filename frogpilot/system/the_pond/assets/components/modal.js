@@ -1,4 +1,4 @@
-import { html } from "https://esm.sh/@arrow-js/core";
+import { html } from "/assets/vendor/arrow-core.js";
 
 export function Modal({
   title,
