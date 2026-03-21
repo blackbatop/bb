@@ -1,4 +1,4 @@
-import { html, reactive } from "@arrow-js/core";
+import { html, reactive } from "https://esm.sh/@arrow-js/core";
 
 const state = reactive({
   loading: true,

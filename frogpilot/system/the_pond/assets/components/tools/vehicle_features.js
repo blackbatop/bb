@@ -1,4 +1,4 @@
-import { html, reactive } from "@arrow-js/core"
+import { html, reactive } from "https://esm.sh/@arrow-js/core"
 import { DoorControl } from "/assets/components/tools/doors.js"
 import { TSKManager } from "/assets/components/tools/tsk_manager.js"
 

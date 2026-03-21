@@ -1,4 +1,4 @@
-import { html, reactive } from "@arrow-js/core";
+import { html, reactive } from "https://esm.sh/@arrow-js/core";
 import { Link } from "/assets/components/router.js";
 import { upperFirst, hideSidebar } from "/assets/js/utils.js";
 

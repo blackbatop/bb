@@ -1,4 +1,4 @@
-import { html } from "@arrow-js/core"
+import { html } from "https://esm.sh/@arrow-js/core"
 import { upperFirst } from "/assets/js/utils.js"
 import { Navigate } from "/assets/components/router.js"
 
