@@ -1,7 +1,8 @@
-import { html } from "/assets/vendor/arrow-core.js";
-import { hideSidebar, upperFirst } from "/assets/js/utils.js";
+import { html, reactive } from "https://esm.sh/@arrow-js/core";
+import { Link } from "/assets/components/router.js";
+import { upperFirst, hideSidebar } from "/assets/js/utils.js";
 
-const MENU_ITEMS = {
+const MenuItems = {
   home: [
     { name: "Home", link: "/", icon: "bi-house-fill" },
   ],
@@ -31,89 +32,36 @@ const MENU_ITEMS = {
   ],
 };
 
-function matchesPath(currentPath, link) {
-  if (link === "/") return currentPath === "/";
-  return currentPath === link || currentPath.startsWith(`${link}/`);
-}
+const state = reactive({
+  activeRoute: ""
+});
 
-function buildSectionMarkup(section, links, currentPath) {
-  const linksMarkup = links.map((link) => {
-    const active = matchesPath(currentPath, link.link) ? "active" : "";
-    return `
-      <li class="${active}">
-        <a class="menu-item-link" href="${link.link}">
-          <i class="bi ${link.icon}"></i>
-          <span>${upperFirst(link.name)}</span>
-        </a>
-      </li>
-    `;
-  }).join("");
+export function Sidebar() {
+  const currentPath = window.location.pathname;
+  const matchesPath = (link) => {
+    if (link === "/") return currentPath === "/";
+    return currentPath === link || currentPath.startsWith(`${link}/`);
+  };
+  const activeItem = Object.values(MenuItems).flat().find(item => matchesPath(item.link));
+  state.activeRoute = activeItem?.name ?? "";
 
-  return `
-    <div class="sidebar_widget">
-      <ul class="menu_section">
-        <li>
-          <span class="section-title">${upperFirst(section)}</span>
-          <ul id="${section}">
-            ${linksMarkup}
-          </ul>
-        </li>
-      </ul>
-    </div>
-  `;
-}
 
-function bindSidebarHandlers() {
-  const menuButton = document.getElementById("menu_button");
-  const underlay = document.getElementById("sidebarUnderlay");
+  function navigate(link) {
+    state.activeRoute = link.name;
+    window.scrollTo(0, 0);
+    hideSidebar();
 
-  if (!menuButton || !underlay) return;
-
-  if (!window.__thePondSidebarMenuBound) {
-    window.__thePondSidebarMenuBound = true;
-    menuButton.addEventListener("click", () => {
-      const sidebar = document.getElementById("sidebar");
-      const currentUnderlay = document.getElementById("sidebarUnderlay");
-      if (!sidebar || !currentUnderlay) return;
-      sidebar.classList.toggle("visible");
-      currentUnderlay.classList.toggle("hidden");
+    document.querySelectorAll('.sidebar li').forEach(el => {
+      el.classList.remove('active');
     });
+
+    const linkElement = document.querySelector(`.sidebar li a[href="${link.link}"]`);
+    if (linkElement) {
+      linkElement.parentElement.classList.add('active');
+    }
   }
 
-  underlay.onclick = hideSidebar;
-
-  document.querySelectorAll("#sidebar a.menu-item-link").forEach((anchor) => {
-    if (anchor.dataset.boundClick === "1") return;
-    anchor.dataset.boundClick = "1";
-    anchor.addEventListener("click", (event) => {
-      if (event.defaultPrevented) return;
-      if (event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-      event.preventDefault();
-      const href = anchor.getAttribute("href") || "/";
-      const navigate = window.__thePondNavigate;
-      if (typeof navigate === "function") {
-        navigate(href);
-      } else {
-        window.location.assign(href);
-      }
-      hideSidebar();
-      window.scrollTo(0, 0);
-    });
-  });
-}
-
-function renderSidebarIntoShell(currentPath) {
-  const shell = document.getElementById("sidebar_shell");
-  if (!shell) return;
-
-  const activePath = currentPath || window.location.pathname;
-  const sectionsMarkup = Object.entries(MENU_ITEMS)
-    .map(([section, links]) => buildSectionMarkup(section, links, activePath))
-    .join("");
-
-  shell.innerHTML = `
+  return html`
     <div id="sidebarUnderlay" class="hidden"></div>
     <div id="sidebar" class="sidebar">
       <div>
@@ -124,15 +72,49 @@ function renderSidebarIntoShell(currentPath) {
           </div>
         </div>
         <hr />
-        ${sectionsMarkup}
+        ${() => Object.entries(MenuItems).map(([section, links]) => html`
+          <div class="sidebar_widget">
+            <ul class="menu_section">
+              <li>
+                <span class="section-title">${upperFirst(section)}</span>
+                <ul id="${section}">
+                  ${links.map(link => {
+    const isActive = state.activeRoute === link.name;
+    const classList = [isActive && "active"].filter(Boolean).join(" ");
+
+    const content = html`
+                      <div class="menu-item-link">
+                        <i class="bi ${link.icon}"></i>
+                        <span>${upperFirst(link.name)}</span>
+                      </div>
+                    `;
+
+    return html`
+                      <li class="${classList}">
+                        ${Link(link.link, content, () => navigate(link))}
+                      </li>
+                    `;
+  })}
+                </ul>
+              </li>
+            </ul>
+          </div>
+        `)}
       </div>
-    </div>
-  `;
-
-  bindSidebarHandlers();
+    </div>`;
 }
 
-export function Sidebar(currentPath) {
-  setTimeout(() => renderSidebarIntoShell(currentPath), 0);
-  return html`<div id="sidebar_shell"></div>`;
+function setupMenuButton() {
+  const button = document.getElementById("menu_button");
+  const sidebar = document.getElementById("sidebar");
+  const underlay = document.getElementById("sidebarUnderlay");
+
+  button.addEventListener("click", () => {
+    sidebar.classList.toggle("visible");
+    underlay.classList.toggle("hidden");
+  });
+
+  underlay.addEventListener("click", hideSidebar);
 }
+
+document.addEventListener("DOMContentLoaded", setupMenuButton, false);

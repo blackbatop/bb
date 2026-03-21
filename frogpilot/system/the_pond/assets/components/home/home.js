@@ -1,152 +1,145 @@
-import { html } from "/assets/vendor/arrow-core.js";
+import { html, reactive } from "https://esm.sh/@arrow-js/core";
 
-const HOME_STATE = {
-  status: "loading", // loading | ready | error
-  data: null,
-  unit: "miles",
-  error: "",
-  initialized: false,
-};
+function DiskUsage(disk) {
+  const used = parseFloat(disk.usedPercentage) || 0;
+  const rightRadius = used >= 100 ? "0" : "var(--border-radius-md)";
 
-function withTimeout(promise, timeoutMs, label) {
-  return new Promise((resolve, reject) => {
-    const timerId = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
-    promise.then((value) => {
-      clearTimeout(timerId);
-      resolve(value);
-    }).catch((err) => {
-      clearTimeout(timerId);
-      reject(err);
-    });
-  });
+  return html`
+    <div class="disk">
+      <p>${disk.used} used of ${disk.size}</p>
+      <div class="progress">
+        <div
+          class="bar"
+          style="
+            border-bottom-right-radius: ${rightRadius};
+            border-top-right-radius: ${rightRadius};
+            width: ${100 - used}%;
+          "
+        ></div>
+      </div>
+    </div>
+  `;
 }
 
-function formatInt(value) {
-  const n = Number(value || 0);
-  return Number.isFinite(n) ? n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "0";
-}
+function DriveStat(title, stats = {}, defaultUnit) {
+  const format = (n) =>
+    n?.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }) ?? "0";
 
-function renderDiskUsageSection(state) {
-  const { data } = state;
-  const shell = document.getElementById("home_shell");
-  if (!shell) return;
-
-  if (state.status === "error") {
-    shell.innerHTML = `<p class="error">Failed to load data: ${state.error}</p>`;
-    return;
-  }
-
-  if (state.status !== "ready" || !data) {
-    shell.innerHTML = "<p>Loading...</p>";
-    return;
-  }
-
-  const driveStats = data.driveStats || {};
-  const softwareInfo = data.softwareInfo || {};
-  const diskUsage = Array.isArray(data.diskUsage) ? data.diskUsage : [];
-  const diskError = Array.isArray(data.diskError) ? data.diskError : [];
-
-  const statBlock = (title, stats = {}) => `
+  return html`
     <div class="drivingStat">
       <h2>${title}</h2>
-      <div><p>${formatInt(stats.drives)}</p><p>drives</p></div>
-      <div><p>${formatInt(stats.distance)}</p><p>${stats.unit || state.unit}</p></div>
-      <div><p>${formatInt(stats.hours)}</p><p>hours</p></div>
-    </div>
-  `;
-
-  const diskBlock = (disk = {}) => {
-    const usedPct = Number.parseFloat(disk.usedPercentage) || 0;
-    const rightRadius = usedPct >= 100 ? "0" : "var(--border-radius-md)";
-    return `
-      <div class="disk">
-        <p>${disk.used || "0 GB"} used of ${disk.size || "0 GB"}</p>
-        <div class="progress">
-          <div
-            class="bar"
-            style="
-              border-bottom-right-radius: ${rightRadius};
-              border-top-right-radius: ${rightRadius};
-              width: ${Math.max(0, 100 - usedPct)}%;
-            "
-          ></div>
-        </div>
-      </div>
-    `;
-  };
-
-  const softwareFields = [
-    ["Branch Name", softwareInfo.branchName],
-    ["Build", softwareInfo.buildEnvironment],
-    ["Commit Hash", softwareInfo.commitHash],
-    ["Fork Maintainer", softwareInfo.forkMaintainer],
-    ["Update Available", softwareInfo.updateAvailable],
-    ["Version Date", softwareInfo.versionDate],
-  ];
-
-  const softwareMarkup = softwareFields
-    .map(([label, value]) => `<p><strong>${label}:</strong> ${value ?? "Unknown"}</p>`)
-    .join("");
-
-  const diskMarkup = diskError.length
-    ? `<p>${diskError.join("<br>")}</p>`
-    : (diskUsage.length ? diskUsage.map(diskBlock).join("") : diskBlock({}));
-
-  shell.innerHTML = `
-    <div>
-      <h1>Galaxy</h1>
-
-      <div class="drivingStats">
-        ${statBlock("All Time", driveStats.all)}
-        ${statBlock("Past Week", driveStats.week)}
-        ${statBlock("FrogPilot", driveStats.frogpilot)}
-      </div>
-
-      <h2>Disk Usage</h2>
-      <div class="diskUsage">
-        ${diskMarkup}
-      </div>
-
-      <h2>Software Info</h2>
-      <div class="softwareInfo">
-        <div class="softwareGrid">${softwareMarkup}</div>
-      </div>
+      <div><p>${format(stats.drives)}</p><p>drives</p></div>
+      <div><p>${format(stats.distance)}</p><p>${stats.unit ?? defaultUnit}</p></div>
+      <div><p>${format(stats.hours)}</p><p>hours</p></div>
     </div>
   `;
 }
 
-async function initializeHome() {
+function renderSoftwareInfo(info = {}) {
+  const fields = [
+    ["Branch Name", info.branchName],
+    ["Build", info.buildEnvironment],
+    ["Commit Hash", info.commitHash],
+    ["Fork Maintainer", info.forkMaintainer],
+    ["Update Available", info.updateAvailable],
+    ["Version Date", info.versionDate],
+  ];
+
+  return fields.map(
+    ([label, value]) =>
+      html`<p><strong>${label}:</strong> ${value ?? "Unknown"}</p>`
+  );
+}
+
+function renderDiskUsageSection({ diskError, diskUsage }) {
+  if (diskError) {
+    return html`<p>${diskError.join("<br>")}</p>`;
+  }
+  if (diskUsage?.length) {
+    return diskUsage.map(DiskUsage);
+  }
+  return DiskUsage({ size: "0 GB", used: "0 GB", usedPercentage: "0" });
+}
+
+const state = reactive({
+  data: null,
+  unit: "miles",
+  isLoading: true,
+  error: null,
+});
+
+let initialized = false;
+
+async function initialize() {
   try {
     const [statsResponse, unitResponse] = await Promise.all([
-      withTimeout(fetch("/api/stats"), 5000, "stats request"),
-      withTimeout(fetch("/api/params?key=IsMetric"), 5000, "metric request"),
+      fetch("/api/stats"),
+      fetch("/api/params?key=IsMetric"),
     ]);
 
-    if (!statsResponse.ok) throw new Error(`stats API error: ${statsResponse.status}`);
-    if (!unitResponse.ok) throw new Error(`params API error: ${unitResponse.status}`);
+    if (!statsResponse.ok) throw new Error(`API error: ${statsResponse.statusText}`);
+    if (!unitResponse.ok) throw new Error(`API error: ${unitResponse.statusText}`);
 
-    const statsJson = await withTimeout(statsResponse.json(), 5000, "stats JSON parse");
-    const isMetricText = (await withTimeout(unitResponse.text(), 5000, "metric read")).trim();
+    const statsJson = await statsResponse.json();
+    const isMetricText = (await unitResponse.text()).trim();
+    const isMetric = isMetricText === "1";
 
-    HOME_STATE.data = statsJson;
-    HOME_STATE.unit = isMetricText === "1" ? "kilometers" : "miles";
-    HOME_STATE.status = "ready";
+    state.data = statsJson;
+    state.unit = isMetric ? "kilometers" : "miles";
+    localStorage.setItem("isMetric", isMetricText);
   } catch (err) {
-    HOME_STATE.status = "error";
-    HOME_STATE.error = err?.message || String(err);
+    console.error("Failed to initialize component:", err);
+    state.error = err.message;
+  } finally {
+    state.isLoading = false;
   }
-
-  renderDiskUsageSection(HOME_STATE);
 }
 
 export function Home() {
-  setTimeout(() => {
-    renderDiskUsageSection(HOME_STATE);
-    if (!HOME_STATE.initialized) {
-      HOME_STATE.initialized = true;
-      initializeHome();
-    }
-  }, 0);
+  if (!initialized) {
+    initialized = true;
+    initialize();
+  }
 
-  return html`<div id="home_shell"><p>Loading...</p></div>`;
+  return html`
+    <div>
+      ${() => {
+      if (state.isLoading) {
+        return html`<p>Loading...</p>`;
+      }
+
+      if (state.error) {
+        return html`<p class="error">Failed to load data: ${state.error}</p>`;
+      }
+
+      if (state.data) {
+        const { driveStats, softwareInfo } = state.data;
+        return html`
+            <h1>Galaxy</h1>
+
+            <div class="drivingStats">
+              ${DriveStat("All Time", driveStats?.all, state.unit)}
+              ${DriveStat("Past Week", driveStats?.week, state.unit)}
+              ${DriveStat("FrogPilot", driveStats?.frogpilot, state.unit)}
+            </div>
+
+            <h2>Disk Usage</h2>
+            <div class="diskUsage">
+              ${renderDiskUsageSection(state.data)}
+            </div>
+
+            <h2>Software Info</h2>
+            <div class="softwareInfo">
+              <div class="softwareGrid">${renderSoftwareInfo(softwareInfo)}</div>
+            </div>
+          `;
+      }
+
+      return html`<p>No data available.</p>`;
+    }}
+    </div>
+  `;
 }

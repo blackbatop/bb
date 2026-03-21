@@ -367,58 +367,6 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.ds-step-value {
-  color: var(--text-muted);
-}
-
-.ds-manual-row {
-  align-items: center;
-  display: flex;
-  gap: 0.35rem;
-  margin-top: 0.15rem;
-  width: 100%;
-}
-
-.ds-manual-input {
-  background: var(--sidebar-bg);
-  border: var(--border-style-main);
-  border-radius: var(--border-radius-sm);
-  color: var(--text-color);
-  flex: 1;
-  font-family: var(--font-body);
-  font-size: var(--font-size-xs);
-  min-width: 0;
-  padding: 0.22rem 0.35rem;
-}
-
-.ds-manual-input:focus {
-  border-color: var(--main-fg);
-  outline: none;
-}
-
-.ds-apply-btn {
-  background: transparent;
-  border: var(--border-style-main);
-  border-radius: var(--border-radius-sm);
-  color: var(--text-color);
-  cursor: pointer;
-  font-size: var(--font-size-xs);
-  padding: 0.2rem 0.45rem;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-  white-space: nowrap;
-}
-
-.ds-apply-btn:hover:not(:disabled) {
-  background: var(--main-fg);
-  border-color: var(--main-fg);
-  color: var(--color-black);
-}
-
-.ds-apply-btn:disabled {
-  cursor: not-allowed;
-  opacity: var(--disabled-opacity);
-}
-
 .ds-reset-btn {
   background: transparent;
   border: var(--border-style-main);

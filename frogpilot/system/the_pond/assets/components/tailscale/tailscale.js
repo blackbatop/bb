@@ -1,4 +1,4 @@
-import { html, reactive } from "/assets/vendor/arrow-core.js"
+import { html, reactive } from "https://esm.sh/@arrow-js/core"
 import { Modal } from "/assets/components/modal.js";
 
 export function TailscaleControl() {

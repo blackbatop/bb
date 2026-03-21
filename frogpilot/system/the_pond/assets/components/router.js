@@ -1,5 +1,5 @@
-import { html, reactive } from "/assets/vendor/arrow-core.js"
-import { createBrowserHistory, createRouter } from "/assets/vendor/remix-router-1.3.1.js"
+import { html, reactive } from "https://esm.sh/@arrow-js/core"
+import { createBrowserHistory, createRouter } from "https://esm.sh/@remix-run/router@1.3.1"
 import { hideSidebar } from "/assets/js/utils.js"
 import { DeviceSettings } from "/assets/components/tools/device_settings.js"
 import { ErrorLogs } from "/assets/components/tools/error_logs.js"
@@ -25,15 +25,6 @@ import { UpdateManager } from "/assets/components/tools/update_manager.js"
 
 let router, routerState
 
-function toRouterHref(href) {
-  try {
-    const url = new URL(href, window.location.origin)
-    return `${url.pathname}${url.search}${url.hash}`
-  } catch {
-    return href
-  }
-}
-
 function createRoute(id, path, component) {
   return {
     id,
@@ -41,20 +32,6 @@ function createRoute(id, path, component) {
     loader: () => { },
     element: component,
   }
-}
-
-function SafeHome() {
-  return html`
-    <div>
-      <h1>Galaxy</h1>
-      <p>Safe mode is active while UI rendering is being repaired.</p>
-      <p>
-        <a href="/galaxy">Galaxy Pairing</a> |
-        <a href="/device_settings">Toggles</a> |
-        <a href="/manage_updates">Software</a>
-      </p>
-    </div>
-  `
 }
 
 function Root() {
@@ -86,11 +63,6 @@ function Root() {
     history: createBrowserHistory(),
   }).initialize()
 
-  window.__thePondNavigate = (href) => {
-    router.navigate(toRouterHref(href))
-    window.scrollTo(0, 0)
-  }
-
   routerState = reactive({
     activePath: "/",
     activePathFull: "/",
@@ -98,13 +70,10 @@ function Root() {
     navigation: { state: "loading" },
     errors: [],
     params: {},
-    activeMatch: null,
   })
 
   router.subscribe(({ initialized, navigation, matches, errors }) => {
-    const match = Array.isArray(matches) && matches.length > 0
-      ? matches[matches.length - 1]
-      : null
+    const [match] = matches || []
     Object.assign(routerState, {
       initialized,
       activePath: match?.route?.path || "",
@@ -112,7 +81,6 @@ function Root() {
       navigation,
       params: match?.params || {},
       errors,
-      activeMatch: match,
     })
   })
 
@@ -128,12 +96,12 @@ function Root() {
         return html`<h1>Not Found</h1>`
       }
 
-      const routeElement = routerState.activeMatch?.route?.element
-      if (typeof routeElement !== "function") {
-        console.warn("[router] no route element for path:", routerState.activePathFull)
+      const match = routes.find(r => r.path === routerState.activePath)
+      if (!match) {
+        console.warn("[router] no route match for path:", routerState.activePathFull)
         return Home({ params: routerState.params })
       }
-      return routeElement({ params: routerState.params })
+      return match.element({ params: routerState.params })
     }}
     </div>
   `
@@ -145,7 +113,7 @@ export function Link(href, children, onClick, classes = "") {
     href="${() => href}"
     @click="${(e) => {
       e.preventDefault()
-      router.navigate(toRouterHref(e.currentTarget.href))
+      router.navigate(e.currentTarget.href)
       hideSidebar()
       onClick?.()
     }}"
@@ -153,28 +121,13 @@ export function Link(href, children, onClick, classes = "") {
 }
 
 export function Navigate(href) {
-  router.navigate(toRouterHref(href))
+  router.navigate(href)
   window.scrollTo(0, 0)
 }
 
-function mountRouterWhenReady() {
-  const mountNode = document.getElementById("app")
-  if (!mountNode) {
-    // Some embedded browsers execute module scripts before <body> is fully available.
-    setTimeout(mountRouterWhenReady, 0)
-    return
-  }
-
-  if (!window.__thePondRouterMounted) {
-    window.__thePondRouterMounted = true
-    Root()(mountNode)
-  } else {
-    console.warn("[router] duplicate mount prevented")
-  }
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", mountRouterWhenReady, { once: true })
+if (!window.__thePondRouterMounted) {
+  window.__thePondRouterMounted = true
+  Root()(document.getElementById("app"))
 } else {
-  mountRouterWhenReady()
+  console.warn("[router] duplicate mount prevented")
 }

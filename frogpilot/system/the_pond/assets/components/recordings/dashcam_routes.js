@@ -1,4 +1,4 @@
-import { html, reactive } from "/assets/vendor/arrow-core.js"
+import { html, reactive } from "https://esm.sh/@arrow-js/core"
 import { isGalaxyTunnel } from "/assets/js/utils.js"
 import { getOrdinalSuffix } from "/assets/components/navigation/navigation_utilities.js"
 import { Modal } from "/assets/components/modal.js";
@@ -13,17 +13,7 @@ const state = reactive({
   total: 0,
   showDeleteAllModal: false,
   isDeletingAll: false,
-  truncated: false,
 })
-
-const MAX_RENDERED_ROUTES = 250
-const ROUTE_FLUSH_INTERVAL_MS = 120
-
-let routesAbortController = null
-let routesRequestToken = 0
-let pendingRoutes = []
-let flushTimerId = null
-let seenRouteNames = new Set()
 
 function formatRouteDate(dateString) {
   const date = new Date(dateString)
@@ -42,73 +32,10 @@ function formatRouteDate(dateString) {
   return `${month} ${day}${getOrdinalSuffix(day)}, ${year} - ${hour}:${minuteStr}${ampm}`
 }
 
-function resetRouteStreamState() {
-  pendingRoutes = []
-  if (flushTimerId !== null) {
-    clearTimeout(flushTimerId)
-    flushTimerId = null
-  }
-  seenRouteNames = new Set()
-}
-
-function flushPendingRoutes() {
-  if (pendingRoutes.length === 0) return
-
-  const availableSlots = Math.max(MAX_RENDERED_ROUTES - state.routes.length, 0)
-  if (availableSlots <= 0) {
-    pendingRoutes = []
-    state.truncated = true
-    return
-  }
-
-  const toAppend = pendingRoutes.slice(0, availableSlots)
-  pendingRoutes = []
-  if (toAppend.length > 0) {
-    state.routes = [...state.routes, ...toAppend]
-  }
-  if (state.routes.length >= MAX_RENDERED_ROUTES) {
-    state.truncated = true
-  }
-}
-
-function enqueueRoutes(rawRoutes) {
-  if (!Array.isArray(rawRoutes) || rawRoutes.length === 0) return
-
-  const nextRoutes = []
-  for (const route of rawRoutes) {
-    const name = String(route?.name || "")
-    if (!name || seenRouteNames.has(name)) continue
-    seenRouteNames.add(name)
-    nextRoutes.push({
-      ...route,
-      timestamp: formatRouteDate(route.timestamp),
-    })
-  }
-
-  if (nextRoutes.length === 0) return
-  pendingRoutes.push(...nextRoutes)
-
-  if (flushTimerId === null) {
-    flushTimerId = setTimeout(() => {
-      flushTimerId = null
-      flushPendingRoutes()
-    }, ROUTE_FLUSH_INTERVAL_MS)
-  }
-}
-
 async function fetchRoutes() {
-  const requestToken = ++routesRequestToken
-  if (routesAbortController) {
-    routesAbortController.abort()
-  }
-  const controller = new AbortController()
-  routesAbortController = controller
-
   try {
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const response = await fetch(`/api/routes?timezone=${encodeURIComponent(userTimezone)}`, {
-      signal: controller.signal,
-    });
+    const response = await fetch(`/api/routes?timezone=${encodeURIComponent(userTimezone)}`);
     if (!response.ok) throw new Error();
 
     const reader = response.body.getReader();
@@ -119,24 +46,24 @@ async function fetchRoutes() {
       const { value, done } = await reader.read();
       if (done) break;
 
-      if (requestToken !== routesRequestToken) return
-
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n\r?\n/);
+      const lines = buffer.split("\n\n");
       buffer = lines.pop();
 
       for (const line of lines) {
-        if (line.startsWith("data:")) {
+        if (line.startsWith("data: ")) {
           try {
-            const payload = line.substring(5).trim()
-            if (!payload) continue
-            const data = JSON.parse(payload);
+            const data = JSON.parse(line.substring(6));
             if (data.progress !== undefined && data.total !== undefined) {
               state.progress = data.progress;
               state.total = data.total;
             }
             if (data.routes) {
-              enqueueRoutes(data.routes)
+              const routes = data.routes.map(route => ({
+                ...route,
+                timestamp: formatRouteDate(route.timestamp),
+              }));
+              state.routes.push(...routes);
             }
           } catch (e) {
             console.error("Failed to parse JSON:", e);
@@ -144,34 +71,20 @@ async function fetchRoutes() {
         }
       }
     }
-    flushPendingRoutes()
-  } catch (error) {
-    if (error?.name !== "AbortError") {
-      state.error = "Couldn't load routes. Please try again later..."
-    }
+  } catch (_) {
+    state.error = "Couldn't load routes. Please try again later..."
   } finally {
-    if (requestToken === routesRequestToken) {
-      flushPendingRoutes()
-      state.loading = false
-      if (routesAbortController === controller) {
-        routesAbortController = null
-      }
-    }
+    state.loading = false
   }
 }
 
+fetchRoutes()
+
 function refresh() {
   state.loading = true
-  state.error = null
   state.routes = []
-  state.progress = 0
-  state.total = 0
-  state.truncated = false
-  resetRouteStreamState()
   fetchRoutes()
 }
-
-refresh()
 
 let overlay = null
 
@@ -478,9 +391,6 @@ export function RouteRecordings() {
             </div>
           `;
     }}
-        ${() => state.truncated ? html`
-          <p class="screen-recordings-message">Showing first ${MAX_RENDERED_ROUTES} routes to keep the UI responsive.</p>
-        ` : ""}
         ${() => {
       if (state.routes.length > 0) {
         return html`

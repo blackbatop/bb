@@ -35,12 +35,6 @@
   margin: 0;
 }
 
-.softwareGrid p {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
 .drivingStat {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
