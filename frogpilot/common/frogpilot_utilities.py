@@ -244,16 +244,57 @@ def update_json_file(path, data):
   with open(path, "w") as file:
     json.dump(data, file, indent=2, sort_keys=True)
 
+def parse_maps_selected(raw_maps_selected):
+  if raw_maps_selected is None:
+    return {}
+
+  raw_maps_selected = raw_maps_selected.strip()
+  if not raw_maps_selected:
+    return {}
+
+  try:
+    maps_selected = json.loads(raw_maps_selected)
+    if isinstance(maps_selected, dict):
+      nations = sorted({str(item) for item in maps_selected.get("nations", []) if item})
+      states = sorted({str(item) for item in maps_selected.get("states", []) if item})
+      return {"nations": nations, "states": states}
+    return {}
+  except json.JSONDecodeError:
+    pass
+
+  nations = set()
+  states = set()
+  for item in raw_maps_selected.split(","):
+    item = item.strip()
+    if item.startswith("nation."):
+      nation = item.removeprefix("nation.").strip()
+      if nation:
+        nations.add(nation)
+    elif item.startswith("us_state."):
+      state = item.removeprefix("us_state.").strip()
+      if state:
+        states.add(state)
+
+  if nations or states:
+    return {"nations": sorted(nations), "states": sorted(states)}
+
+  return {}
+
 def update_maps(now):
   while not MAPD_PATH.exists():
     time.sleep(60)
 
-  maps_selected = json.loads(params.get("MapsSelected", encoding="utf-8") or "{}")
-
-  if isinstance(maps_selected, int):
+  raw_maps_selected = params.get("MapsSelected", encoding="utf-8")
+  maps_selected = parse_maps_selected(raw_maps_selected)
+  if raw_maps_selected and not maps_selected:
     params.remove("MapsSelected")
     params_cache.remove("MapsSelected")
     return
+  if maps_selected:
+    normalized_maps_selected = json.dumps(maps_selected, separators=(",", ":"))
+    if raw_maps_selected != normalized_maps_selected:
+      params.put("MapsSelected", normalized_maps_selected)
+      params_cache.put("MapsSelected", normalized_maps_selected)
 
   if not (maps_selected.get("nations") or maps_selected.get("states")):
     return

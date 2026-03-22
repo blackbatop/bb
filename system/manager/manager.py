@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+import json
 import os
 import signal
 import sys
@@ -22,6 +23,62 @@ from openpilot.frogpilot.common.frogpilot_functions import convert_params, frogp
 from openpilot.frogpilot.common.frogpilot_variables import EXCLUDED_KEYS, frogpilot_default_params, get_frogpilot_toggles, params_cache, params_memory
 
 
+def _parse_maps_selected(raw_maps_selected: str | None) -> dict[str, list[str]]:
+  if raw_maps_selected is None:
+    return {}
+
+  raw_maps_selected = raw_maps_selected.strip()
+  if not raw_maps_selected:
+    return {}
+
+  try:
+    parsed = json.loads(raw_maps_selected)
+    if isinstance(parsed, dict):
+      nations = sorted({str(item) for item in parsed.get("nations", []) if item})
+      states = sorted({str(item) for item in parsed.get("states", []) if item})
+      return {"nations": nations, "states": states}
+    return {}
+  except json.JSONDecodeError:
+    pass
+
+  nations: set[str] = set()
+  states: set[str] = set()
+  for item in raw_maps_selected.split(","):
+    item = item.strip()
+    if item.startswith("nation."):
+      nation = item.removeprefix("nation.").strip()
+      if nation:
+        nations.add(nation)
+    elif item.startswith("us_state."):
+      state = item.removeprefix("us_state.").strip()
+      if state:
+        states.add(state)
+
+  if nations or states:
+    return {"nations": sorted(nations), "states": sorted(states)}
+
+  return {}
+
+
+def _migrate_starpilot_development_maps_selected(params: Params) -> None:
+  raw_maps_selected = params.get("MapsSelected", encoding="utf-8")
+  if raw_maps_selected is None:
+    return
+
+  maps_selected = _parse_maps_selected(raw_maps_selected)
+  if maps_selected:
+    normalized_maps_selected = json.dumps(maps_selected, separators=(",", ":"))
+    if raw_maps_selected != normalized_maps_selected:
+      params.put("MapsSelected", normalized_maps_selected)
+      params_cache.put("MapsSelected", normalized_maps_selected)
+      cloudlog.info("normalized legacy StarPilot-Development MapsSelected format for StarPilot compatibility")
+  else:
+    params.remove("MapsSelected")
+    params_cache.remove("MapsSelected")
+    if raw_maps_selected.strip():
+      cloudlog.warning("cleared invalid MapsSelected while migrating from StarPilot-Development")
+
+
 def manager_init() -> None:
   save_bootlog()
 
@@ -37,6 +94,7 @@ def manager_init() -> None:
   # FrogPilot variables
   setup_frogpilot(build_metadata)
   convert_params(params_cache)
+  _migrate_starpilot_development_maps_selected(params)
 
   default_params: list[tuple[str, str | bytes]] = [
     ("CompletedTrainingVersion", "0"),
