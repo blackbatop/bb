@@ -1,3 +1,4 @@
+import json
 import pyray as rl
 import numpy as np
 import time
@@ -58,7 +59,18 @@ class UIState:
         "rawAudioData",
         "frogpilotCarState",
       ]
+    ).extend(
+      [
+        "frogpilotPlan",
+        "frogpilotSelfdriveState",
+        "frogpilotRadarState",
+        "frogpilotDeviceState",
+        "mapdOut",
+        "liveTracks",
+      ]
     )
+
+    self._frogpilot_toggles: dict = {}
 
     self.prime_state = PrimeState()
 
@@ -150,14 +162,27 @@ class UIState:
     self.always_on_dm = self.params.get_bool("AlwaysOnDM")
     if self.sm.valid.get("frogpilotCarState", False):
       frogpilot_car_state = self.sm["frogpilotCarState"]
-      self.always_on_lateral_active = (not self.sm["selfdriveState"].enabled and
-                                       frogpilot_car_state.alwaysOnLateralEnabled)
+      self.always_on_lateral_active = not self.sm["selfdriveState"].enabled and frogpilot_car_state.alwaysOnLateralEnabled
       self.traffic_mode_enabled = frogpilot_car_state.trafficModeEnabled
     else:
       self.always_on_lateral_active = False
       self.traffic_mode_enabled = False
 
     self.conditional_status = self.params_memory.get_int("CEStatus", default=0) if self.started else 0
+
+    if self.sm.valid.get("frogpilotPlan", False) and self.sm.updated["frogpilotPlan"]:
+      try:
+        self._frogpilot_toggles = json.loads(self.sm["frogpilotPlan"].frogpilotToggles)
+      except (json.JSONDecodeError, TypeError):
+        pass
+
+  @property
+  def frogpilot_toggles(self) -> dict:
+    return self._frogpilot_toggles
+
+  @property
+  def frogpilot_plan(self):
+    return self.sm["frogpilotPlan"] if self.sm.valid.get("frogpilotPlan", False) else None
 
   def _update_status(self) -> None:
     if self.started and self.sm.updated["selfdriveState"]:

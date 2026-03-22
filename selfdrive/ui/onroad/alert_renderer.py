@@ -32,9 +32,9 @@ SELFDRIVE_UNRESPONSIVE_TIMEOUT = 10  # Seconds
 
 # Constants
 ALERT_COLORS = {
-  AlertStatus.normal: rl.Color(0x15, 0x15, 0x15, 0xF1),      # #151515 with alpha 0xF1
+  AlertStatus.normal: rl.Color(0x15, 0x15, 0x15, 0xF1),  # #151515 with alpha 0xF1
   AlertStatus.userPrompt: rl.Color(0xDA, 0x6F, 0x25, 0xF1),  # #DA6F25 with alpha 0xF1
-  AlertStatus.critical: rl.Color(0xC9, 0x22, 0x31, 0xF1),    # #C92231 with alpha 0xF1
+  AlertStatus.critical: rl.Color(0xC9, 0x22, 0x31, 0xF1),  # #C92231 with alpha 0xF1
 }
 
 
@@ -76,14 +76,21 @@ class AlertRenderer(Widget):
     self.font_bold: rl.Font = gui_app.font(FontWeight.BOLD)
 
     # font size is set dynamically
-    self._full_text1_label = Label("", font_size=0, font_weight=FontWeight.BOLD, text_alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
-                                   text_alignment_vertical=rl.GuiTextAlignmentVertical.TEXT_ALIGN_TOP)
-    self._full_text2_label = Label("", font_size=ALERT_FONT_BIG, text_alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
-                                   text_alignment_vertical=rl.GuiTextAlignmentVertical.TEXT_ALIGN_TOP)
+    self._full_text1_label = Label(
+      "",
+      font_size=0,
+      font_weight=FontWeight.BOLD,
+      text_alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
+      text_alignment_vertical=rl.GuiTextAlignmentVertical.TEXT_ALIGN_TOP,
+    )
+    self._full_text2_label = Label(
+      "", font_size=ALERT_FONT_BIG, text_alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER, text_alignment_vertical=rl.GuiTextAlignmentVertical.TEXT_ALIGN_TOP
+    )
 
   def get_alert(self, sm: messaging.SubMaster) -> Alert | None:
     """Generate the current alert based on selfdrive state."""
     ss = sm['selfdriveState']
+    t = ui_state.frogpilot_toggles
 
     # Check if selfdriveState messages have stopped arriving
     recv_frame = sm.recv_frame['selfdriveState']
@@ -93,12 +100,16 @@ class AlertRenderer(Widget):
       # 1. Never received selfdriveState since going onroad
       waiting_for_startup = recv_frame < ui_state.started_frame
       if waiting_for_startup and time_since_onroad > 5:
+        if t.get("force_onroad", False):
+          return None
         return ALERT_STARTUP_PENDING
 
       # 2. Lost communication with selfdriveState after receiving it
       if TICI and not waiting_for_startup:
         ss_missing = time.monotonic() - sm.recv_time['selfdriveState']
         if ss_missing > SELFDRIVE_STATE_TIMEOUT:
+          if t.get("force_onroad", False):
+            return None
           if ss.enabled and (ss_missing - SELFDRIVE_STATE_TIMEOUT) < SELFDRIVE_UNRESPONSIVE_TIMEOUT:
             return ALERT_CRITICAL_TIMEOUT
           return ALERT_CRITICAL_REBOOT
@@ -107,12 +118,23 @@ class AlertRenderer(Widget):
     if ss.alertSize == 0:
       return None
 
+    # Hide non-critical alerts when FrogPilot toggle is on
+    if t.get("hide_alerts", False) and ss.alertStatus == AlertStatus.normal:
+      return None
+
     # Don't get old alert
     if recv_frame < ui_state.started_frame:
       return None
 
     # Return current alert
-    return Alert(text1=ss.alertText1, text2=ss.alertText2, size=ss.alertSize.raw, status=ss.alertStatus.raw)
+    alert_text1 = ss.alertText1
+    alert_text2 = ss.alertText2
+
+    # FrogPilot: random events crash emoji
+    if t.get("random_events", False) and "Crashed" in alert_text1:
+      alert_text1 = "\U0001f4a9 " + alert_text1
+
+    return Alert(text1=alert_text1, text2=alert_text2, size=ss.alertSize.raw, status=ss.alertStatus.raw)
 
   def _render(self, rect: rl.Rectangle):
     alert = self.get_alert(ui_state.sm)
@@ -123,10 +145,7 @@ class AlertRenderer(Widget):
     self._draw_background(alert_rect, alert)
 
     text_rect = rl.Rectangle(
-      alert_rect.x + ALERT_PADDING,
-      alert_rect.y + ALERT_PADDING,
-      alert_rect.width - 2 * ALERT_PADDING,
-      alert_rect.height - 2 * ALERT_PADDING
+      alert_rect.x + ALERT_PADDING, alert_rect.y + ALERT_PADDING, alert_rect.width - 2 * ALERT_PADDING, alert_rect.height - 2 * ALERT_PADDING
     )
     self._draw_text(text_rect, alert)
 
@@ -135,8 +154,7 @@ class AlertRenderer(Widget):
       return rect
 
     h = ALERT_HEIGHTS.get(size, rect.height)
-    return rl.Rectangle(rect.x + ALERT_MARGIN, rect.y + rect.height - h + ALERT_MARGIN,
-                        rect.width - ALERT_MARGIN * 2, h - ALERT_MARGIN * 2)
+    return rl.Rectangle(rect.x + ALERT_MARGIN, rect.y + rect.height - h + ALERT_MARGIN, rect.width - ALERT_MARGIN * 2, h - ALERT_MARGIN * 2)
 
   def _draw_background(self, rect: rl.Rectangle, alert: Alert) -> None:
     color = ALERT_COLORS.get(alert.status, ALERT_COLORS[AlertStatus.normal])

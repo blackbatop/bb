@@ -1,4 +1,6 @@
+import json
 import time
+import datetime
 import pyray as rl
 from collections.abc import Callable
 from enum import IntEnum
@@ -7,6 +9,8 @@ from openpilot.selfdrive.ui.widgets.offroad_alerts import UpdateAlert, OffroadAl
 from openpilot.selfdrive.ui.widgets.exp_mode_button import ExperimentalModeButton
 from openpilot.selfdrive.ui.widgets.prime import PrimeWidget
 from openpilot.selfdrive.ui.widgets.setup import SetupWidget
+from openpilot.selfdrive.ui.widgets.drive_summary import DriveSummary, RANDOM_EVENTS
+from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
 from openpilot.system.ui.lib.multilang import tr, trn
@@ -58,6 +62,14 @@ class HomeLayout(Widget):
     self._prime_widget = PrimeWidget()
     self._setup_widget = SetupWidget()
 
+    self._drive_summary = DriveSummary(show_random_events=False)
+    self._random_events_summary = DriveSummary(show_random_events=True)
+    self._drive_summary_active = False
+    self._random_events_active = False
+    self._last_onroad_stats: dict = {}
+
+    ui_state.add_offroad_transition_callback(self._on_offroad_transition)
+
     self._exp_mode_button = ExperimentalModeButton()
     self._setup_callbacks()
 
@@ -70,6 +82,34 @@ class HomeLayout(Widget):
     self.update_alert.set_dismiss_callback(lambda: self._set_state(HomeLayoutState.HOME))
     self.offroad_alert.set_dismiss_callback(lambda: self._set_state(HomeLayoutState.HOME))
     self._exp_mode_button.set_click_callback(lambda: self.settings_callback() if self.settings_callback else None)
+
+  def _on_offroad_transition(self):
+    """Called when transitioning from onroad to offroad."""
+    raw = self.params.get("FrogPilotStats")
+    if raw:
+      try:
+        current_stats = json.loads(raw)
+        prev = self._last_onroad_stats or {}
+        # Show drive summary if there's new drive data
+        if current_stats.get("TrackedTime", 0) > prev.get("TrackedTime", 0):
+          self._drive_summary.set_previous_stats(prev)
+          self._drive_summary.show_event()
+          self._drive_summary_active = True
+          # Random events
+          if ui_state.frogpilot_toggles.get("random_events", False):
+            cur_ev = current_stats.get("RandomEvents", {})
+            prev_ev = prev.get("RandomEvents", {})
+            if any(cur_ev.get(k, 0) > prev_ev.get(k, 0) for k, _ in RANDOM_EVENTS):
+              self._random_events_summary.set_previous_stats(prev)
+              self._random_events_summary.show_event()
+              self._random_events_active = True
+        self._last_onroad_stats = dict(current_stats)
+      except (json.JSONDecodeError, TypeError):
+        pass
+
+  def _dismiss_drive_summary(self):
+    self._drive_summary_active = False
+    self._random_events_active = False
 
   def set_settings_callback(self, callback: Callable):
     self.settings_callback = callback
@@ -104,24 +144,18 @@ class HomeLayout(Widget):
       self._render_alerts_view()
 
   def _update_state(self):
-    self.header_rect = rl.Rectangle(
-      self._rect.x + CONTENT_MARGIN, self._rect.y + CONTENT_MARGIN, self._rect.width - 2 * CONTENT_MARGIN, HEADER_HEIGHT
-    )
+    self.header_rect = rl.Rectangle(self._rect.x + CONTENT_MARGIN, self._rect.y + CONTENT_MARGIN, self._rect.width - 2 * CONTENT_MARGIN, HEADER_HEIGHT)
 
     content_y = self._rect.y + CONTENT_MARGIN + HEADER_HEIGHT + SPACING
     content_height = self._rect.height - CONTENT_MARGIN - HEADER_HEIGHT - SPACING - CONTENT_MARGIN
 
-    self.content_rect = rl.Rectangle(
-      self._rect.x + CONTENT_MARGIN, content_y, self._rect.width - 2 * CONTENT_MARGIN, content_height
-    )
+    self.content_rect = rl.Rectangle(self._rect.x + CONTENT_MARGIN, content_y, self._rect.width - 2 * CONTENT_MARGIN, content_height)
 
     left_width = self.content_rect.width - RIGHT_COLUMN_WIDTH - SPACING
 
     self.left_column_rect = rl.Rectangle(self.content_rect.x, self.content_rect.y, left_width, self.content_rect.height)
 
-    self.right_column_rect = rl.Rectangle(
-      self.content_rect.x + left_width + SPACING, self.content_rect.y, RIGHT_COLUMN_WIDTH, self.content_rect.height
-    )
+    self.right_column_rect = rl.Rectangle(self.content_rect.x + left_width + SPACING, self.content_rect.y, RIGHT_COLUMN_WIDTH, self.content_rect.height)
 
     self.update_notif_rect.x = self.header_rect.x
     self.update_notif_rect.y = self.header_rect.y + (self.header_rect.height - 60) // 2
@@ -133,6 +167,12 @@ class HomeLayout(Widget):
   def _handle_mouse_release(self, mouse_pos: MousePos):
     super()._handle_mouse_release(mouse_pos)
 
+    # Dismiss drive summary on click anywhere in content area
+    if self._drive_summary_active:
+      if rl.check_collision_point_rec(mouse_pos, self.left_column_rect) or rl.check_collision_point_rec(mouse_pos, self.right_column_rect):
+        self._dismiss_drive_summary()
+      return
+
     if self.update_available and rl.check_collision_point_rec(mouse_pos, self.update_notif_rect):
       self._set_state(HomeLayoutState.UPDATE)
     elif self.alert_count > 0 and rl.check_collision_point_rec(mouse_pos, self.alert_notif_rect):
@@ -142,6 +182,15 @@ class HomeLayout(Widget):
     font = gui_app.font(FontWeight.MEDIUM)
 
     version_text_width = self.header_rect.width
+
+    # FrogPilot: date display (left-aligned)
+    date_text = datetime.datetime.now().strftime("%A, %B %-d")
+    date_font = gui_app.font(FontWeight.NORMAL)
+    date_size = 32
+    date_ts = measure_text_cached(date_font, date_text, date_size)
+    date_x = self.header_rect.x
+    date_y = self.header_rect.y + (self.header_rect.height - date_ts.y) // 2
+    rl.draw_text_ex(date_font, date_text, rl.Vector2(int(date_x), int(date_y)), date_size, 0, rl.Color(255, 255, 255, 150))
 
     # Update notification button
     if self.update_available:
@@ -175,8 +224,9 @@ class HomeLayout(Widget):
     if self.update_available or self.alert_count > 0:
       version_text_width -= SPACING * 1.5
 
-    version_rect = rl.Rectangle(self.header_rect.x + self.header_rect.width - version_text_width, self.header_rect.y,
-                                version_text_width, self.header_rect.height)
+    version_rect = rl.Rectangle(
+      self.header_rect.x + self.header_rect.width - version_text_width, self.header_rect.y, version_text_width, self.header_rect.height
+    )
     gui_label(version_rect, self._version_text, 48, rl.WHITE, alignment=rl.GuiTextAlignment.TEXT_ALIGN_RIGHT)
 
   def _render_home_content(self):
@@ -190,13 +240,19 @@ class HomeLayout(Widget):
     self.offroad_alert.render(self.content_rect)
 
   def _render_left_column(self):
-    self._prime_widget.render(self.left_column_rect)
+    if self._drive_summary_active:
+      self._drive_summary.render(self.left_column_rect)
+    else:
+      self._prime_widget.render(self.left_column_rect)
+      self._render_frogpilot_stats()
 
   def _render_right_column(self):
+    if self._random_events_active:
+      self._random_events_summary.render(self.right_column_rect)
+      return
+
     exp_height = 125
-    exp_rect = rl.Rectangle(
-      self.right_column_rect.x, self.right_column_rect.y, self.right_column_rect.width, exp_height
-    )
+    exp_rect = rl.Rectangle(self.right_column_rect.x, self.right_column_rect.y, self.right_column_rect.width, exp_height)
     self._exp_mode_button.render(exp_rect)
 
     setup_rect = rl.Rectangle(
@@ -206,6 +262,46 @@ class HomeLayout(Widget):
       self.right_column_rect.height - exp_height - SPACING,
     )
     self._setup_widget.render(setup_rect)
+
+  def _render_frogpilot_stats(self):
+    """Render FrogPilot lifetime stats (Drives/Distance/Hours) at bottom of left column."""
+    raw = self.params.get("FrogPilotStats")
+    if not raw:
+      return
+    try:
+      stats = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+      return
+
+    drives = stats.get("FrogPilotDrives", 0)
+    meters = stats.get("FrogPilotMeters", 0)
+    hours = int(stats.get("FrogPilotSeconds", 0) / 3600)
+
+    if ui_state.is_metric:
+      dist_str = f"{meters / 1000:.0f} km"
+    else:
+      dist_str = f"{meters * 0.000621371:.0f} mi"
+
+    font = gui_app.font(FontWeight.NORMAL)
+    label_size = 24
+    val_size = 36
+    green = rl.Color(0x17, 0x86, 0x44, 255)
+
+    # Position at bottom of left column
+    y = self.left_column_rect.y + self.left_column_rect.height - 100
+    x = self.left_column_rect.x
+    col_w = self.left_column_rect.width / 3
+
+    stats_data = [("Drives", str(drives)), ("Distance", dist_str), ("Hours", str(hours))]
+
+    for i, (label, value) in enumerate(stats_data):
+      cx = x + col_w * i + col_w / 2
+      # Value
+      vs = measure_text_cached(font, value, val_size)
+      rl.draw_text_ex(font, value, rl.Vector2(cx - vs.x / 2, y), val_size, 0, rl.WHITE)
+      # Label
+      ls = measure_text_cached(font, label, label_size)
+      rl.draw_text_ex(font, label, rl.Vector2(cx - ls.x / 2, y + val_size + 5), label_size, 0, green)
 
   def _refresh(self):
     self._version_text = self._get_version_text()

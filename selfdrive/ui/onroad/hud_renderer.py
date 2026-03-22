@@ -75,6 +75,8 @@ class HudRenderer(Widget):
   def _update_state(self) -> None:
     """Update HUD state based on car state and controls state."""
     sm = ui_state.sm
+    self._toggles = ui_state.frogpilot_toggles
+
     if sm.recv_frame["carState"] < ui_state.started_frame:
       self.is_cruise_set = False
       self.set_speed = SET_SPEED_NA
@@ -85,9 +87,7 @@ class HudRenderer(Widget):
     car_state = sm['carState']
 
     v_cruise_cluster = car_state.vCruiseCluster
-    self.set_speed = (
-      controls_state.vCruiseDEPRECATED if v_cruise_cluster == 0.0 else v_cruise_cluster
-    )
+    self.set_speed = controls_state.vCruiseDEPRECATED if v_cruise_cluster == 0.0 else v_cruise_cluster
     self.is_cruise_set = 0 < self.set_speed < SET_SPEED_NA
     self.is_cruise_available = self.set_speed != -1
 
@@ -96,12 +96,17 @@ class HudRenderer(Widget):
 
     v_ego_cluster = car_state.vEgoCluster
     self.v_ego_cluster_seen = self.v_ego_cluster_seen or v_ego_cluster != 0.0
-    v_ego = v_ego_cluster if self.v_ego_cluster_seen else car_state.vEgo
+    if self._toggles.get("use_wheel_speed", False):
+      v_ego = car_state.vEgo
+    else:
+      v_ego = v_ego_cluster if self.v_ego_cluster_seen else car_state.vEgo
     speed_conversion = CV.MS_TO_KPH if ui_state.is_metric else CV.MS_TO_MPH
     self.speed = max(0.0, v_ego * speed_conversion)
 
   def _render(self, rect: rl.Rectangle) -> None:
     """Render HUD elements to the screen."""
+    t = self._toggles
+
     # Draw the header background
     rl.draw_rectangle_gradient_v(
       int(rect.x),
@@ -112,10 +117,11 @@ class HudRenderer(Widget):
       COLORS.HEADER_GRADIENT_END,
     )
 
-    if self.is_cruise_available:
+    if self.is_cruise_available and not t.get("hide_max_speed", False):
       self._draw_set_speed(rect)
 
-    self._draw_current_speed(rect)
+    if not t.get("hide_speed", False):
+      self._draw_current_speed(rect)
 
     button_x = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
     button_y = rect.y + UI_CONFIG.border_size
@@ -123,6 +129,20 @@ class HudRenderer(Widget):
 
   def user_interacting(self) -> bool:
     return self._exp_button.is_pressed
+
+  @property
+  def set_speed_rect(self) -> rl.Rectangle:
+    """The rect of the MAX speed indicator box."""
+    set_speed_width = UI_CONFIG.set_speed_width_metric if ui_state.is_metric else UI_CONFIG.set_speed_width_imperial
+    x = 60 + (UI_CONFIG.set_speed_width_imperial - set_speed_width) // 2
+    return rl.Rectangle(x, 45, set_speed_width, UI_CONFIG.set_speed_height)
+
+  @property
+  def exp_button_rect(self) -> rl.Rectangle:
+    """The rect of the exp button (relative to content rect)."""
+    btn_x = self._rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
+    btn_y = UI_CONFIG.border_size
+    return rl.Rectangle(btn_x, btn_y, UI_CONFIG.button_size, UI_CONFIG.button_size)
 
   def _draw_set_speed(self, rect: rl.Rectangle) -> None:
     """Draw the MAX speed indicator box."""

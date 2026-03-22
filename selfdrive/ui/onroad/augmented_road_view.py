@@ -10,6 +10,8 @@ from openpilot.selfdrive.ui.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer
 from openpilot.selfdrive.ui.onroad.cameraview import CameraView
+from openpilot.selfdrive.ui.onroad.frogpilot_overlay import FrogPilotOverlay
+from openpilot.selfdrive.ui.widgets.developer_sidebar import DeveloperSidebar
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.common.transformations.camera import DEVICE_CAMERAS, DeviceCameraConfig, view_frame_from_device_frame
 from openpilot.common.transformations.orientation import rot_from_euler
@@ -48,6 +50,8 @@ class AugmentedRoadView(CameraView):
     self._hud_renderer = HudRenderer()
     self.alert_renderer = AlertRenderer()
     self.driver_state_renderer = DriverStateRenderer()
+    self._frogpilot_overlay = FrogPilotOverlay(self.model_renderer, self._hud_renderer, self.driver_state_renderer)
+    self._developer_sidebar = DeveloperSidebar()
 
     # debug
     self._pm = messaging.PubMaster(['uiDebug'])
@@ -73,12 +77,7 @@ class AugmentedRoadView(CameraView):
 
     # Enable scissor mode to clip all rendering within content rectangle boundaries
     # This creates a rendering viewport that prevents graphics from drawing outside the border
-    rl.begin_scissor_mode(
-      int(self._content_rect.x),
-      int(self._content_rect.y),
-      int(self._content_rect.width),
-      int(self._content_rect.height)
-    )
+    rl.begin_scissor_mode(int(self._content_rect.x), int(self._content_rect.y), int(self._content_rect.width), int(self._content_rect.height))
 
     # Render the base camera view
     super()._render(rect)
@@ -89,8 +88,15 @@ class AugmentedRoadView(CameraView):
     self.alert_renderer.render(self._content_rect)
     self.driver_state_renderer.render(self._content_rect)
 
-    # Custom UI extension point - add custom overlays here
-    # Use self._content_rect for positioning within camera bounds
+    # StarPilot overlays (speed limits, compass, turn signals, etc.)
+    self._frogpilot_overlay.render(self._content_rect)
+
+    # Developer sidebar (right-side metrics panel)
+    t = ui_state.frogpilot_toggles
+    if t.get("developer_sidebar", False):
+      sb_w = 300
+      sb_rect = rl.Rectangle(self._content_rect.x + self._content_rect.width - sb_w, self._content_rect.y, sb_w, self._content_rect.height)
+      self._developer_sidebar.render(sb_rect)
 
     # End clipping region
     rl.end_scissor_mode()
@@ -109,14 +115,13 @@ class AugmentedRoadView(CameraView):
 
   def _handle_mouse_release(self, _):
     # We only call click callback on press if not interacting with HUD
-    pass
+    self._frogpilot_overlay._handle_mouse_release(rl.get_mouse_position())
 
   def _draw_border(self, rect: rl.Rectangle):
     rl.draw_rectangle_lines_ex(rect, UI_BORDER_SIZE, rl.BLACK)
     border_roundness = 0.12
     border_color = BORDER_COLORS.get(ui_state.status, BORDER_COLORS[UIStatus.DISENGAGED])
-    border_rect = rl.Rectangle(rect.x + UI_BORDER_SIZE, rect.y + UI_BORDER_SIZE,
-                               rect.width - 2 * UI_BORDER_SIZE, rect.height - 2 * UI_BORDER_SIZE)
+    border_rect = rl.Rectangle(rect.x + UI_BORDER_SIZE, rect.y + UI_BORDER_SIZE, rect.width - 2 * UI_BORDER_SIZE, rect.height - 2 * UI_BORDER_SIZE)
     rl.draw_rectangle_rounded_lines_ex(border_rect, border_roundness, 10, UI_BORDER_SIZE, border_color)
 
   def _switch_stream_if_needed(self, sm):
@@ -160,12 +165,7 @@ class AugmentedRoadView(CameraView):
 
   def _calc_frame_matrix(self, rect: rl.Rectangle) -> np.ndarray:
     # Check if we can use cached matrix
-    cache_key = (
-      ui_state.sm.recv_frame['liveCalibration'],
-      self._content_rect.width,
-      self._content_rect.height,
-      self.stream_type
-    )
+    cache_key = (ui_state.sm.recv_frame['liveCalibration'], self._content_rect.width, self._content_rect.height, self.stream_type)
     if cache_key == self._matrix_cache_key and self._cached_matrix is not None:
       return self._cached_matrix
 
@@ -202,17 +202,9 @@ class AugmentedRoadView(CameraView):
 
     # Cache the computed transformation matrix to avoid recalculations
     self._matrix_cache_key = cache_key
-    self._cached_matrix = np.array([
-      [zoom * 2 * cx / w, 0, -x_offset / w * 2],
-      [0, zoom * 2 * cy / h, -y_offset / h * 2],
-      [0, 0, 1.0]
-    ])
+    self._cached_matrix = np.array([[zoom * 2 * cx / w, 0, -x_offset / w * 2], [0, zoom * 2 * cy / h, -y_offset / h * 2], [0, 0, 1.0]])
 
-    video_transform = np.array([
-      [zoom, 0.0, (w / 2 + x - x_offset) - (cx * zoom)],
-      [0.0, zoom, (h / 2 + y - y_offset) - (cy * zoom)],
-      [0.0, 0.0, 1.0]
-    ])
+    video_transform = np.array([[zoom, 0.0, (w / 2 + x - x_offset) - (cx * zoom)], [0.0, zoom, (h / 2 + y - y_offset) - (cy * zoom)], [0.0, 0.0, 1.0]])
     self.model_renderer.set_transform(video_transform @ calib_transform)
 
     return self._cached_matrix
