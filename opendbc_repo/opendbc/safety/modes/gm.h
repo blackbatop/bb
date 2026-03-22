@@ -51,6 +51,7 @@ typedef enum {
   GM_CAM
 } GmHardware;
 static GmHardware gm_hw = GM_ASCM;
+static bool gm_cam_long = false;
 static bool gm_pcm_cruise = false;
 static bool gm_sdgm = false;
 static bool gm_ascm_int = false;
@@ -175,10 +176,6 @@ static void gm_try_send_periodic_spoof(uint32_t now_us, uint32_t addr, uint8_t d
 
 static void gm_try_send_3d1_spoof(uint32_t now_us) {
   if (!(gm_panda_3d1_sched && gm_3d1_spoof_valid && (gm_3d1_next_tx_us != 0U))) {
-    return;
-  }
-
-  if (!gm_3d1_scheduler_ready(now_us)) {
     return;
   }
 
@@ -509,6 +506,33 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
   return tx;
 }
 
+static bool gm_fwd_hook(int bus_num, int addr) {
+  bool block_msg = false;
+
+  if ((gm_hw == GM_CAM) || gm_sdgm) {
+    if (bus_num == 0) {
+      bool is_pscm_msg = addr == 0x184U;
+      // Keep the camera side sourced only from OP's spoofed cruise status on non-ACC paths.
+      bool is_ecm_cruise_status_msg = (addr == 0x3D1U) && !gm_has_acc;
+      block_msg = is_pscm_msg || is_ecm_cruise_status_msg;
+    } else if (bus_num == 2) {
+      bool is_lkas_msg = addr == 0x180U;
+      bool is_acc_status_msg = addr == 0x370U;
+      bool is_acc_actuation_msg = (addr == 0x315U) || (addr == 0x2CBU);
+
+      block_msg = is_lkas_msg;
+      if (gm_cam_long || gm_pedal_long) {
+        block_msg |= is_acc_status_msg;
+      }
+      if (gm_cam_long) {
+        block_msg |= is_acc_actuation_msg;
+      }
+    }
+  }
+
+  return block_msg;
+}
+
 static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_HW_CAM = 1;
   const uint16_t GM_PARAM_HW_CAM_LONG = 2;
@@ -663,7 +687,7 @@ static safety_config gm_init(uint16_t param) {
   gm_prndl2_state.phase_locked = false;
   gm_zero_u8(gm_prndl2_state.spoof_data, 8U);
 
-  bool gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG);
+  gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG) && !gm_cc_long;
   gm_pcm_cruise = (gm_hw == GM_CAM || gm_sdgm) && !gm_cam_long && !gm_force_ascm && !gm_pedal_long;
   gm_steer_limits = GET_FLAG(param, GM_PARAM_BOLT_2017) ? &GM_BOLT_2017_STEERING_LIMITS : &GM_STEERING_LIMITS;
 
@@ -707,7 +731,7 @@ static safety_config gm_init(uint16_t param) {
   }
 
   // ASCM does not forward any messages
-  if (gm_hw == GM_ASCM || gm_cc_long) {
+  if (gm_hw == GM_ASCM) {
     ret.disable_forwarding = true;
   }
   return ret;
@@ -717,4 +741,5 @@ const safety_hooks gm_hooks = {
   .init = gm_init,
   .rx = gm_rx_hook,
   .tx = gm_tx_hook,
+  .fwd = gm_fwd_hook,
 };

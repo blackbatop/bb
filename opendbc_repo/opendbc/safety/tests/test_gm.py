@@ -246,6 +246,7 @@ def interceptor_msg(gas, addr):
 
 class TestGmInterceptorSafety(common.GasInterceptorSafetyTest, TestGmCameraSafety, TestGmEVSafetyBase):
   INTERCEPTOR_THRESHOLD = 550
+  FWD_BLACKLISTED_ADDRS = {2: [0x180, 0x370], 0: [0x184, 0x3D1]}
 
   def setUp(self):
     self.packer = CANPackerPanda("gm_global_a_powertrain_generated")
@@ -292,9 +293,6 @@ class TestGmInterceptorSafety(common.GasInterceptorSafetyTest, TestGmCameraSafet
       self.assertEqual(enabled, self._tx(self._button_msg(Buttons.CANCEL)))
       self.assertTrue(self.safety.get_controls_allowed())
 
-  def test_fwd_hook(self):
-    pass
-
   def test_disable_control_allowed_from_cruise(self):
     pass
 
@@ -314,7 +312,7 @@ class TestGmInterceptorSafety(common.GasInterceptorSafetyTest, TestGmCameraSafet
 
 class TestGmCcLongitudinalSafety(TestGmCameraSafety):
   TX_MSGS = [[0x180, 0], [0x370, 0], [0x1E1, 0], [0x3D1, 0], [0xBD, 0], [0x1F5, 0], [0x184, 2], [0x1E1, 2]]
-  FWD_BLACKLISTED_ADDRS = {2: [0x180], 0: [0x184]}  # block LKAS message and PSCMStatus
+  FWD_BLACKLISTED_ADDRS = {2: [0x180], 0: [0x184, 0x3D1]}  # block LKAS, PSCMStatus, and stock cruise status
   BUTTONS_BUS = 0  # tx only
 
   def setUp(self):
@@ -327,9 +325,6 @@ class TestGmCcLongitudinalSafety(TestGmCameraSafety):
   def _pcm_status_msg(self, enable):
     values = {"CruiseActive": enable}
     return self.packer.make_can_msg_panda("ECMCruiseControl", 0, values)
-
-  def test_fwd_hook(self):
-    pass
 
   def test_buttons(self):
     self.safety.set_controls_allowed(0)

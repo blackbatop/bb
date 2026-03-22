@@ -527,6 +527,10 @@ class CarInterface(CarInterfaceBase):
         else:
           ret.longitudinalTuning.kfDEPRECATED = 0.25
 
+      if is_bolt_2022_2023_pedal:
+        # Gen2 Bolt pedal-long should follow the no-ACC panda path like StarPilot.
+        ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.FLAG_GM_NO_ACC.value
+
       if candidate in (CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL, CAR.CHEVROLET_MALIBU_HYBRID_CC):
         ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.FLAG_GM_BOLT_2022_PEDAL.value
 
