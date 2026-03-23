@@ -601,6 +601,11 @@ static safety_config gm_init(uint16_t param) {
     GM_ACC_RX_CHECKS
   };
 
+  static RxCheck gm_ascm_int_stock_cam_rx_checks[] = {
+    GM_COMMON_RX_CHECKS
+    {.msg = {{0xF1, 0, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+  };
+
   static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x370, 0, 6, .check_relay = false}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
                                           {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true},  // camera bus
                                           // OPGM Variables
@@ -689,6 +694,7 @@ static safety_config gm_init(uint16_t param) {
 
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG) && !gm_cc_long;
   gm_pcm_cruise = (gm_hw == GM_CAM || gm_sdgm) && !gm_cam_long && !gm_force_ascm && !gm_pedal_long;
+  const bool gm_ascm_int_stock_cam = gm_ascm_int && (gm_hw == GM_CAM) && gm_pcm_cruise && !gm_cam_long && !gm_pedal_long && !gm_cc_long;
   gm_steer_limits = GET_FLAG(param, GM_PARAM_BOLT_2017) ? &GM_BOLT_2017_STEERING_LIMITS : &GM_STEERING_LIMITS;
 
   if (gm_hw == GM_ASCM || gm_ascm_int || gm_force_ascm) {
@@ -717,7 +723,7 @@ static safety_config gm_init(uint16_t param) {
   if (enable_gas_interceptor) {
     if (gm_has_acc && (gm_hw == GM_CAM || gm_sdgm)) {
       SET_RX_CHECKS(gm_cam_acc_pedal_rx_checks, ret);
-    } else if (!(gm_pedal_long && !gm_has_acc)) {
+    } else {
       SET_RX_CHECKS(gm_pedal_rx_checks, ret);
     }
   } else if (gm_has_acc && (gm_hw == GM_CAM || gm_sdgm)) {
@@ -728,6 +734,10 @@ static safety_config gm_init(uint16_t param) {
     SET_RX_CHECKS(gm_no_acc_rx_checks, ret);
   } else if (gm_ev) {
     SET_RX_CHECKS(gm_ev_rx_checks, ret);
+  }
+
+  if (gm_ascm_int_stock_cam) {
+    SET_RX_CHECKS(gm_ascm_int_stock_cam_rx_checks, ret);
   }
 
   // ASCM does not forward any messages
