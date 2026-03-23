@@ -9,6 +9,7 @@ from openpilot.common.params import Params
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
 
+
 class StarPilotPanelType(IntEnum):
   MAIN = 0
   SOUNDS = 1
@@ -25,12 +26,15 @@ class StarPilotPanelType(IntEnum):
   VEHICLE = 12
   WHEEL = 13
 
+
 @dataclass
 class StarPilotPanelInfo:
   name: str
   instance: Widget
 
+
 from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import TileGrid, HubTile, ToggleTile, ValueTile
+
 
 class StarPilotPanel(Widget):
   def __init__(self):
@@ -54,13 +58,17 @@ class StarPilotPanel(Widget):
   def _rebuild_grid(self):
     if not self.CATEGORIES:
       return
-    
+
     if self._tile_grid is None:
       self._tile_grid = TileGrid(columns=None, padding=20)
-    
+
     self._tile_grid.clear()
-    
+
     for cat in self.CATEGORIES:
+      visible_fn = cat.get("visible")
+      if visible_fn is not None and not visible_fn():
+        continue
+
       tile_type = cat.get("type", "hub")
       if tile_type == "hub":
         on_click = cat.get("on_click")
@@ -73,24 +81,12 @@ class StarPilotPanel(Widget):
           icon_path=cat.get("icon"),
           on_click=on_click,
           starpilot_icon=cat.get("starpilot_icon", True),
-          bg_color=cat.get("color")
+          bg_color=cat.get("color"),
         )
       elif tile_type == "toggle":
-        tile = ToggleTile(
-          title=tr(cat["title"]),
-          get_state=cat["get_state"],
-          set_state=cat["set_state"],
-          icon_path=cat.get("icon"),
-          bg_color=cat.get("color")
-        )
+        tile = ToggleTile(title=tr(cat["title"]), get_state=cat["get_state"], set_state=cat["set_state"], icon_path=cat.get("icon"), bg_color=cat.get("color"))
       elif tile_type == "value":
-        tile = ValueTile(
-          title=tr(cat["title"]),
-          get_value=cat["get_value"],
-          on_click=cat["on_click"],
-          icon_path=cat.get("icon"),
-          bg_color=cat.get("color")
-        )
+        tile = ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], icon_path=cat.get("icon"), bg_color=cat.get("color"))
       else:
         continue
 
