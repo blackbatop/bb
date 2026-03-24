@@ -66,6 +66,11 @@ DESKTOP_FAKE_IP = "192.168.1.42"
 TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
+def _canonicalize_ssid(ssid: str) -> str:
+  # iPhone hotspots can alternate between unicode and ASCII apostrophes.
+  return ssid.replace("’", "'")
+
+
 class SecurityType(IntEnum):
   OPEN = 0
   WPA = 1
@@ -1136,8 +1141,8 @@ class WifiManager:
         for line in saved.stdout.splitlines():
           parts = self._parse_nmcli_line(line)
           if len(parts) >= 3 and parts[1] == "802-11-wireless" and parts[2]:
-            saved_ssids.add(parts[2])
-            saved_ssids.add(parts[0])
+            saved_ssids.add(_canonicalize_ssid(parts[2]))
+            saved_ssids.add(_canonicalize_ssid(parts[0]))
       except Exception as e:
         cloudlog.warning(f"nmcli saved networks query failed: {e}")
 
@@ -1153,6 +1158,7 @@ class WifiManager:
           in_use, ssid, signal, security = parts[:4]
           if not ssid:
             continue
+          ssid_key = _canonicalize_ssid(ssid)
           try:
             strength = int(signal or 0)
           except ValueError:
@@ -1160,16 +1166,31 @@ class WifiManager:
 
           security_type = SecurityType.OPEN if security in ("", "--") else SecurityType.WPA
           is_connected = in_use.startswith("*")
-          is_saved = ssid in saved_ssids
+          is_saved = ssid_key in saved_ssids
 
-          existing = networks_by_ssid.get(ssid)
-          if existing is None or strength > existing.strength or is_connected:
-            networks_by_ssid[ssid] = Network(
+          existing = networks_by_ssid.get(ssid_key)
+          should_replace = (
+            existing is None or
+            (is_connected and not existing.is_connected) or
+            (existing is not None and is_connected == existing.is_connected and strength > existing.strength)
+          )
+
+          if should_replace:
+            prior_saved = existing.is_saved if existing is not None else False
+            networks_by_ssid[ssid_key] = Network(
               ssid=ssid,
               strength=strength,
-              is_connected=is_connected and is_saved,
+              is_connected=is_connected,
               security_type=security_type,
-              is_saved=is_saved,
+              is_saved=is_saved or prior_saved,
+            )
+          elif existing is not None:
+            networks_by_ssid[ssid_key] = Network(
+              ssid=existing.ssid,
+              strength=existing.strength,
+              is_connected=existing.is_connected or is_connected,
+              security_type=existing.security_type,
+              is_saved=existing.is_saved or is_saved,
             )
       except Exception as e:
         cloudlog.warning(f"nmcli scan failed: {e}")

@@ -165,6 +165,20 @@ class NetworkLayoutMici(NavWidget):
     self._network_metered_btn.set_enabled(lambda: not tethering_active and bool(self._wifi_manager.ipv4_address))
     self._tethering_toggle_btn.set_checked(tethering_active)
 
+    connected_network = next((network for network in networks if network.is_connected), None)
+    if connected_network is not None:
+      self._wifi_button.set_value(normalize_ssid(connected_network.ssid))
+      strength = round(connected_network.strength / 100 * 2)
+      if strength >= 2:
+        self._wifi_button.set_icon(self._wifi_full_txt)
+      elif strength == 1:
+        self._wifi_button.set_icon(self._wifi_medium_txt)
+      else:
+        self._wifi_button.set_icon(self._wifi_low_txt)
+    else:
+      self._wifi_button.set_value("not connected")
+      self._wifi_button.set_icon(self._wifi_slash_txt)
+
     # Update IP address
     self._ip_address_btn.set_value(self._wifi_manager.ipv4_address or "Not connected")
 
