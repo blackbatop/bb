@@ -13,7 +13,6 @@ from openpilot.system.athena.registration import UNREGISTERED_DONGLE_ID
 
 from openpilot.frogpilot.assets.model_manager import MODEL_DOWNLOAD_ALL_PARAM, MODEL_DOWNLOAD_PARAM, ModelManager
 from openpilot.frogpilot.assets.theme_manager import THEME_COMPONENT_PARAMS, ThemeManager
-from openpilot.frogpilot.common.frogpilot_backups import backup_toggles
 from openpilot.frogpilot.common.frogpilot_functions import capture_report, update_maps, update_openpilot
 from openpilot.frogpilot.common.frogpilot_utilities import ThreadManager, flash_panda, is_url_pingable, lock_doors, use_konik_server
 from openpilot.frogpilot.common.frogpilot_variables import ERROR_LOGS_PATH, FrogPilotVariables
@@ -129,9 +128,6 @@ def update_toggles(frogpilot_variables, started, theme_manager, thread_manager, 
   theme_manager.theme_updated = False
   theme_manager.update_active_theme(time_validated, frogpilot_toggles, randomize_theme=randomize_theme)
 
-  if time_validated:
-    thread_manager.run_with_lock(backup_toggles, (params))
-
   return frogpilot_toggles
 
 def frogpilot_thread():
@@ -230,8 +226,8 @@ def frogpilot_thread():
 
       theme_manager.update_active_theme(time_validated, frogpilot_toggles)
 
-      thread_manager.run_with_lock(backup_toggles, (params, True))
-      thread_manager.run_with_lock(send_stats)
+      if not started:
+        thread_manager.run_with_lock(send_stats)
       thread_manager.run_with_lock(update_checks, (now, model_manager, theme_manager, thread_manager, params, params_memory, frogpilot_toggles, True))
 
     rate_keeper.keep_time()
