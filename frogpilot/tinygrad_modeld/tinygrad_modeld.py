@@ -139,21 +139,14 @@ class ModelState:
     model_id_raw = _get_param_str(params, "Model")
     if not model_id_raw:
       model_id_raw = _get_param_str(params, "DrivingModel", "sc")
-    model_id = model_id_raw.strip() or "sc"
-    model_id_lower = model_id.lower()
-    if model_id_lower == "sc2":
-      model_id = "sc"
-    elif model_id_lower == "sc":
-      model_id = "sc"
-    elif model_id_lower == "bd2":
-      model_id = "bd2"
+    model_id = (model_id_raw.strip() or "sc").lower()
 
     model_version = _get_param_str(params, "ModelVersion")
     if not model_version:
       model_version = _get_param_str(params, "DrivingModelVersion")
 
     model_dir = MODELS_PATH
-    use_builtin_model = model_id in ("sc", "bd2")
+    use_builtin_model = model_id == "sc"
     model_download_id = model_id
     if use_builtin_model and (model_id_raw != model_id or _get_param_str(params, "DrivingModel") != model_id):
       params.put("Model", model_id)
