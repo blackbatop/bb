@@ -35,7 +35,7 @@ class TogglesLayoutMici(NavWidget):
       record_front,
       record_mic,
       enable_openpilot,
-    ], snap_items=False, scroll_indicator=True, edge_shadows=True)
+    ], snap_items=False)
 
     # Toggle lists
     self._refresh_toggles = (

@@ -15,7 +15,6 @@ a.out
 .cache/
 .comma_sysroot/
 .venv-linux-arm64/
-compiledmodels/
 
 /docs_site/
 

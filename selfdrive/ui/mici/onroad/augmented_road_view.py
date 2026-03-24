@@ -214,10 +214,6 @@ class AugmentedRoadView(CameraView):
     # debug
     self._pm = messaging.PubMaster(['uiDebug'])
 
-  @staticmethod
-  def _controls_ready() -> bool:
-    return ui_state.sm.recv_frame["selfdriveState"] >= ui_state.started_frame
-
   def is_swiping_left(self) -> bool:
     """Check if currently swiping left (for scroller to disable)."""
     return self._bookmark_icon.is_swiping_left()
@@ -228,8 +224,6 @@ class AugmentedRoadView(CameraView):
     # update offroad label
     if ui_state.panda_type == log.PandaState.PandaType.unknown:
       self._offroad_label.set_text("system booting")
-    elif ui_state.started and not self._controls_ready():
-      self._offroad_label.set_text("waiting for\ncontrols to start")
     else:
       self._offroad_label.set_text("start the car to\nuse openpilot")
 
@@ -264,21 +258,6 @@ class AugmentedRoadView(CameraView):
 
     # Render the base camera view
     super()._render(self._content_rect)
-
-    waiting_for_controls = ui_state.started and not self._controls_ready()
-    if waiting_for_controls:
-      rl.draw_rectangle(int(self._content_rect.x), int(self._content_rect.y),
-                        int(self._content_rect.width), int(self._content_rect.height),
-                        rl.Color(0, 0, 0, 145))
-      self._offroad_label.render(self._content_rect)
-      rl.end_scissor_mode()
-      self._draw_border()
-      self._bookmark_icon.render(self.rect)
-
-      msg = messaging.new_message('uiDebug')
-      msg.uiDebug.drawTimeMillis = (time.monotonic() - start_draw) * 1000
-      self._pm.send('uiDebug', msg)
-      return
 
     in_reverse = self._is_in_reverse()
 
