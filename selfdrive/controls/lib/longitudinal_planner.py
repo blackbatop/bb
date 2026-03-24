@@ -19,8 +19,8 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.frogpilot.common.frogpilot_variables import MINIMUM_LATERAL_ACCELERATION
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
-A_CRUISE_MAX_VALS = [1.6, 1.2, 0.8, 0.6]
-A_CRUISE_MAX_BP = [0., 10.0, 25., 40.]
+A_CRUISE_MAX_BP = [0.0, 5., 10., 15., 20., 25., 40.]
+A_CRUISE_MAX_VALS = [1.125, 1.125, 1.125, 1.125, 1.25, 1.25, 1.5]
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
 ALLOW_THROTTLE_THRESHOLD = 0.4
 MIN_ALLOW_THROTTLE_SPEED = 2.5
@@ -274,7 +274,11 @@ class LongitudinalPlanner:
                          stop_distance=getattr(frogpilot_toggles, "stop_distance", 6.0))
     self.mpc.set_accel_limits(accel_clip[0], accel_clip[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
-    tracking_lead = sm['frogpilotPlan'].desiredFollowDistance > 0
+    try:
+      tracking_lead = bool(sm['frogpilotPlan'].trackingLead)
+    except AttributeError:
+      # Backward-compatible fallback for stale schema instances.
+      tracking_lead = sm['frogpilotPlan'].desiredFollowDistance > 0
     self.mpc.update(sm['radarState'], v_cruise, x, v, a, j,
                     sm['frogpilotPlan'].dangerFactor, sm['frogpilotPlan'].tFollow,
                     personality=sm['selfdriveState'].personality, tracking_lead=tracking_lead)
