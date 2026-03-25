@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import math
-import time
 import numpy as np
+import time
 
 import cereal.messaging as messaging
 from opendbc.car.interfaces import ACCEL_MIN, ACCEL_MAX
@@ -12,13 +12,14 @@ from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
-from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
+from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N
 from openpilot.selfdrive.car.cruise import V_CRUISE_UNSET
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.frogpilot.common.frogpilot_variables import MINIMUM_LATERAL_ACCELERATION
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
+A_CRUISE_MIN = -1.0
 A_CRUISE_MAX_BP = [0.0, 5., 10., 15., 20., 25., 40.]
 A_CRUISE_MAX_VALS = [1.125, 1.125, 1.125, 1.125, 1.25, 1.25, 1.5]
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
@@ -59,6 +60,44 @@ def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   return [a_target[0], min(a_target[1], a_x_allowed)]
 
 
+def get_accel_from_plan_classic(CP, speeds, accels, vEgoStopping):
+  if len(speeds) == CONTROL_N:
+    v_target_now = np.interp(DT_MDL, CONTROL_N_T_IDX, speeds)
+    a_target_now = np.interp(DT_MDL, CONTROL_N_T_IDX, accels)
+
+    v_target = np.interp(CP.longitudinalActuatorDelay + DT_MDL, CONTROL_N_T_IDX, speeds)
+    if v_target != v_target_now:
+      a_target = 2 * (v_target - v_target_now) / CP.longitudinalActuatorDelay - a_target_now
+    else:
+      a_target = a_target_now
+
+    v_target_1sec = np.interp(CP.longitudinalActuatorDelay + DT_MDL + 1.0, CONTROL_N_T_IDX, speeds)
+  else:
+    v_target = 0.0
+    v_target_1sec = 0.0
+    a_target = 0.0
+  should_stop = (v_target < vEgoStopping and
+                 v_target_1sec < vEgoStopping)
+  return a_target, should_stop
+
+
+def get_accel_from_plan(speeds, accels, action_t=DT_MDL, vEgoStopping=0.05):
+  if len(speeds) == CONTROL_N:
+    v_now = speeds[0]
+    a_now = accels[0]
+
+    v_target = np.interp(action_t, CONTROL_N_T_IDX, speeds)
+    a_target = 2 * (v_target - v_now) / (action_t) - a_now
+    v_target_1sec = np.interp(action_t + 1.0, CONTROL_N_T_IDX, speeds)
+  else:
+    v_target = 0.0
+    v_target_1sec = 0.0
+    a_target = 0.0
+  should_stop = (v_target < vEgoStopping and
+                 v_target_1sec < vEgoStopping)
+  return a_target, should_stop
+
+
 class LongitudinalPlanner:
   def __init__(self, CP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
@@ -67,10 +106,12 @@ class LongitudinalPlanner:
     self.dt = dt
     self.allow_throttle = True
     self.mode = 'acc'
+
     self.generation = None
 
     self.a_desired = init_a
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
+    self.v_model_error = 0.0
     self.prev_accel_clip = [ACCEL_MIN, ACCEL_MAX]
     self.output_a_target = 0.0
     self.output_should_stop = False
@@ -80,18 +121,29 @@ class LongitudinalPlanner:
     self.j_desired_trajectory = np.zeros(CONTROL_N)
     self.solverExecutionTime = 0.0
 
-    self.uncert_slow = FirstOrderFilter(0.0, 1.6, self.dt)
-    self.uncert_fast = FirstOrderFilter(0.0, 0.9, self.dt)
+    # ---- Rubberband mitigation state ----
+    # Two uncertainty tracks (slow/fast) for asymmetric gating
+    self.uncert_slow = FirstOrderFilter(0.0, 1.6, self.dt)  # ~lam=0.6
+    self.uncert_fast = FirstOrderFilter(0.0, 0.9, self.dt)  # faster cool-down for accel decisions
+    # Lead stability tracking
     self.prev_lead_dist = None
     self.last_big_brake_t = 0.0
     self.stable_lead = False
+    # Smoothed lead distance
     self.lead_dist_f = None
+
+    # Uncertainty slope tracking
     self._uncert_last = 0.0
     self._uncert_last_t = None
 
   @property
   def mlsim(self):
     return self.generation in ("v8", "v10", "v11", "v12")
+
+  def get_mpc_mode(self) -> str:
+    if not self.mlsim:
+      return self.mode
+    return getattr(self.mpc, 'mode', 'acc')
 
   @staticmethod
   def get_model_speed_error(model_msg, v_ego):
@@ -115,18 +167,17 @@ class LongitudinalPlanner:
       v = np.zeros(len(T_IDXS_MPC))
       a = np.zeros(len(T_IDXS_MPC))
       j = np.zeros(len(T_IDXS_MPC))
-    if len(model_msg.meta.disengagePredictions.gasPressProbs) > 1:
-      throttle_prob = model_msg.meta.disengagePredictions.gasPressProbs[1]
-    else:
-      throttle_prob = 1.0
 
-    # FrogPilot variables
     if frogpilot_toggles.taco_tune:
       max_lat_accel = np.interp(v_ego, [5, 10, 20], [1.5, 2.0, 3.0])
       curvatures = np.interp(T_IDXS_MPC, ModelConstants.T_IDXS, model_msg.orientationRate.z) / np.clip(v, 0.3, 100.0)
       max_v = np.sqrt(max_lat_accel / (np.abs(curvatures) + 1e-3)) - 2.0
       v = np.minimum(max_v, v)
 
+    if len(model_msg.meta.disengagePredictions.gasPressProbs) > 1:
+      throttle_prob = model_msg.meta.disengagePredictions.gasPressProbs[1]
+    else:
+      throttle_prob = 1.0
     return x, v, a, j, throttle_prob
 
   def update(self, sm, frogpilot_toggles):
@@ -157,57 +208,77 @@ class LongitudinalPlanner:
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
     if self.mpc.mode == 'acc':
-      accel_clip = [sm['frogpilotPlan'].minAcceleration, sm['frogpilotPlan'].maxAcceleration]
+      accel_limits = [sm['frogpilotPlan'].minAcceleration, sm['frogpilotPlan'].maxAcceleration]
       steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
-      if not sm['frogpilotPlan'].cscControllingSpeed:
-        accel_clip = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_clip, self.CP)
+      accel_limits_turns = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_limits, self.CP)
     else:
-      accel_clip = [ACCEL_MIN, ACCEL_MAX]
+      accel_limits = [ACCEL_MIN, ACCEL_MAX]
+      accel_limits_turns = [ACCEL_MIN, ACCEL_MAX]
 
     if reset_state:
       self.v_desired_filter.x = v_ego
       # Clip aEgo to cruise limits to prevent large accelerations when becoming active
-      self.a_desired = np.clip(sm['carState'].aEgo, accel_clip[0], accel_clip[1])
+      self.a_desired = np.clip(sm['carState'].aEgo, accel_limits[0], accel_limits[1])
 
     # Prevent divergence, smooth in current v_ego
     self.v_desired_filter.x = max(0.0, self.v_desired_filter.update(v_ego))
-    model_error = self.get_model_speed_error(sm['modelV2'], v_ego)
-    x, v, a, j, throttle_prob = self.parse_model(sm['modelV2'], model_error, v_ego, frogpilot_toggles)
+    # Compute model v_ego error
+    self.v_model_error = self.get_model_speed_error(sm['modelV2'], v_ego)
+    x, v, a, j, throttle_prob = self.parse_model(sm['modelV2'], self.v_model_error, v_ego, frogpilot_toggles)
     # Don't clip at low speeds since throttle_prob doesn't account for creep
     self.allow_throttle = throttle_prob > ALLOW_THROTTLE_THRESHOLD or v_ego <= MIN_ALLOW_THROTTLE_SPEED
     self.allow_throttle &= not sm['frogpilotPlan'].disableThrottle
 
     if not self.allow_throttle:
-      clipped_accel_coast = max(accel_coast, accel_clip[0])
-      clipped_accel_coast_interp = np.interp(v_ego, [MIN_ALLOW_THROTTLE_SPEED, MIN_ALLOW_THROTTLE_SPEED*2], [accel_clip[1], clipped_accel_coast])
-      accel_clip[1] = min(accel_clip[1], clipped_accel_coast_interp)
+      clipped_accel_coast = max(accel_coast, accel_limits_turns[0])
+      clipped_accel_coast_interp = np.interp(v_ego, [MIN_ALLOW_THROTTLE_SPEED, MIN_ALLOW_THROTTLE_SPEED*2], [accel_limits_turns[1], clipped_accel_coast])
+      accel_limits_turns[1] = min(accel_limits_turns[1], clipped_accel_coast_interp)
 
     if force_slow_decel:
       v_cruise = 0.0
+    # clip limits, cannot init MPC outside of bounds
+    accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
+    accel_limits_turns[1] = max(accel_limits_turns[1], self.a_desired - 0.05)
 
-    accel_clip[0] = min(accel_clip[0], self.a_desired + 0.05)
-    accel_clip[1] = max(accel_clip[1], self.a_desired - 0.05)
+    self.lead_one = sm['radarState'].leadOne
+    self.lead_two = sm['radarState'].leadTwo
 
-    lead_one = sm['radarState'].leadOne
-    lead_dist = lead_one.dRel if lead_one.status else 50.0
+    lead_dist = self.lead_one.dRel if self.lead_one.status else 50.0
 
+    # Smooth lead distance (EMA) to avoid chatter in thresholds
     alpha = max(0.02, min(0.15, 0.05 + 0.002 * v_ego))
     if self.lead_dist_f is None:
       self.lead_dist_f = float(lead_dist)
     else:
       self.lead_dist_f += alpha * (float(lead_dist) - self.lead_dist_f)
 
+    # Lead stability estimation and recent-brake timer
     now_t = time.monotonic()
-    v_rel = (v_ego - lead_one.vLead) if lead_one.status else 0.0
+    # relative speed (ego - lead) positive when closing
+    v_rel = (v_ego - self.lead_one.vLead) if self.lead_one.status else 0.0
     if self.prev_lead_dist is None:
       d_rel_dot = 0.0
     else:
       d_rel_dot = (lead_dist - self.prev_lead_dist) / max(self.dt, 1e-3)
     self.prev_lead_dist = lead_dist
 
+    # Remember time of last non-trivial model brake risk
+    if 'raw_brake_max' in locals() and raw_brake_max is not None and raw_brake_max > 0.02:
+      self.last_big_brake_t = now_t
+
+    # Stable lead heuristic (short window, cheap to compute)
+    recently_braked = (now_t - self.last_big_brake_t) < 0.7
+    self.stable_lead = (
+      self.lead_one.status and
+      abs(v_rel) < 0.5 and
+      abs(d_rel_dot) < 0.5 and
+      not recently_braked
+    )
+
+    # Calculate scene uncertainty from model desire prediction entropy and disengage predictions
     uncertainty = 0.0
-    raw_brake_max = 0.0
     if hasattr(sm['modelV2'], 'meta'):
+      # Desire prediction entropy (maneuver uncertainty), normalized to [0, 1]
       desire_entropy = 0.0
       if hasattr(sm['modelV2'].meta, 'desirePrediction'):
         desire_probs = sm['modelV2'].meta.desirePrediction
@@ -218,37 +289,40 @@ class LongitudinalPlanner:
             p = probs / total
             entropy = -np.sum(p * np.log(p + 1e-10))
             max_entropy = np.log(len(p))
-            desire_entropy = float(entropy / max(max_entropy, 1e-6))
+            desire_entropy = float(entropy / max(max_entropy, 1e-6))  # normalized entropy in [0,1]
+          else:
+            desire_entropy = 0.0  # guard against all-zero vector
 
+      # Disengage prediction risk (intervention likelihood)
       disengage_risk = 0.0
+      raw_brake_max = -1.0
+      lam = -1.0
       if hasattr(sm['modelV2'].meta, 'disengagePredictions'):
+        # Use brake press probabilities as primary risk indicator
         brake_probs = sm['modelV2'].meta.disengagePredictions.brakePressProbs
         if len(brake_probs) > 0:
+          # Exponentially decayed max over the full horizon
           probs = np.asarray(brake_probs, dtype=float)
+          # Clip tiny brake blips so they don't inflate uncertainty
           if float(np.max(probs)) < 0.015:
             probs = probs * 0.5
           raw_brake_max = float(np.max(probs))
+          # Time vector assuming model horizon step = DT_MDL
           t = np.arange(len(probs), dtype=float) * DT_MDL
-          lam = 0.6
+          lam = 0.6  # decay rate per second (tunable: 0.5–0.9 typical)
           weights = np.exp(-lam * t)
           disengage_risk = float(np.max(probs * weights))
 
+      # Combined uncertainty metric (range roughly 0..2), with dual-track filtering
       raw_uncertainty = desire_entropy + disengage_risk
+      # Update filters
       self.uncert_slow.update(raw_uncertainty)
       self.uncert_fast.update(raw_uncertainty)
+      # Use a more permissive track for accel decisions
       uncertainty = self.uncert_slow.x
+    uncertainty_accel = min(self.uncert_slow.x, self.uncert_fast.x)
 
-    if raw_brake_max > 0.02:
-      self.last_big_brake_t = now_t
-
-    recently_braked = (now_t - self.last_big_brake_t) < 0.7
-    self.stable_lead = (
-      lead_one.status and
-      abs(v_rel) < 0.5 and
-      abs(d_rel_dot) < 0.5 and
-      not recently_braked
-    )
-
+    # --- Slope-based panic bypass ---
     if self._uncert_last_t is None:
       uncert_slope = 0.0
     else:
@@ -257,10 +331,15 @@ class LongitudinalPlanner:
     self._uncert_last = uncertainty
     self._uncert_last_t = now_t
 
-    closing_fast = lead_one.status and (v_ego - lead_one.vLead) > 0.5
+    closing_fast = (self.lead_one.status and (v_ego - self.lead_one.vLead) > 0.5)
+    # Trigger if either slope is high or magnitude is high; require a valid lead and closing
     panic_bypass = closing_fast and (uncert_slope > UNCERT_SLOPE_TRIG or uncertainty >= UNCERT_MAG_TRIG)
+
     if panic_bypass:
-      cloudlog.error(f"LON_SLOPE slope={uncert_slope:.3f} uncertainty={uncertainty:.3f} v_ego={v_ego:.2f}")
+      try:
+        cloudlog.error(f"LON_SLOPE; slope={uncert_slope:.3f}/s; uncertainty={uncertainty:.3f}; v_ego={v_ego:.2f}; v_rel={(v_ego - self.lead_one.vLead) if self.lead_one.status else 0.0:.2f}; lead_dist={self.lead_dist_f if self.lead_dist_f is not None else -1:.2f}; trigger=True")
+      except Exception:
+        pass
 
     self.mpc.set_weights(sm['frogpilotPlan'].accelerationJerk,
                          sm['frogpilotPlan'].dangerJerk,
@@ -272,10 +351,12 @@ class LongitudinalPlanner:
                          uncertainty=uncertainty,
                          panic_bypass=panic_bypass,
                          stop_distance=getattr(frogpilot_toggles, "stop_distance", 6.0))
-    self.mpc.set_accel_limits(accel_clip[0], accel_clip[1])
+    self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
-    # Keep StarPilot behavior as the primary gate: desired follow distance implies
-    # lead tracking in ACC mode. trackingLead is treated as an additive hint.
+    # After deciding the MPC mode via get_mpc_mode(), ensure MPC uses that mode when not mlsim
+    dec_mpc_mode = self.get_mpc_mode()
+    if not self.mlsim:
+      self.mpc.mode = dec_mpc_mode
     tracking_lead = sm['frogpilotPlan'].desiredFollowDistance > 0
     if hasattr(sm['frogpilotPlan'], 'trackingLead'):
       tracking_lead = tracking_lead or bool(sm['frogpilotPlan'].trackingLead)
@@ -283,6 +364,7 @@ class LongitudinalPlanner:
                     sm['frogpilotPlan'].dangerFactor, sm['frogpilotPlan'].tFollow,
                     personality=sm['selfdriveState'].personality, tracking_lead=tracking_lead)
 
+    self.a_desired_trajectory_full = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)
     self.a_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
     self.j_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC[:-1], self.mpc.j_solution)
@@ -292,31 +374,42 @@ class LongitudinalPlanner:
     if self.fcw:
       cloudlog.info("FCW triggered")
 
+    # Safety checks for rubber-banding mitigation
+    max_jerk = np.max(np.abs(self.mpc.j_solution))
+    max_accel_change = np.max(np.abs(np.diff(self.mpc.a_solution)))
+    if max_jerk > 5.0:  # m/s^3
+      cloudlog.warning(f"High jerk detected: {max_jerk:.2f} m/s^3")
+    if max_accel_change > 2.0:  # m/s^2
+      cloudlog.warning(f"High acceleration change: {max_accel_change:.2f} m/s^2")
+
     # Interpolate 0.05 seconds and save as starting point for next iteration
     a_prev = self.a_desired
     self.a_desired = float(np.interp(self.dt, CONTROL_N_T_IDX, self.a_desired_trajectory))
     self.v_desired_filter.x = self.v_desired_filter.x + self.dt * (self.a_desired + a_prev) / 2.0
 
-    if lead_one.status:
-      rel_v = max(0.0, v_ego - lead_one.vLead)
+    # Anticipatory pre-brake to avoid "coming in hot" when closing on a lead
+    if self.lead_one.status:
+      rel_v = max(0.0, v_ego - self.lead_one.vLead)
+      # dynamic time headway adds a small buffer when uncertainty is elevated
       base_th = 1.6
       th = base_th + 0.6 * max(0.0, uncertainty - 0.42)
       desired_gap = th * v_ego
-      if self.lead_dist_f is not None and self.lead_dist_f < desired_gap and rel_v > 0.5:
+      if (self.lead_dist_f is not None and self.lead_dist_f < desired_gap and rel_v > 0.5):
         k_rel, k_unc = 0.04, 0.20
         pre_brake = k_rel * rel_v + k_unc * max(0.0, uncertainty - 0.42)
-        self.a_desired = float(self.a_desired - min(pre_brake, 0.06))
+        pre_brake = min(pre_brake, 0.06)
+        self.a_desired = float(self.a_desired - pre_brake)
 
+    # Small deadzone around zero accel to kill micro-dithers
     if -0.05 < self.a_desired < 0.05:
       self.a_desired = 0.0
 
     action_t = frogpilot_toggles.longitudinalActuatorDelay + DT_MDL
-    output_a_target_mpc, output_should_stop_mpc = get_accel_from_plan(self.v_desired_trajectory, self.a_desired_trajectory, CONTROL_N_T_IDX,
-                                                                        action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
+    output_a_target_mpc, output_should_stop_mpc = get_accel_from_plan(self.v_desired_trajectory, self.a_desired_trajectory,
+                                                                       action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
     output_a_target_e2e = sm['modelV2'].action.desiredAcceleration
     output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
-    # Keep StarPilot behavior: for tinygrad v10/v11/v12 in experimental mode, blend with model action output.
     if self.mode == 'acc' or self.generation == 'v9':
       output_a_target = output_a_target_mpc
       self.output_should_stop = output_should_stop_mpc
@@ -325,9 +418,9 @@ class LongitudinalPlanner:
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
 
     for idx in range(2):
-      accel_clip[idx] = np.clip(accel_clip[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
-    self.output_a_target = np.clip(output_a_target, accel_clip[0], accel_clip[1])
-    self.prev_accel_clip = accel_clip
+      accel_limits_turns[idx] = np.clip(accel_limits_turns[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
+    self.output_a_target = np.clip(output_a_target, accel_limits_turns[0], accel_limits_turns[1])
+    self.prev_accel_clip = accel_limits_turns
 
   def publish(self, sm, pm):
     plan_send = messaging.new_message('longitudinalPlan')

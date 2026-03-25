@@ -1,49 +1,58 @@
 #!/usr/bin/env python3
 import numpy as np
 
-from openpilot.selfdrive.controls.lib.longitudinal_planner import ACCEL_MIN, get_max_accel
+from openpilot.selfdrive.controls.lib.longitudinal_planner import A_CRUISE_MIN, get_max_accel
 
 from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT
 
 def cubic_interp(x, xp, fp):
-  if x <= xp[0]:
-    return fp[0]
-  elif x >= xp[-1]:
-    return fp[-1]
+     """Cubic interpolation using NumPy's native operations for speed."""
+     # Boundary conditions
+     if x <= xp[0]:
+         return fp[0]
+     elif x >= xp[-1]:
+         return fp[-1]
 
-  i = np.searchsorted(xp, x) - 1
-  i = max(0, min(i, len(xp) - 2))
-  t = (x - xp[i]) / float(xp[i + 1] - xp[i])
+     # Find interval
+     i = np.searchsorted(xp, x) - 1
+     i = max(0, min(i, len(xp)-2))  # clamp the index
 
-  return fp[i] * (1 - 3 * t ** 2 + 2 * t ** 3) + fp[i + 1] * (3 * t ** 2 - 2 * t ** 3)
+     # Normalized position
+     t = (x - xp[i]) / float(xp[i+1] - xp[i])
+
+     # Hermite cubic formula
+     return fp[i]*(1 - 3*t**2 + 2*t**3) + fp[i+1]*(3*t**2 - 2*t**3)
 
 def akima_interp(x, xp, fp):
-  if x <= xp[0]:
-    return fp[0]
-  elif x >= xp[-1]:
-    return fp[-1]
+     """Akima-inspired interpolation with reduced overshoot characteristics."""
+     if x <= xp[0]:
+         return fp[0]
+     elif x >= xp[-1]:
+         return fp[-1]
 
-  i = np.searchsorted(xp, x) - 1
-  i = max(0, min(i, len(xp) - 2))
-  t = (x - xp[i]) / float(xp[i + 1] - xp[i])
+     i = np.searchsorted(xp, x) - 1
+     i = max(0, min(i, len(xp)-2))  # clamp the index
 
-  t2 = t * t
-  t3 = t2 * t
-  t4 = t2 * t2
-  return (fp[i] * (1 - 10 * t3 + 15 * t4 - 6 * t3 * t2)
-          + fp[i + 1] * (10 * t3 - 15 * t4 + 6 * t3 * t2))
+     t = (x - xp[i]) / float(xp[i+1] - xp[i])
 
-A_CRUISE_MIN_ECO = ACCEL_MIN / 2
-A_CRUISE_MIN_SPORT = ACCEL_MIN * 2
+     # Quintic polynomial to reduce overshoot
+     t2 = t*t
+     t4 = t2*t2
+     t3 = t2*t
+     return (fp[i]*(1 - 10*t3 + 15*t4 - 6*t3*t2)
+             + fp[i+1]*(10*t3 - 15*t4 + 6*t3*t2))
+
+A_CRUISE_MIN_ECO = A_CRUISE_MIN / 2
+A_CRUISE_MIN_SPORT = A_CRUISE_MIN * 2
 
                        # MPH = [0.0,  11,  22,  34,  45,  56,  89]
-A_CRUISE_MAX_BP_CUSTOM =        [0.0,  5., 10., 15., 20., 25., 40.]
+A_CRUISE_MAX_BP_CUSTOM =       [0.0,  5., 10., 15., 20., 25., 40.]
 A_CRUISE_MAX_VALS_ECO_EV =      [1.15, 1.15, 1.15, 1.15, 1.30, 1.30, 1.72]
 A_CRUISE_MAX_VALS_STANDARD_EV = [1.25, 1.25, 1.25, 1.25, 1.45, 1.50, 2.00]
 A_CRUISE_MAX_VALS_SPORT_EV =    [1.35, 1.35, 1.35, 1.35, 1.60, 1.60, 2.10]
 A_CRUISE_MAX_VALS_SPORT_PLUS_EV = [1.55, 1.55, 1.55, 1.55, 1.84, 1.84, 2.42]
-A_CRUISE_MAX_VALS_ECO_GAS =       [2.0, 1.5, 1.0, 0.8, 0.6, 0.4, 0.2]
-A_CRUISE_MAX_VALS_SPORT_GAS =     [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6]
+A_CRUISE_MAX_VALS_ECO_GAS =    [2.0, 1.5, 1.0, 0.8, 0.6, 0.4, 0.2]
+A_CRUISE_MAX_VALS_SPORT_GAS =  [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6]
 A_CRUISE_MAX_VALS_ECO_TRUCK =       [3.00, 1.05, 0.60, 0.50, 0.50, 0.45, 0.35]
 A_CRUISE_MAX_VALS_STANDARD_TRUCK =  [6.00, 1.10, 0.70, 0.60, 0.55, 0.45, 0.35]
 A_CRUISE_MAX_VALS_SPORT_TRUCK =     [6.00, 1.15, 0.75, 0.70, 0.60, 0.50, 0.40]
@@ -153,4 +162,4 @@ class FrogPilotAcceleration:
       elif frogpilot_toggles.deceleration_profile == DECELERATION_PROFILES["SPORT"]:
         self.min_accel = A_CRUISE_MIN_SPORT
       else:
-        self.min_accel = ACCEL_MIN
+        self.min_accel = A_CRUISE_MIN
