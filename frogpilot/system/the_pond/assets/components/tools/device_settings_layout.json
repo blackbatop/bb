@@ -1778,12 +1778,37 @@
         "description": "WARNING: This will prevent your drives from being uploaded to comma connect which will impact debugging and official support from comma!\n\nPrevent the device from uploading driving data.",
         "data_type": "bool",
         "ui_type": "toggle",
+        "is_parent_toggle": true,
         "parent_key": "DeviceManagement"
+      },
+      {
+        "key": "DisableOnroadUploads",
+        "label": "Disable Onroad Uploads",
+        "description": "When \"Disable Uploads\" is enabled, allow uploads only while parked (offroad).",
+        "data_type": "bool",
+        "ui_type": "toggle",
+        "parent_key": "NoUploads"
+      },
+      {
+        "key": "AlwaysAllowUploads",
+        "label": "Always Allow Uploads",
+        "description": "Override upload blocks and always keep uploader enabled. Advanced use only.",
+        "data_type": "bool",
+        "ui_type": "toggle",
+        "parent_key": "NoUploads"
       },
       {
         "key": "HigherBitrate",
         "label": "High-Quality Recording",
         "description": "Save drive footage in higher video quality.",
+        "data_type": "bool",
+        "ui_type": "toggle",
+        "parent_key": "DeviceManagement"
+      },
+      {
+        "key": "GsmMetered",
+        "label": "Cellular Metered",
+        "description": "Prevent large uploads on cellular. Turn this off to allow full/unfiltered uploads over mobile data.",
         "data_type": "bool",
         "ui_type": "toggle",
         "parent_key": "DeviceManagement"

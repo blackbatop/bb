@@ -1716,6 +1716,86 @@ def _serialize_param_write_value(raw_value):
     return raw_value.decode("utf-8", errors="replace")
   return str(raw_value or "")
 
+def _apply_cellular_metered_setting(metered_enabled):
+  """Apply GsmMetered changes to active NetworkManager GSM profiles."""
+  if not shutil.which("nmcli"):
+    return {"profiles": [], "warnings": ["nmcli not found; parameter saved but modem profile was not updated."]}
+
+  metered_mode = "unknown" if bool(metered_enabled) else "no"
+  updated_profiles = []
+  warnings = []
+
+  try:
+    list_result = subprocess.run(
+      ["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"],
+      capture_output=True, text=True, timeout=10, check=False
+    )
+  except Exception as error:
+    return {"profiles": [], "warnings": [f"Failed to list network profiles: {error}"]}
+
+  if list_result.returncode != 0:
+    stderr = (list_result.stderr or "").strip()
+    return {"profiles": [], "warnings": [f"Failed to list network profiles: {stderr or 'unknown error'}"]}
+
+  gsm_profiles = []
+  for line in (list_result.stdout or "").splitlines():
+    line = line.strip()
+    if not line:
+      continue
+
+    try:
+      name, conn_type = line.rsplit(":", 1)
+    except ValueError:
+      continue
+
+    if conn_type.strip() == "gsm" and name.strip():
+      gsm_profiles.append(name.strip())
+
+  for profile_name in gsm_profiles:
+    try:
+      result = subprocess.run(
+        ["nmcli", "connection", "modify", profile_name, "connection.metered", metered_mode],
+        capture_output=True, text=True, timeout=10, check=False
+      )
+      if result.returncode == 0:
+        updated_profiles.append(profile_name)
+      else:
+        stderr = (result.stderr or "").strip()
+        warnings.append(f"Failed to update '{profile_name}': {stderr or 'unknown error'}")
+    except Exception as error:
+      warnings.append(f"Failed to update '{profile_name}': {error}")
+
+  # Re-activate active GSM profiles so the new metered setting takes effect immediately.
+  try:
+    active_result = subprocess.run(
+      ["nmcli", "-t", "-f", "NAME,TYPE,STATE", "connection", "show", "--active"],
+      capture_output=True, text=True, timeout=10, check=False
+    )
+
+    if active_result.returncode == 0:
+      for line in (active_result.stdout or "").splitlines():
+        line = line.strip()
+        if not line:
+          continue
+        try:
+          name, conn_type, state = line.rsplit(":", 2)
+        except ValueError:
+          continue
+
+        if conn_type.strip() != "gsm" or state.strip() != "activated":
+          continue
+
+        profile_name = name.strip()
+        if not profile_name:
+          continue
+
+        subprocess.run(["nmcli", "connection", "down", profile_name], capture_output=True, text=True, timeout=10, check=False)
+        subprocess.run(["nmcli", "connection", "up", profile_name], capture_output=True, text=True, timeout=20, check=False)
+  except Exception as error:
+    warnings.append(f"Failed to cycle active GSM connection: {error}")
+
+  return {"profiles": updated_profiles, "warnings": warnings}
+
 def _format_longitudinal_personality(value):
   mapping = {
     "0": "Aggressive",
@@ -2718,9 +2798,22 @@ def setup(app):
       else:
         params.put(key, str_val)
 
+      gsm_metered_apply_result = None
+      if key == "GsmMetered":
+        metered_enabled = str_val.strip() in ("1", "true", "True")
+        gsm_metered_apply_result = _apply_cellular_metered_setting(metered_enabled)
+
       update_frogpilot_toggles()
 
-      return jsonify({"message": f"Parameter '{key}' updated successfully."}), 200
+      response = {"message": f"Parameter '{key}' updated successfully."}
+      if gsm_metered_apply_result is not None:
+        response["updated"] = {"GsmMetered": str_val.strip() in ("1", "true", "True")}
+        response["networkProfilesUpdated"] = gsm_metered_apply_result.get("profiles", [])
+        warnings = gsm_metered_apply_result.get("warnings", [])
+        if warnings:
+          response["warning"] = " ".join(warnings)
+
+      return jsonify(response), 200
 
     return params.get(request.args.get("key")) or "", 200
 
