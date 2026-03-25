@@ -1,7 +1,8 @@
 import pyray as rl
 from openpilot.selfdrive.ui.ui_state import UIStatus, UIState
 
-CEM_OVERRIDE_STATUSES = {1, 2}
+CEM_DISABLED_OVERRIDE_STATUSES = {1}
+CEM_MANUAL_OVERRIDE_STATUSES = {1, 2}
 CEM_ACTIVE_STATUSES = {3, 4, 5, 6, 7, 8}
 
 DISENGAGED_COLOR = rl.Color(18, 40, 57, 255)
@@ -20,7 +21,8 @@ def get_border_color(state: UIState):
     return TRAFFIC_COLOR
   if state.always_on_lateral_active:
     return AOL_COLOR
-  if state.conditional_status in CEM_OVERRIDE_STATUSES:
+  # Match Qt behavior: only USER_DISABLED (1) gets the CEM override color.
+  if state.conditional_status in CEM_DISABLED_OVERRIDE_STATUSES:
     return CEM_OVERRIDE_COLOR
   if state.sm["selfdriveState"].experimentalMode:
     return EXPERIMENTAL_COLOR
@@ -41,7 +43,7 @@ def get_experimental_mode_banner_text(state: UIState):
   # With CEM enabled, only surface banner text for explicit manual override states.
   # Automatic CEM transitions should only be reflected by path/border coloring.
   if conditional_enabled:
-    if state.conditional_status in CEM_OVERRIDE_STATUSES:
+    if state.conditional_status in CEM_MANUAL_OVERRIDE_STATUSES:
       return "OVERRIDDEN"
     return None
 
