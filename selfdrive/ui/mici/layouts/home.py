@@ -9,6 +9,7 @@ from openpilot.system.ui.lib.application import gui_app, FontWeight, DEFAULT_TEX
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.text import wrap_text
 from openpilot.system.version import training_version, RELEASE_BRANCHES
+from openpilot.system.hardware import PC
 
 HEAD_BUTTON_FONT_SIZE = 40
 HOME_PADDING = 8
@@ -36,7 +37,9 @@ class DeviceStatus(Widget):
     self._do_welcome()
 
   def _do_welcome(self):
-    ui_state.params.put("CompletedTrainingVersion", training_version)
+    # Keep onboarding bypass for desktop UI runs only.
+    if PC:
+      ui_state.params.put("CompletedTrainingVersion", training_version)
 
   def refresh(self):
     self._update_state()
