@@ -274,11 +274,11 @@ class LongitudinalPlanner:
                          stop_distance=getattr(frogpilot_toggles, "stop_distance", 6.0))
     self.mpc.set_accel_limits(accel_clip[0], accel_clip[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
-    try:
-      tracking_lead = bool(sm['frogpilotPlan'].trackingLead)
-    except AttributeError:
-      # Backward-compatible fallback for stale schema instances.
-      tracking_lead = sm['frogpilotPlan'].desiredFollowDistance > 0
+    # Keep StarPilot behavior as the primary gate: desired follow distance implies
+    # lead tracking in ACC mode. trackingLead is treated as an additive hint.
+    tracking_lead = sm['frogpilotPlan'].desiredFollowDistance > 0
+    if hasattr(sm['frogpilotPlan'], 'trackingLead'):
+      tracking_lead = tracking_lead or bool(sm['frogpilotPlan'].trackingLead)
     self.mpc.update(sm['radarState'], v_cruise, x, v, a, j,
                     sm['frogpilotPlan'].dangerFactor, sm['frogpilotPlan'].tFollow,
                     personality=sm['selfdriveState'].personality, tracking_lead=tracking_lead)

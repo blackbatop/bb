@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import time
 import numpy as np
+from types import SimpleNamespace
 
 from cereal import log
 import cereal.messaging as messaging
+from opendbc.car.interfaces import ACCEL_MAX, ACCEL_MIN
 from openpilot.common.realtime import Ratekeeper, DT_MDL
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
 from openpilot.selfdrive.modeld.constants import ModelConstants
@@ -52,6 +54,13 @@ class Plant:
     from opendbc.car.honda.interface import CarInterface
 
     self.planner = LongitudinalPlanner(CarInterface.get_non_essential_params(CAR.HONDA_CIVIC), init_v=self.speed)
+    self.frogpilot_toggles = SimpleNamespace(
+      taco_tune=False,
+      model_version=None,
+      stop_distance=6.0,
+      longitudinalActuatorDelay=0.2,
+      vEgoStopping=0.5,
+    )
 
   @property
   def current_time(self):
@@ -127,14 +136,31 @@ class Plant:
     car_control.carControl.orientationNED = [0., float(pitch), 0.]
 
     # ******** get controlsState messages for plotting ***
+    frogpilot_plan = SimpleNamespace(
+      vCruise=float(v_cruise),
+      minAcceleration=float(ACCEL_MIN),
+      maxAcceleration=float(ACCEL_MAX),
+      cscControllingSpeed=False,
+      disableThrottle=False,
+      accelerationJerk=5.0,
+      dangerJerk=5.0,
+      speedJerk=5.0,
+      trackingLead=bool(status),
+      desiredFollowDistance=float(d_rel),
+      dangerFactor=1.0,
+      tFollow=1.45,
+      forcingStopLength=2,
+    )
+
     sm = {'radarState': radar.radarState,
           'carState': car_state.carState,
           'carControl': car_control.carControl,
           'controlsState': control.controlsState,
           'selfdriveState': ss.selfdriveState,
           'liveParameters': lp.liveParameters,
-          'modelV2': model.modelV2}
-    self.planner.update(sm)
+          'modelV2': model.modelV2,
+          'frogpilotPlan': frogpilot_plan}
+    self.planner.update(sm, self.frogpilot_toggles)
     self.acceleration = self.planner.output_a_target
     self.speed = self.speed + self.acceleration * self.ts
     self.should_stop = self.planner.output_should_stop
