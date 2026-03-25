@@ -2951,7 +2951,8 @@ def setup(app):
     try:
       from openpilot.frogpilot.assets.model_manager import ModelManager
 
-      manager = ModelManager(params, params_memory)
+      # ModelManager expects raw Params semantics (encoding-less get -> str, not legacy bytes).
+      manager = ModelManager(_params_raw, _params_memory_raw)
       manager.update_models(False)
     except Exception as exception:
       return jsonify({"error": f"Failed to refresh model manifest: {exception}"}), 500
