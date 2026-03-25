@@ -392,5 +392,32 @@ class TestGmCcLongitudinalSafety(TestGmCameraSafety):
         self.assertEqual(enabled, self._tx(self._button_msg(btn)))
 
 
+class TestGmCcLongitudinalPandaSchedSafety(TestGmCcLongitudinalSafety):
+  def setUp(self):
+    self.packer = CANPackerPanda("gm_global_a_powertrain_generated")
+    self.packer_chassis = CANPackerPanda("gm_global_a_chassis")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(
+      CarParams.SafetyModel.gm,
+      GMSafetyFlags.HW_CAM |
+      GMSafetyFlags.FLAG_GM_NO_ACC |
+      GMSafetyFlags.FLAG_GM_CC_LONG |
+      GMSafetyFlags.FLAG_GM_PEDAL_LONG |
+      GMSafetyFlags.FLAG_GM_GAS_INTERCEPTOR |
+      GMSafetyFlags.FLAG_GM_PANDA_3D1_SCHED |
+      GMSafetyFlags.FLAG_GM_PANDA_PADDLE_SCHED,
+    )
+    self.safety.init_tests()
+
+  def test_3d1_feed_frame_blocked(self):
+    self.assertFalse(self._tx(self._pcm_status_msg(True)))
+    self.assertFalse(self._tx(self._pcm_status_msg(False)))
+
+  def test_paddle_feed_frames_blocked(self):
+    self.safety.set_controls_allowed(True)
+    self.assertFalse(self._tx(common.make_msg(0, 0xBD, 7)))
+    self.assertFalse(self._tx(common.make_msg(0, 0x1F5, 8)))
+
+
 if __name__ == "__main__":
   unittest.main()

@@ -138,11 +138,6 @@ static bool gm_periodic_scheduler_ready(const GmPeriodicSpoofState *state, uint3
   return state->phase_locked && !stock_stale && !feed_stale;
 }
 
-static bool gm_3d1_scheduler_ready(uint32_t now_us) {
-  bool stock_stale = (gm_3d1_last_stock_us == 0U) || (safety_get_ts_elapsed(now_us, gm_3d1_last_stock_us) > 300000U);
-  return gm_3d1_phase_locked && !stock_stale;
-}
-
 static void gm_try_send_periodic_spoof(uint32_t now_us, uint32_t addr, uint8_t dlc, GmPeriodicSpoofState *state, uint32_t period_us) {
   if (!(gm_panda_paddle_sched && state->spoof_valid && (state->next_tx_us != 0U))) {
     return;
@@ -439,8 +434,9 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
         if (gm_3d1_next_tx_us == 0U) {
           gm_3d1_next_tx_us = now_us + GM_3D1_TX_OFFSET_US;
         }
-        bool scheduler_ready = gm_3d1_scheduler_ready(now_us);
-        tx = !scheduler_ready;
+        // In scheduler mode, OP feed frames are timing/data inputs only.
+        // Actual 0x3D1 transmission is panda-internal.
+        tx = false;
       }
     }
   }
@@ -471,10 +467,9 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
           gm_bd_state.next_tx_us = now_us + GM_PADDLE_TX_OFFSET_US;
         }
       }
-      bool scheduler_ready = gm_periodic_scheduler_ready(&gm_bd_state, now_us, GM_PADDLE_STALE_US, GM_PADDLE_FEED_STALE_US);
-      if (scheduler_ready) {
-        tx = false;
-      }
+      // In scheduler mode, OP feed frames are timing/data inputs only.
+      // Actual 0xBD transmission is panda-internal.
+      tx = false;
     }
   }
 
@@ -496,10 +491,9 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
           gm_prndl2_state.next_tx_us = now_us + GM_PADDLE_TX_OFFSET_US;
         }
       }
-      bool scheduler_ready = gm_periodic_scheduler_ready(&gm_prndl2_state, now_us, GM_PADDLE_STALE_US, GM_PADDLE_FEED_STALE_US);
-      if (scheduler_ready) {
-        tx = false;
-      }
+      // In scheduler mode, OP feed frames are timing/data inputs only.
+      // Actual 0x1F5 transmission is panda-internal.
+      tx = false;
     }
   }
 
