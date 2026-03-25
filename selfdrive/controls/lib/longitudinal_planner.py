@@ -112,7 +112,6 @@ class LongitudinalPlanner:
     self.a_desired = init_a
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
     self.v_model_error = 0.0
-    self.prev_accel_clip = [ACCEL_MIN, ACCEL_MAX]
     self.output_a_target = 0.0
     self.output_should_stop = False
 
@@ -357,9 +356,7 @@ class LongitudinalPlanner:
     dec_mpc_mode = self.get_mpc_mode()
     if not self.mlsim:
       self.mpc.mode = dec_mpc_mode
-    tracking_lead = sm['frogpilotPlan'].desiredFollowDistance > 0
-    if hasattr(sm['frogpilotPlan'], 'trackingLead'):
-      tracking_lead = tracking_lead or bool(sm['frogpilotPlan'].trackingLead)
+    tracking_lead = bool(sm['frogpilotPlan'].trackingLead)
     self.mpc.update(sm['radarState'], v_cruise, x, v, a, j,
                     sm['frogpilotPlan'].dangerFactor, sm['frogpilotPlan'].tFollow,
                     personality=sm['selfdriveState'].personality, tracking_lead=tracking_lead)
@@ -417,10 +414,7 @@ class LongitudinalPlanner:
       output_a_target = min(output_a_target_mpc, output_a_target_e2e)
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
 
-    for idx in range(2):
-      accel_limits_turns[idx] = np.clip(accel_limits_turns[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
-    self.output_a_target = np.clip(output_a_target, accel_limits_turns[0], accel_limits_turns[1])
-    self.prev_accel_clip = accel_limits_turns
+    self.output_a_target = float(output_a_target)
 
   def publish(self, sm, pm):
     plan_send = messaging.new_message('longitudinalPlan')
