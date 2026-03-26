@@ -16,8 +16,6 @@ from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N
 from openpilot.selfdrive.car.cruise import V_CRUISE_UNSET
 from openpilot.common.swaglog import cloudlog
 
-from openpilot.frogpilot.common.frogpilot_variables import MINIMUM_LATERAL_ACCELERATION
-
 LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MIN = -1.0
 A_CRUISE_MAX_BP = [0.0, 5., 10., 15., 20., 25., 40.]
@@ -51,11 +49,7 @@ def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   # The lookup table for turns should also be updated if we do this
   a_total_max = np.interp(v_ego, _A_TOTAL_MAX_BP, _A_TOTAL_MAX_V)
   a_y = v_ego ** 2 * angle_steers * CV.DEG_TO_RAD / (CP.steerRatio * CP.wheelbase)
-
-  if abs(a_y) > MINIMUM_LATERAL_ACCELERATION:
-    a_x_allowed = math.sqrt(max(a_total_max ** 2 - a_y ** 2, 0.))
-  else:
-    a_x_allowed = a_target[1]
+  a_x_allowed = math.sqrt(max(a_total_max ** 2 - a_y ** 2, 0.))
 
   return [a_target[0], min(a_target[1], a_x_allowed)]
 
@@ -146,8 +140,11 @@ class LongitudinalPlanner:
 
   @staticmethod
   def get_model_speed_error(model_msg, v_ego):
-    if len(model_msg.temporalPose.trans):
-      return float(np.clip(model_msg.temporalPose.trans[0] - v_ego, -5.0, 5.0))
+    try:
+      if len(model_msg.temporalPose.trans):
+        return float(np.clip(model_msg.temporalPose.trans[0] - v_ego, -5.0, 5.0))
+    except AttributeError:
+      pass
     if len(model_msg.velocity.x) == ModelConstants.IDX_N:
       return float(np.clip(model_msg.velocity.x[0] - v_ego, -5.0, 5.0))
     return 0.0

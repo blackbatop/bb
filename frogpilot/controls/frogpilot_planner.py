@@ -60,33 +60,31 @@ class FrogPilotPlanner:
   def update(self, now, time_validated, sm, frogpilot_toggles):
     self.lead_one = sm["radarState"].leadOne
 
-    long_control_active = sm["carControl"].longActive
     controls_enabled = sm["selfdriveState"].enabled
-    planner_active = controls_enabled or long_control_active
 
-    v_cruise_kph = sm["carState"].vCruise
+    v_cruise_kph = min(sm["carState"].vCruise, V_CRUISE_MAX)
     if 0 < v_cruise_kph < V_CRUISE_UNSET and frogpilot_toggles.set_speed_offset > 0:
       v_cruise_kph += frogpilot_toggles.set_speed_offset
-    v_cruise = min(v_cruise_kph, V_CRUISE_MAX) * CV.KPH_TO_MS
+    v_cruise = v_cruise_kph * CV.KPH_TO_MS
     v_ego = max(sm["carState"].vEgo, 0)
 
-    if planner_active:
+    if controls_enabled:
       self.frogpilot_acceleration.update(v_ego, sm, frogpilot_toggles)
     else:
       self.frogpilot_acceleration.max_accel = 0
       self.frogpilot_acceleration.min_accel = 0
 
-    if planner_active and frogpilot_toggles.conditional_experimental_mode:
+    if controls_enabled and frogpilot_toggles.conditional_experimental_mode:
       self.frogpilot_cem.update(v_ego, sm, frogpilot_toggles)
     else:
-      self.frogpilot_cem.experimental_mode = False
+      self.frogpilot_cem.curve_detected = False
       self.frogpilot_cem.stop_sign_and_light(v_ego, sm, PLANNER_TIME - 2)
 
     self.driving_in_curve = abs(self.lateral_acceleration) >= MINIMUM_LATERAL_ACCELERATION
 
-    self.frogpilot_events.update(planner_active, v_cruise, sm, frogpilot_toggles)
+    self.frogpilot_events.update(controls_enabled, v_cruise, sm, frogpilot_toggles)
 
-    self.frogpilot_following.update(planner_active, v_ego, sm, frogpilot_toggles)
+    self.frogpilot_following.update(controls_enabled, v_ego, sm, frogpilot_toggles)
 
     gps_location = sm[self.gps_location_service]
     self.gps_position = {
@@ -97,7 +95,8 @@ class FrogPilotPlanner:
     self.gps_valid = self.gps_position["latitude"] != 0 or self.gps_position["longitude"] != 0
     self.params_memory.put("LastGPSPosition", json.dumps(self.gps_position))
 
-    if v_ego >= frogpilot_toggles.minimum_lane_change_speed:
+    check_lane_width = frogpilot_toggles.adjacent_paths or frogpilot_toggles.adjacent_path_metrics or frogpilot_toggles.blind_spot_path or frogpilot_toggles.lane_detection
+    if check_lane_width and v_ego >= frogpilot_toggles.minimum_lane_change_speed:
       self.lane_width_left = calculate_lane_width(sm["modelV2"].laneLines[0], sm["modelV2"].laneLines[1], sm["modelV2"].roadEdges[0])
       self.lane_width_right = calculate_lane_width(sm["modelV2"].laneLines[3], sm["modelV2"].laneLines[2], sm["modelV2"].roadEdges[1])
     else:
@@ -123,7 +122,7 @@ class FrogPilotPlanner:
     if not sm["carState"].standstill:
       self.tracking_lead = self.update_lead_status(frogpilot_toggles.stop_distance)
 
-    self.v_cruise = self.frogpilot_vcruise.update(planner_active, now, time_validated, v_cruise, v_ego, sm, frogpilot_toggles)
+    self.v_cruise = self.frogpilot_vcruise.update(controls_enabled, now, time_validated, v_cruise, v_ego, sm, frogpilot_toggles)
 
     if self.gps_valid and time_validated and frogpilot_toggles.weather_presets:
       self.frogpilot_weather.update_weather(now, frogpilot_toggles)
