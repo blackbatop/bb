@@ -1,9 +1,85 @@
 from __future__ import annotations
+from pathlib import Path
+import re
+
+from openpilot.system.hardware import HARDWARE
+from openpilot.system.hardware.hw import Paths
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
+
+if HARDWARE.get_device_type() == "pc":
+  THEME_SAVE_PATH = Path(Paths.comma_home()) / "frogpilot" / "data" / "themes"
+else:
+  THEME_SAVE_PATH = Path("/data/themes")
+
+HOLIDAY_THEME_NAMES = {
+  "new_years": "New Year's",
+  "valentines_day": "Valentine's Day",
+  "st_patricks_day": "St. Patrick's Day",
+  "world_frog_day": "World Frog Day",
+  "april_fools": "April Fools",
+  "easter_week": "Easter",
+  "may_the_fourth": "May the Fourth",
+  "cinco_de_mayo": "Cinco de Mayo",
+  "stitch_day": "Stitch Day",
+  "fourth_of_july": "Fourth of July",
+  "halloween_week": "Halloween",
+  "thanksgiving_week": "Thanksgiving",
+  "christmas_week": "Christmas",
+}
+
+THEME_KEY_CONFIG = {
+  "BootLogo": {
+    "default": "starpilot",
+    "kind": "files",
+    "path": THEME_SAVE_PATH / "bootlogos",
+    "extra": [],
+  },
+  "ColorScheme": {
+    "default": "stock",
+    "kind": "themes",
+    "path": THEME_SAVE_PATH / "theme_packs",
+    "subfolder": "colors",
+    "extra": [("stock", "Stock"), *HOLIDAY_THEME_NAMES.items()],
+  },
+  "DistanceIconPack": {
+    "default": "stock",
+    "kind": "themes",
+    "path": THEME_SAVE_PATH / "theme_packs",
+    "subfolder": "distance_icons",
+    "extra": [("stock", "Stock"), *HOLIDAY_THEME_NAMES.items()],
+  },
+  "IconPack": {
+    "default": "stock",
+    "kind": "themes",
+    "path": THEME_SAVE_PATH / "theme_packs",
+    "subfolder": "icons",
+    "extra": [("stock", "Stock"), *HOLIDAY_THEME_NAMES.items()],
+  },
+  "SignalAnimation": {
+    "default": "stock",
+    "kind": "themes",
+    "path": THEME_SAVE_PATH / "theme_packs",
+    "subfolder": "signals",
+    "extra": [("none", "None"), *HOLIDAY_THEME_NAMES.items()],
+  },
+  "SoundPack": {
+    "default": "stock",
+    "kind": "themes",
+    "path": THEME_SAVE_PATH / "theme_packs",
+    "subfolder": "sounds",
+    "extra": [("stock", "Stock"), *HOLIDAY_THEME_NAMES.items()],
+  },
+  "WheelIcon": {
+    "default": "stock",
+    "kind": "files",
+    "path": THEME_SAVE_PATH / "steering_wheels",
+    "extra": [("none", "None"), ("stock", "Stock"), *HOLIDAY_THEME_NAMES.items()],
+  },
+}
 
 
 class StarPilotThemesLayout(StarPilotPanel):
@@ -97,64 +173,139 @@ class StarPilotPersonalizeLayout(StarPilotPanel):
       {
         "title": tr_noop("Boot Logo"),
         "type": "value",
-        "get_value": lambda: self._params.get("BootLogo", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("BootLogo"),
         "on_click": lambda: self._show_theme_selector("BootLogo"),
         "color": "#A200FF",
       },
       {
         "title": tr_noop("Color Scheme"),
         "type": "value",
-        "get_value": lambda: self._params.get("ColorScheme", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("ColorScheme"),
         "on_click": lambda: self._show_theme_selector("ColorScheme"),
         "color": "#A200FF",
       },
       {
         "title": tr_noop("Distance Icons"),
         "type": "value",
-        "get_value": lambda: self._params.get("DistanceIconPack", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("DistanceIconPack"),
         "on_click": lambda: self._show_theme_selector("DistanceIconPack"),
         "color": "#A200FF",
       },
       {
         "title": tr_noop("Icon Pack"),
         "type": "value",
-        "get_value": lambda: self._params.get("IconPack", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("IconPack"),
         "on_click": lambda: self._show_theme_selector("IconPack"),
         "color": "#A200FF",
       },
       {
         "title": tr_noop("Turn Signals"),
         "type": "value",
-        "get_value": lambda: self._params.get("SignalAnimation", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("SignalAnimation"),
         "on_click": lambda: self._show_theme_selector("SignalAnimation"),
         "color": "#A200FF",
       },
       {
         "title": tr_noop("Sound Pack"),
         "type": "value",
-        "get_value": lambda: self._params.get("SoundPack", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("SoundPack"),
         "on_click": lambda: self._show_theme_selector("SoundPack"),
         "color": "#A200FF",
       },
       {
         "title": tr_noop("Steering Wheel"),
         "type": "value",
-        "get_value": lambda: self._params.get("WheelIcon", encoding='utf-8') or "Stock",
+        "get_value": lambda: self._get_theme_value("WheelIcon"),
         "on_click": lambda: self._show_theme_selector("WheelIcon"),
         "color": "#A200FF",
       },
     ]
     self._rebuild_grid()
 
+  @staticmethod
+  def _display_name(value: str) -> str:
+    if not value:
+      return "Stock"
+
+    lowered = value.lower()
+    if lowered in HOLIDAY_THEME_NAMES:
+      return HOLIDAY_THEME_NAMES[lowered]
+    if lowered == "stock":
+      return "Stock"
+    if lowered == "none":
+      return "None"
+
+    base, creator = (value.split("~", 1) + [""])[:2] if "~" in value else (value, "")
+    user_created_suffixes = ("-user_created", "_user_created", "-user-created", "_user-created")
+    user_created = False
+    for suffix in user_created_suffixes:
+      if base.endswith(suffix):
+        base = base[:-len(suffix)]
+        user_created = True
+        break
+
+    parts = [part for part in re.split(r"[-_]+", base) if part]
+    display = " ".join(part[:1].upper() + part[1:] for part in parts) if parts else value
+    if user_created:
+      display += " (User Created)"
+    if creator:
+      display += f" - by: {creator}"
+    return display
+
+  def _get_downloaded_slugs(self, key: str) -> list[str]:
+    config = THEME_KEY_CONFIG[key]
+    path = config["path"]
+    if not path.exists():
+      return []
+
+    slugs = set()
+    if config["kind"] == "files":
+      for entry in path.iterdir():
+        if entry.is_file():
+          slugs.add(entry.stem)
+    else:
+      subfolder = config["subfolder"]
+      for entry in path.iterdir():
+        if entry.is_dir() and (entry / subfolder).exists():
+          slugs.add(entry.name)
+
+    return sorted(slugs, key=str.casefold)
+
+  def _build_theme_options(self, key: str) -> tuple[list[str], dict[str, str], str]:
+    config = THEME_KEY_CONFIG[key]
+    current_slug = self._params.get(key, encoding='utf-8') or config["default"]
+
+    options_map = {}
+    for slug in self._get_downloaded_slugs(key):
+      display = self._display_name(slug)
+      if display not in options_map:
+        options_map[display] = slug
+
+    for slug, display in config["extra"]:
+      options_map[display] = slug
+
+    current_display = self._display_name(current_slug)
+    if current_display not in options_map:
+      options_map[current_display] = current_slug
+
+    options = sorted(options_map.keys(), key=str.casefold)
+    return options, options_map, current_display
+
+  def _get_theme_value(self, key: str) -> str:
+    default = THEME_KEY_CONFIG[key]["default"]
+    return self._display_name(self._params.get(key, encoding='utf-8') or default)
+
   def _show_theme_selector(self, key):
-    # Ported logic for theme selection. In a real environment we'd scan directories.
-    # For now, we'll provide a simplified selection based on current param.
-    themes = ["Stock", "Frog", "Cyberpunk", "Minimal"]
-    current = self._params.get(key, encoding='utf-8') or "Stock"
+    themes, option_map, current = self._build_theme_options(key)
+    if not themes:
+      return
 
     def on_select(res, val):
       if res == DialogResult.CONFIRM:
-        self._params.put(key, val)
+        selected_slug = option_map.get(val)
+        if selected_slug is None:
+          return
+        self._params.put(key, selected_slug)
         self._rebuild_grid()
 
     gui_app.set_modal_overlay(SelectionDialog(tr(key), themes, current, on_close=on_select))
