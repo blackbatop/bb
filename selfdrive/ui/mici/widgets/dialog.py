@@ -73,26 +73,45 @@ class BigDialog(BigDialogBase):
     if self._right_btn:
       max_width -= self._right_btn._rect.width
 
-    title_wrapped = '\n'.join(wrap_text(gui_app.font(FontWeight.BOLD), self._title, 50, int(max_width)))
-    title_size = measure_text_cached(gui_app.font(FontWeight.BOLD), title_wrapped, 50)
+    title_font_size = 50
+    desc_font_size = 30
+    title_lines = wrap_text(gui_app.font(FontWeight.BOLD), self._title, title_font_size, int(max_width))
+    if not title_lines:
+      title_lines = [""]
+    title_line_height = max(int(title_font_size * 1.2), int(measure_text_cached(gui_app.font(FontWeight.BOLD), "Ag", title_font_size).y))
     text_x_offset = 0
-    title_rect = rl.Rectangle(int(self._rect.x + text_x_offset + PADDING),
-                              int(self._rect.y + PADDING),
-                              int(max_width),
-                              int(title_size.y))
-    gui_label(title_rect, title_wrapped, 50, font_weight=FontWeight.BOLD,
-              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+    title_x = int(self._rect.x + text_x_offset + PADDING)
+    title_y = int(self._rect.y + PADDING)
+    for i, line in enumerate(title_lines):
+      line_rect = rl.Rectangle(
+        title_x,
+        title_y + i * title_line_height,
+        int(max_width),
+        int(title_line_height),
+      )
+      gui_label(line_rect, line, title_font_size, font_weight=FontWeight.BOLD,
+                alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
+                alignment_vertical=rl.GuiTextAlignmentVertical.TEXT_ALIGN_TOP)
 
     # draw description
-    desc_wrapped = '\n'.join(wrap_text(gui_app.font(FontWeight.MEDIUM), self._description, 30, int(max_width)))
-    desc_size = measure_text_cached(gui_app.font(FontWeight.MEDIUM), desc_wrapped, 30)
-    desc_rect = rl.Rectangle(int(self._rect.x + text_x_offset + PADDING),
-                             int(self._rect.y + self._rect.height / 3),
-                             int(max_width),
-                             int(desc_size.y))
-    # TODO: text align doesn't seem to work properly with newlines
-    gui_label(desc_rect, desc_wrapped, 30, font_weight=FontWeight.MEDIUM,
-              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+    desc_lines = wrap_text(gui_app.font(FontWeight.MEDIUM), self._description, desc_font_size, int(max_width))
+    if not desc_lines:
+      desc_lines = [""]
+    desc_line_height = max(int(desc_font_size * 1.25), int(measure_text_cached(gui_app.font(FontWeight.MEDIUM), "Ag", desc_font_size).y))
+    desc_y = max(
+      int(self._rect.y + self._rect.height / 3),
+      title_y + title_line_height * len(title_lines) + 22,
+    )
+    for i, line in enumerate(desc_lines):
+      line_rect = rl.Rectangle(
+        title_x,
+        desc_y + i * desc_line_height,
+        int(max_width),
+        int(desc_line_height),
+      )
+      gui_label(line_rect, line, desc_font_size, font_weight=FontWeight.MEDIUM,
+                alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
+                alignment_vertical=rl.GuiTextAlignmentVertical.TEXT_ALIGN_TOP)
 
     return self._ret
 

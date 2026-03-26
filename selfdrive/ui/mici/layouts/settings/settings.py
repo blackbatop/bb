@@ -9,6 +9,7 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigMultiToggle
 from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
 from openpilot.selfdrive.ui.mici.layouts.settings.network import NetworkLayoutMici
 from openpilot.selfdrive.ui.mici.layouts.settings.device import DeviceLayoutMici, PairBigButton, GalaxyBigButton
+from openpilot.selfdrive.ui.mici.layouts.settings.driving_model import DrivingModelBigButton
 from openpilot.selfdrive.ui.mici.layouts.settings.developer import DeveloperLayoutMici
 from openpilot.selfdrive.ui.mici.layouts.settings.firehose import FirehoseLayout
 from openpilot.system.ui.lib.application import gui_app, FontWeight
@@ -79,11 +80,13 @@ class SettingsLayout(NavWidget):
     firehose_btn.set_click_callback(lambda: self._set_current_panel(PanelType.FIREHOSE))
 
     self._force_drive_state_btn = ForceDriveStateBigButton()
+    self._driving_model_btn = DrivingModelBigButton()
 
     self._scroller = Scroller([
       toggles_btn,
       network_btn,
       self._force_drive_state_btn,
+      self._driving_model_btn,
       device_btn,
       PairBigButton(),
       GalaxyBigButton(),
@@ -112,6 +115,7 @@ class SettingsLayout(NavWidget):
   def show_event(self):
     super().show_event()
     self._force_drive_state_btn.refresh()
+    self._driving_model_btn.refresh()
     self._set_current_panel(None)
     self._scroller.show_event()
     if self._current_panel is not None:

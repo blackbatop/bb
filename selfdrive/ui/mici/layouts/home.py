@@ -1,4 +1,5 @@
 import time
+import re
 
 from cereal import log
 import pyray as rl
@@ -6,6 +7,7 @@ from collections.abc import Callable
 from openpilot.system.ui.widgets.label import gui_label, MiciLabel, UnifiedLabel
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.lib.application import gui_app, FontWeight, DEFAULT_TEXT_COLOR, MousePos
+from openpilot.frogpilot.common.frogpilot_variables import MODELS_PATH
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.text import wrap_text
 from openpilot.system.version import training_version, RELEASE_BRANCHES
@@ -92,6 +94,7 @@ class MiciHomeLayout(Widget):
 
     self._version_text = None
     self._experimental_mode = False
+    self._current_model_name = "default"
 
     self._settings_txt = gui_app.texture("icons_mici/settings.png", 48, 48)
     self._experimental_txt = gui_app.texture("icons_mici/experimental_mode.png", 48, 48)
@@ -126,6 +129,80 @@ class MiciHomeLayout(Widget):
 
   def _update_params(self):
     self._experimental_mode = ui_state.params.get_bool("ExperimentalMode")
+
+    def _clean_name(value: str) -> str:
+      return re.sub(r"[🗺️👀📡]", "", value).replace("(Default)", "").strip()
+
+    def _decode_default(value) -> str:
+      if isinstance(value, bytes):
+        return value.decode("utf-8", errors="ignore").strip()
+      return str(value or "").strip()
+
+    model_key = (ui_state.params.get("Model", encoding="utf-8") or
+                 ui_state.params.get("DrivingModel", encoding="utf-8") or "").strip()
+    current_param_name = _clean_name(ui_state.params.get("DrivingModelName", encoding="utf-8") or "")
+
+    available_models = [entry.strip() for entry in (ui_state.params.get("AvailableModels", encoding="utf-8") or "").split(",")]
+    available_names = [entry.strip() for entry in (ui_state.params.get("AvailableModelNames", encoding="utf-8") or "").split(",")]
+    model_versions = [entry.strip() for entry in (ui_state.params.get("ModelVersions", encoding="utf-8") or "").split(",")]
+    model_name_map = {
+      key: _clean_name(name)
+      for key, name in zip(available_models, available_names)
+      if key and _clean_name(name)
+    }
+    model_version_map = {
+      key: version
+      for key, version in zip(available_models, model_versions)
+      if key and version
+    }
+
+    default_key = _decode_default(ui_state.params.get_default_value("DrivingModel") or
+                                  ui_state.params.get_default_value("Model")) or "sc"
+    default_name = _clean_name(_decode_default(ui_state.params.get_default_value("DrivingModelName"))) or "South Carolina"
+
+    def _is_model_installed(key: str) -> bool:
+      if not key:
+        return False
+
+      # Built-in default model is always available.
+      if key == default_key:
+        return True
+
+      if (MODELS_PATH / f"{key}.thneed").is_file():
+        return True
+
+      version = model_version_map.get(key, "")
+      required = [
+        f"{key}_driving_policy_tinygrad.pkl",
+        f"{key}_driving_vision_tinygrad.pkl",
+        f"{key}_driving_policy_metadata.pkl",
+        f"{key}_driving_vision_metadata.pkl",
+      ]
+      if version == "v12":
+        required.extend([
+          f"{key}_driving_off_policy_tinygrad.pkl",
+          f"{key}_driving_off_policy_metadata.pkl",
+        ])
+      return all((MODELS_PATH / filename).is_file() for filename in required)
+
+    # If a stale custom model is selected but not actually installed, show default.
+    if model_key and not _is_model_installed(model_key):
+      model_key = default_key
+
+    resolved_name = ""
+    if model_key in model_name_map:
+      resolved_name = model_name_map[model_key]
+    elif model_key.endswith("2") and model_key[:-1] in model_name_map:
+      resolved_name = model_name_map[model_key[:-1]]
+    elif model_key == default_key or (model_key.endswith("2") and model_key[:-1] == default_key):
+      resolved_name = default_name
+
+    if not resolved_name and current_param_name:
+      resolved_name = current_param_name
+    if not resolved_name:
+      resolved_name = default_name if (not model_key or model_key == default_key) else model_key
+
+    self._current_model_name = resolved_name
 
   def _update_state(self):
     if self.is_pressed and not self._is_pressed_prev:
@@ -187,8 +264,6 @@ class MiciHomeLayout(Widget):
     self._openpilot_label.render()
 
     if self._version_text is not None:
-      # release branch
-      release_branch = self._version_text[1] in RELEASE_BRANCHES
       version_pos = rl.Rectangle(text_pos.x, text_pos.y + self._openpilot_label.font_size + 16, 100, 44)
       self._version_label.set_text(self._version_text[0])
       self._version_label.set_position(version_pos.x, version_pos.y)
@@ -199,15 +274,20 @@ class MiciHomeLayout(Widget):
       self._date_label.render()
 
       self._branch_label.set_max_width(gui_app.width - self._version_label.rect.width - self._date_label.rect.width - 32)
-      self._branch_label.set_text(" " + ("release" if release_branch else self._version_text[1]))
+      self._branch_label.set_text(" " + self._current_model_name)
       self._branch_label.set_position(version_pos.x + self._version_label.rect.width + self._date_label.rect.width + 20, version_pos.y)
       self._branch_label.render()
 
-      if not release_branch:
+      if self._version_text[1] not in RELEASE_BRANCHES:
         # 2nd line
         self._version_commit_label.set_text(self._version_text[2])
         self._version_commit_label.set_position(version_pos.x, version_pos.y + self._date_label.font_size + 7)
         self._version_commit_label.render()
+    else:
+      self._branch_label.set_max_width(gui_app.width - 32)
+      self._branch_label.set_text(self._current_model_name)
+      self._branch_label.set_position(text_pos.x, text_pos.y + self._openpilot_label.font_size + 16)
+      self._branch_label.render()
 
     self._render_bottom_status_bar()
 

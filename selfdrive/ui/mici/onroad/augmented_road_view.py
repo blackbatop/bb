@@ -6,7 +6,7 @@ from msgq.visionipc import VisionStreamType
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.selfdrive.ui.mici.onroad import SIDE_PANEL_WIDTH
-from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer
+from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer, ALERT_COLORS, AlertStatus
 from openpilot.selfdrive.ui.mici.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.mici.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.mici.onroad.model_renderer import ModelRenderer
@@ -252,18 +252,25 @@ class MinSteerSpeedBanner(Widget):
     if not self._showing_interval:
       return
 
-    banner_width = min(rect.width - 120, 760)
-    banner_height = 72
-    banner_rect = rl.Rectangle(
-      rect.x + (rect.width - banner_width) / 2,
-      rect.y + 22,
-      banner_width,
-      banner_height,
+    color = ALERT_COLORS[AlertStatus.userPrompt]
+    color = rl.Color(color.r, color.g, color.b, int(255 * 0.9))
+    translucent = rl.Color(color.r, color.g, color.b, 0)
+    dropdown_height = min(170, int(rect.height * 0.7))
+    solid_height = max(26, int(dropdown_height * 0.2))
+
+    rl.draw_rectangle(int(rect.x), int(rect.y), int(rect.width), solid_height, color)
+    rl.draw_rectangle_gradient_v(
+      int(rect.x),
+      int(rect.y + solid_height),
+      int(rect.width),
+      int(dropdown_height - solid_height),
+      color,
+      translucent,
     )
 
-    rl.draw_rectangle_rounded(banner_rect, 0.3, 12, rl.Color(0, 0, 0, 185))
-    rl.draw_rectangle_rounded_lines_ex(banner_rect, 0.3, 12, 4, rl.Color(218, 111, 37, 255))
-    self._label.render(banner_rect)
+    text_rect = rl.Rectangle(rect.x + 26, rect.y - 2, rect.width - 52, dropdown_height)
+    self._label.set_text_color(rl.Color(255, 255, 255, 242))
+    self._label.render(text_rect)
 
 
 class AugmentedRoadView(CameraView):

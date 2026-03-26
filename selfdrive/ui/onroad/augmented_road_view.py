@@ -6,12 +6,12 @@ from msgq.visionipc import VisionStreamType
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
-from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer
+from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer, ALERT_COLORS, AlertStatus
 from openpilot.selfdrive.ui.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer
 from openpilot.selfdrive.ui.onroad.cameraview import CameraView
-from openpilot.system.ui.lib.application import gui_app
+from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.common.transformations.camera import DEVICE_CAMERAS, DeviceCameraConfig, view_frame_from_device_frame
 from openpilot.common.transformations.orientation import rot_from_euler
 
@@ -41,6 +41,7 @@ class MinSteerSpeedBanner:
     self._has_been_above_min = False
     self._was_under_min = False
     self._last_started_frame = -1
+    self._font = gui_app.font(FontWeight.BOLD)
 
   def _reset(self):
     self._shown_this_drive = False
@@ -98,27 +99,35 @@ class MinSteerSpeedBanner:
     if min_steer_speed <= 0:
       return
 
-    banner_width = min(rect.width - 120, 760)
-    banner_height = 84
-    banner_rect = rl.Rectangle(
-      rect.x + (rect.width - banner_width) / 2,
-      rect.y + 24,
-      banner_width,
-      banner_height,
-    )
+    color = ALERT_COLORS[AlertStatus.userPrompt]
+    color = rl.Color(color.r, color.g, color.b, int(255 * 0.93))
+    translucent = rl.Color(color.r, color.g, color.b, 0)
+    dropdown_height = min(200, int(rect.height * 0.38))
+    solid_height = max(34, int(dropdown_height * 0.22))
 
-    rl.draw_rectangle_rounded(banner_rect, 0.3, 12, rl.Color(0, 0, 0, 185))
-    rl.draw_rectangle_rounded_lines_ex(banner_rect, 0.3, 12, 4, rl.Color(218, 111, 37, 255))
+    rl.draw_rectangle(int(rect.x), int(rect.y), int(rect.width), solid_height, color)
+    rl.draw_rectangle_gradient_v(
+      int(rect.x),
+      int(rect.y + solid_height),
+      int(rect.width),
+      int(dropdown_height - solid_height),
+      color,
+      translucent,
+    )
 
     text = self._get_message(min_steer_speed)
-    font = gui_app.font()
-    font_size = 44
-    text_size = rl.measure_text_ex(font, text, font_size, 0)
+    font_size = 52
+    max_text_width = rect.width - 100
+    text_size = rl.measure_text_ex(self._font, text, font_size, 0)
+    while font_size > 36 and text_size.x > max_text_width:
+      font_size -= 2
+      text_size = rl.measure_text_ex(self._font, text, font_size, 0)
+
     text_pos = rl.Vector2(
-      banner_rect.x + (banner_rect.width - text_size.x) / 2,
-      banner_rect.y + (banner_rect.height - text_size.y) / 2,
+      rect.x + (rect.width - text_size.x) / 2,
+      rect.y + max(12, (dropdown_height * 0.34) - (text_size.y / 2)),
     )
-    rl.draw_text_ex(font, text, text_pos, font_size, 0, rl.WHITE)
+    rl.draw_text_ex(self._font, text, text_pos, font_size, 0, rl.Color(255, 255, 255, 242))
 
 
 class AugmentedRoadView(CameraView):

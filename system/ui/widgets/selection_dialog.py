@@ -129,16 +129,6 @@ class SelectionItem(Widget):
     self._pressed = False
     self._fav_pressed = False
 
-  def _handle_mouse_press(self, mouse_pos):
-    if rl.check_collision_point_rec(mouse_pos, self._hit_rect):
-      self._pressed = True
-
-  def _handle_mouse_release(self, mouse_pos):
-    if self._pressed and rl.check_collision_point_rec(mouse_pos, self._hit_rect):
-      if self._callback:
-        self._callback(self._text)
-    self._pressed = False
-
 class SelectionDialog(Widget):
   def __init__(self, title: str, options, current_selection: str = "", 
                on_close: Callable[[DialogResult, str], None] | None = None,
@@ -146,7 +136,8 @@ class SelectionDialog(Widget):
                model_file_to_name: dict[str, str] | None = None,
                user_favorites: list[str] | None = None,
                community_favorites: list[str] | None = None,
-               on_favorite_toggled: Callable[[str], None] | None = None):
+               on_favorite_toggled: Callable[[str], None] | None = None,
+               favorites_editable: bool = True):
     super().__init__()
     self._title = title
     self._options_raw = options 
@@ -157,6 +148,7 @@ class SelectionDialog(Widget):
     self._user_favorites = user_favorites or []
     self._community_favorites = community_favorites or []
     self._on_favorite_toggled = on_favorite_toggled
+    self._favorites_editable = favorites_editable
     
     self._sort_mode = SortMode.ALPHABETICAL
     self._expanded_series = {s: True for s in (options.keys() if isinstance(options, dict) else [])}
@@ -228,7 +220,7 @@ class SelectionDialog(Widget):
               is_selected=is_selected,
               is_favorite=is_fav,
               callback=self._on_item_selected,
-              fav_callback=self._toggle_favorite
+              fav_callback=self._toggle_favorite if self._favorites_editable else None
             ))
     else:
       for option in self._options_raw:
@@ -243,6 +235,9 @@ class SelectionDialog(Widget):
     self._scroller.show_event()
 
   def _toggle_favorite(self, model_name: str):
+    if not self._favorites_editable:
+      return
+
     key = self._name_to_file.get(model_name, model_name)
     if self._on_favorite_toggled:
         self._on_favorite_toggled(key)
