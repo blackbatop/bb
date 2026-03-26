@@ -317,6 +317,7 @@ static void gm_rx_hook(const CANPacket_t *msg) {
         gm_update_periodic_phase(&gm_bd_state, now_us, GM_PADDLE_PERIOD_US, GM_PADDLE_LOCK_TOLERANCE_US);
         gm_bd_state.next_tx_us = now_us + GM_PADDLE_TX_OFFSET_US;
         gm_try_send_periodic_spoof(now_us, 0xBDU, 7U, &gm_bd_state, GM_PADDLE_PERIOD_US);
+        gm_try_send_periodic_spoof(now_us, 0x1F5U, 8U, &gm_prndl2_state, GM_PADDLE_PERIOD_US);
       }
     }
 
@@ -325,6 +326,7 @@ static void gm_rx_hook(const CANPacket_t *msg) {
       gm_update_periodic_phase(&gm_prndl2_state, now_us, GM_PADDLE_PERIOD_US, GM_PADDLE_LOCK_TOLERANCE_US);
       gm_prndl2_state.next_tx_us = now_us + GM_PADDLE_TX_OFFSET_US;
       gm_try_send_periodic_spoof(now_us, 0x1F5U, 8U, &gm_prndl2_state, GM_PADDLE_PERIOD_US);
+      gm_try_send_periodic_spoof(now_us, 0xBDU, 7U, &gm_bd_state, GM_PADDLE_PERIOD_US);
     }
 
     // Pedal Interceptor
