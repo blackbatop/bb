@@ -462,6 +462,8 @@ def main() -> None:
 
       # FrogPilot variables
       frogpilot_toggles = get_frogpilot_toggles()
+      automatic_updates_enabled = getattr(frogpilot_toggles, "automatic_updates", True)
+      user_requested_action = wait_helper.user_request != UserRequest.NONE
 
       manual_update_requested = params_memory.get_bool("ManualUpdateInitiated")
       params_memory.remove("ManualUpdateInitiated")
@@ -482,7 +484,7 @@ def main() -> None:
 
         update_failed_count += 1
 
-        if manual_update_requested or params.get_bool("IsOffroad"):
+        if manual_update_requested or user_requested_action or (params.get_bool("IsOffroad") and automatic_updates_enabled):
           # check for update
           params.put("UpdaterState", "checking...")
           updater.check_for_update()
@@ -499,7 +501,10 @@ def main() -> None:
             updater.fetch_update()
             write_time_to_param(params, "UpdaterLastFetchTime")
         else:
-          cloudlog.info("skipping fetch, vehicle is onroad")
+          if not params.get_bool("IsOffroad"):
+            cloudlog.info("skipping fetch, vehicle is onroad")
+          else:
+            cloudlog.info("skipping fetch, automatic updates disabled")
         update_failed_count = 0
       except subprocess.CalledProcessError as e:
         cloudlog.event(
