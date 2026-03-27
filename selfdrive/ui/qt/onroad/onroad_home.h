@@ -3,7 +3,7 @@
 #include "selfdrive/ui/qt/onroad/alerts.h"
 #include "selfdrive/ui/qt/onroad/annotated_camera.h"
 
-#include "frogpilot/ui/qt/onroad/frogpilot_onroad.h"
+#include "starpilot/ui/qt/onroad/starpilot_onroad.h"
 
 class OnroadWindow : public QWidget {
   Q_OBJECT
@@ -18,13 +18,13 @@ private:
   QColor bg = bg_colors[STATUS_DISENGAGED];
   QHBoxLayout* split;
 
-  // FrogPilot variables
+  // StarPilot variables
   void mousePressEvent(QMouseEvent* mouseEvent);
 
-  FrogPilotAnnotatedCameraWidget *frogpilot_nvg;
-  FrogPilotOnroadWindow *frogpilot_onroad;
+  StarPilotAnnotatedCameraWidget *starpilot_nvg;
+  StarPilotOnroadWindow *starpilot_onroad;
 
 private slots:
   void offroadTransition(bool offroad);
-  void updateState(const UIState &s, const FrogPilotUIState &fs);
+  void updateState(const UIState &s, const StarPilotUIState &fs);
 };

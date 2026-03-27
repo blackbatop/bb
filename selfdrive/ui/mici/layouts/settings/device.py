@@ -227,7 +227,7 @@ class GalaxyBigButton(BigButton):
 
   def __init__(self):
     super().__init__("galaxy", "", gui_app.starpilot_texture("../system/the_pond/assets/images/main_logo.png", 64, 64))
-    self._galaxy_dir = Path(Paths.comma_home()) / "frogpilot" / "data" / "galaxy" if PC else Path("/data/galaxy")
+    self._galaxy_dir = Path(Paths.comma_home()) / "starpilot" / "data" / "galaxy" if PC else Path("/data/galaxy")
     self._auth_path = self._galaxy_dir / "glxyauth"
     self._session_path = self._galaxy_dir / "glxysession"
     self._slug_path = self._galaxy_dir / "glxyslug"

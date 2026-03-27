@@ -6097,7 +6097,7 @@ static int __pyx_pf_6common_10params_pyx_6Params___cinit__(struct __pyx_obj_6com
  *   def __cinit__(self, d="", *, memory=False, return_defaults=False):
  *     cdef string path = <string>d.encode()             # <<<<<<<<<<<<<<
  * 
- *     # FrogPilot variables
+ *     # StarPilot variables
 */
   __pyx_t_2 = __pyx_v_d;
   __Pyx_INCREF(__pyx_t_2);
@@ -6115,7 +6115,7 @@ static int __pyx_pf_6common_10params_pyx_6Params___cinit__(struct __pyx_obj_6com
 
   /* "common/params_pyx.pyx":119
  * 
- *     # FrogPilot variables
+ *     # StarPilot variables
  *     cdef bool c_memory = memory             # <<<<<<<<<<<<<<
  * 
  *     with nogil:
@@ -6182,7 +6182,7 @@ static int __pyx_pf_6common_10params_pyx_6Params___cinit__(struct __pyx_obj_6com
  *       self.p = new c_Params(path, c_memory)
  *     self.d = d             # <<<<<<<<<<<<<<
  * 
- *     # FrogPilot variables
+ *     # StarPilot variables
 */
   __pyx_t_1 = __pyx_v_d;
   __Pyx_INCREF(__pyx_t_1);
@@ -6195,7 +6195,7 @@ static int __pyx_pf_6common_10params_pyx_6Params___cinit__(struct __pyx_obj_6com
 
   /* "common/params_pyx.pyx":126
  * 
- *     # FrogPilot variables
+ *     # StarPilot variables
  *     self.m = memory             # <<<<<<<<<<<<<<
  * 
  *     self.return_defaults = return_defaults or memory
@@ -10127,7 +10127,7 @@ static PyObject *__pyx_pf_6common_10params_pyx_6Params_38cpp2python(struct __pyx
  *     cdef ParamKeyType t = self.p.getKeyType(k)
  *     return self._cpp2python(t, value, None, key)             # <<<<<<<<<<<<<<
  * 
- *   # FrogPilot variables
+ *   # StarPilot variables
 */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_2 = ((PyObject *)__pyx_v_self);
@@ -10170,7 +10170,7 @@ static PyObject *__pyx_pf_6common_10params_pyx_6Params_38cpp2python(struct __pyx
 
 /* "common/params_pyx.pyx":245
  * 
- *   # FrogPilot variables
+ *   # StarPilot variables
  *   def get_key_flag(self, key):             # <<<<<<<<<<<<<<
  *     return self.p.getKeyFlag(self.check_key(key))
  * 
@@ -10274,7 +10274,7 @@ static PyObject *__pyx_pf_6common_10params_pyx_6Params_40get_key_flag(struct __p
   __Pyx_RefNannySetupContext("get_key_flag", 0);
 
   /* "common/params_pyx.pyx":246
- *   # FrogPilot variables
+ *   # StarPilot variables
  *   def get_key_flag(self, key):
  *     return self.p.getKeyFlag(self.check_key(key))             # <<<<<<<<<<<<<<
  * 
@@ -10301,7 +10301,7 @@ static PyObject *__pyx_pf_6common_10params_pyx_6Params_40get_key_flag(struct __p
 
   /* "common/params_pyx.pyx":245
  * 
- *   # FrogPilot variables
+ *   # StarPilot variables
  *   def get_key_flag(self, key):             # <<<<<<<<<<<<<<
  *     return self.p.getKeyFlag(self.check_key(key))
  * 
@@ -12347,7 +12347,7 @@ __Pyx_RefNannySetupContext("PyInit_params_pyx", 0);
 
   /* "common/params_pyx.pyx":245
  * 
- *   # FrogPilot variables
+ *   # StarPilot variables
  *   def get_key_flag(self, key):             # <<<<<<<<<<<<<<
  *     return self.p.getKeyFlag(self.check_key(key))
  * 

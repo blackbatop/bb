@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from collections.abc import Callable
 
 from openpilot.common.params import Params
-from openpilot.frogpilot.assets.model_manager import (
+from openpilot.starpilot.assets.model_manager import (
   CANCEL_DOWNLOAD_PARAM,
   DOWNLOAD_PROGRESS_PARAM,
   ModelManager,
   TINYGRAD_VERSIONS,
 )
-from openpilot.frogpilot.common.frogpilot_variables import MODELS_PATH
+from openpilot.starpilot.common.starpilot_variables import MODELS_PATH
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigDialog, BigDialogBase, BigMultiOptionDialog
 from openpilot.selfdrive.ui.ui_state import ui_state

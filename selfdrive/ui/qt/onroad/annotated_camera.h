@@ -8,24 +8,24 @@
 #include "selfdrive/ui/qt/onroad/model.h"
 #include "selfdrive/ui/qt/widgets/cameraview.h"
 
-#include "frogpilot/ui/qt/onroad/frogpilot_buttons.h"
-#include "frogpilot/ui/screenrecorder/screenrecorder.h"
+#include "starpilot/ui/qt/onroad/starpilot_buttons.h"
+#include "starpilot/ui/screenrecorder/screenrecorder.h"
 
 class AnnotatedCameraWidget : public CameraWidget {
   Q_OBJECT
 
 public:
   explicit AnnotatedCameraWidget(VisionStreamType type, QWidget* parent = 0);
-  void updateState(const UIState &s, const FrogPilotUIState &fs);
+  void updateState(const UIState &s, const StarPilotUIState &fs);
 
-  // FrogPilot variables
+  // StarPilot variables
   double fps;
 
-  FrogPilotAnnotatedCameraWidget *frogpilot_nvg;
+  StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
-  FrogPilotUIScene frogpilot_scene;
+  StarPilotUIScene starpilot_scene;
 
-  QJsonObject frogpilot_toggles;
+  QJsonObject starpilot_toggles;
 
 private:
   QVBoxLayout *main_layout;
@@ -38,7 +38,7 @@ private:
   int skip_frame_count = 0;
   bool wide_cam_requested = false;
 
-  // FrogPilot variables
+  // StarPilot variables
   void paintEvent(QPaintEvent *event) override;
 
   DrivingPersonalityButton *personality_btn;

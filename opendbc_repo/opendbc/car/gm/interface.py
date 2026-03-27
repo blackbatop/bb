@@ -627,7 +627,7 @@ class CarInterface(CarInterfaceBase):
     if remap_cancel_to_distance or malibu_cancel_passthrough:
       ret.alternativeExperience |= ALTERNATIVE_EXPERIENCE.GM_REMAP_CANCEL_TO_DISTANCE
 
-    # FrogPilot variables
+    # StarPilot variables
     if candidate == CAR.CHEVROLET_TRAX:
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 

@@ -4,7 +4,7 @@ Import('env', 'qt_env', 'arch', 'common', 'messaging', 'visionipc', 'transformat
 base_libs = [common, messaging, visionipc, transformations,
              'm', 'OpenCL', 'ssl', 'crypto', 'pthread'] + qt_env["LIBS"]
 
-# FrogPilot variables
+# StarPilot variables
 base_libs += ['avcodec', 'avformat', 'avutil', 'swresample', 'yuv', 'OmxCore']
 
 if arch == 'larch64':
@@ -26,9 +26,9 @@ widgets_src = ["qt/widgets/input.cc", "qt/widgets/wifi.cc", "qt/prime_state.cc",
                "qt/widgets/scrollview.cc", "qt/widgets/cameraview.cc", "#third_party/qrcode/QrCode.cc",
                "qt/request_repeater.cc", "qt/qt_window.cc", "qt/network/networking.cc", "qt/network/wifi_manager.cc"]
 
-# FrogPilot variables
-frogpilot_widgets_src = ["../../frogpilot/ui/qt/widgets/frogpilot_controls.cc"]
-widgets_src += frogpilot_widgets_src
+# StarPilot variables
+starpilot_widgets_src = ["../../starpilot/ui/qt/widgets/starpilot_controls.cc"]
+widgets_src += starpilot_widgets_src
 
 widgets = qt_env.Library("qt_widgets", widgets_src, LIBS=base_libs)
 Export('widgets')
@@ -41,24 +41,24 @@ qt_src = ["main.cc", "ui.cc", "qt/sidebar.cc", "qt/body.cc",
           "qt/onroad/onroad_home.cc", "qt/onroad/annotated_camera.cc", "qt/onroad/model.cc",
           "qt/onroad/buttons.cc", "qt/onroad/alerts.cc", "qt/onroad/driver_monitoring.cc", "qt/onroad/hud.cc"]
 
-# FrogPilot variables
-qt_env['CPPPATH'] += ["../../frogpilot/ui/screenrecorder/openmax/include/"]
+# StarPilot variables
+qt_env['CPPPATH'] += ["../../starpilot/ui/screenrecorder/openmax/include/"]
 
-frogpilot_src = ["../../frogpilot/ui/frogpilot_ui.cc", "../../frogpilot/ui/qt/offroad/data_settings.cc",
-                 "../../frogpilot/ui/qt/offroad/device_settings.cc", "../../frogpilot/ui/qt/offroad/frogpilot_settings.cc",
-                 "../../frogpilot/ui/qt/offroad/expandable_multi_option_dialog.cc",
-                 "../../frogpilot/ui/qt/offroad/lateral_settings.cc", "../../frogpilot/ui/qt/offroad/longitudinal_settings.cc",
-                 "../../frogpilot/ui/qt/offroad/maps_settings.cc", "../../frogpilot/ui/qt/offroad/model_settings.cc",
-                 "../../frogpilot/ui/qt/offroad/navigation_settings.cc", "../../frogpilot/ui/qt/offroad/sounds_settings.cc",
-                 "../../frogpilot/ui/qt/offroad/theme_settings.cc", "../../frogpilot/ui/qt/offroad/utilities.cc",
-                 "../../frogpilot/ui/qt/offroad/vehicle_settings.cc", "../../frogpilot/ui/qt/offroad/visual_settings.cc",
-                 "../../frogpilot/ui/qt/offroad/wheel_settings.cc", "../../frogpilot/ui/qt/onroad/frogpilot_annotated_camera.cc",
-                 "../../frogpilot/ui/qt/onroad/frogpilot_buttons.cc", "../../frogpilot/ui/qt/onroad/frogpilot_onroad.cc",
-                 "../../frogpilot/ui/qt/widgets/developer_sidebar.cc", "../../frogpilot/ui/qt/widgets/drive_stats.cc",
-                 "../../frogpilot/ui/qt/widgets/drive_summary.cc",
-                 "../../frogpilot/ui/qt/widgets/navigation_functions.cc",
-                 "../../frogpilot/ui/screenrecorder/omx_encoder.cc", "../../frogpilot/ui/screenrecorder/screenrecorder.cc"]
-qt_src += frogpilot_src
+starpilot_src = ["../../starpilot/ui/starpilot_ui.cc", "../../starpilot/ui/qt/offroad/data_settings.cc",
+                 "../../starpilot/ui/qt/offroad/device_settings.cc", "../../starpilot/ui/qt/offroad/starpilot_settings.cc",
+                 "../../starpilot/ui/qt/offroad/expandable_multi_option_dialog.cc",
+                 "../../starpilot/ui/qt/offroad/lateral_settings.cc", "../../starpilot/ui/qt/offroad/longitudinal_settings.cc",
+                 "../../starpilot/ui/qt/offroad/maps_settings.cc", "../../starpilot/ui/qt/offroad/model_settings.cc",
+                 "../../starpilot/ui/qt/offroad/navigation_settings.cc", "../../starpilot/ui/qt/offroad/sounds_settings.cc",
+                 "../../starpilot/ui/qt/offroad/theme_settings.cc", "../../starpilot/ui/qt/offroad/utilities.cc",
+                 "../../starpilot/ui/qt/offroad/vehicle_settings.cc", "../../starpilot/ui/qt/offroad/visual_settings.cc",
+                 "../../starpilot/ui/qt/offroad/wheel_settings.cc", "../../starpilot/ui/qt/onroad/starpilot_annotated_camera.cc",
+                 "../../starpilot/ui/qt/onroad/starpilot_buttons.cc", "../../starpilot/ui/qt/onroad/starpilot_onroad.cc",
+                 "../../starpilot/ui/qt/widgets/developer_sidebar.cc", "../../starpilot/ui/qt/widgets/drive_stats.cc",
+                 "../../starpilot/ui/qt/widgets/drive_summary.cc",
+                 "../../starpilot/ui/qt/widgets/navigation_functions.cc",
+                 "../../starpilot/ui/screenrecorder/omx_encoder.cc", "../../starpilot/ui/screenrecorder/screenrecorder.cc"]
+qt_src += starpilot_src
 
 # build translation files
 with open(File("translations/languages.json").abspath) as f:

@@ -56,7 +56,7 @@ class SettingsLayout(Widget):
     self._current_panel = PanelType.DEVICE
 
     # Panel depth tracking for hierarchical back navigation
-    # 0 = top level (settings main), 1+ = sub-panels (FrogPilot categories)
+    # 0 = top level (settings main), 1+ = sub-panels (StarPilot categories)
     self._panel_depth = 0
 
     # Panel configuration

@@ -31,9 +31,9 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   OS_EXT="macos"
 fi
 HOST_UI="${ROOT_DIR}/selfdrive/ui/ui.${OS_EXT}"
-PRE_TRACKED_DIRTY="$(mktemp /tmp/frogpilot_c3_pretracked.XXXXXX)"
-POST_TRACKED_DIRTY="$(mktemp /tmp/frogpilot_c3_posttracked.XXXXXX)"
-BACKUP_DIR="$(mktemp -d /tmp/frogpilot_c3_backup.XXXXXX)"
+PRE_TRACKED_DIRTY="$(mktemp /tmp/starpilot_c3_pretracked.XXXXXX)"
+POST_TRACKED_DIRTY="$(mktemp /tmp/starpilot_c3_posttracked.XXXXXX)"
+BACKUP_DIR="$(mktemp -d /tmp/starpilot_c3_backup.XXXXXX)"
 BACKUP_MANIFEST="${BACKUP_DIR}/.artifact_manifest"
 FAKE_WIFI_PID=""
 
@@ -181,7 +181,7 @@ prepare_host_artifacts() {
   remove_if_elf "msgq_repo/msgq/visionipc/visionipc_pyx.so"
 
   purge_objects "${ROOT_DIR}/selfdrive/ui"
-  purge_objects "${ROOT_DIR}/frogpilot/ui"
+  purge_objects "${ROOT_DIR}/starpilot/ui"
   rm -f "${ROOT_DIR}/selfdrive/ui/ui"
 }
 
@@ -206,7 +206,7 @@ unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
 
 prepare_host_artifacts
 
-export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/frogpilot/third_party"
+export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/starpilot/third_party"
 for d in "${ROOT_DIR}"/*_repo; do [[ -d "$d" ]] && export PYTHONPATH="${PYTHONPATH}:$d"; done
 [[ -d "${ROOT_DIR}/third_party/acados" ]] && export PYTHONPATH="${PYTHONPATH}:${ROOT_DIR}/third_party/acados"
 

@@ -9,13 +9,13 @@ class OnroadAlerts : public QWidget {
 
 public:
   OnroadAlerts(QWidget *parent = 0) : QWidget(parent) {}
-  void updateState(const UIState &s, const FrogPilotUIState &fs);
+  void updateState(const UIState &s, const StarPilotUIState &fs);
   void clear();
 
-  // FrogPilot variables
+  // StarPilot variables
   int alertHeight;
 
-  QJsonObject frogpilot_toggles;
+  QJsonObject starpilot_toggles;
 
 protected:
   struct Alert {
@@ -42,13 +42,13 @@ protected:
   QColor bg;
   Alert alert = {};
 
-  // FrogPilot variables
+  // StarPilot variables
   bool sidebarsOpen;
 
-  const QMap<cereal::FrogPilotSelfdriveState::AlertStatus, QColor> frogpilot_alert_colors = {
-    {cereal::FrogPilotSelfdriveState::AlertStatus::NORMAL, QColor(0x15, 0x15, 0x15, 0xf1)},
-    {cereal::FrogPilotSelfdriveState::AlertStatus::USER_PROMPT, QColor(0xDA, 0x6F, 0x25, 0xf1)},
-    {cereal::FrogPilotSelfdriveState::AlertStatus::CRITICAL, QColor(0xC9, 0x22, 0x31, 0xf1)},
-    {cereal::FrogPilotSelfdriveState::AlertStatus::FROGPILOT, QColor(0x17, 0x86, 0x44, 0xf1)},
+  const QMap<cereal::StarPilotSelfdriveState::AlertStatus, QColor> starpilot_alert_colors = {
+    {cereal::StarPilotSelfdriveState::AlertStatus::NORMAL, QColor(0x15, 0x15, 0x15, 0xf1)},
+    {cereal::StarPilotSelfdriveState::AlertStatus::USER_PROMPT, QColor(0xDA, 0x6F, 0x25, 0xf1)},
+    {cereal::StarPilotSelfdriveState::AlertStatus::CRITICAL, QColor(0xC9, 0x22, 0x31, 0xf1)},
+    {cereal::StarPilotSelfdriveState::AlertStatus::STARPILOT, QColor(0x17, 0x86, 0x44, 0xf1)},
   };
 };

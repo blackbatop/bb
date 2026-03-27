@@ -42,7 +42,7 @@ QT_MOC_LITERAL(7, 65, 7), // "offroad"
 QT_MOC_LITERAL(8, 73, 11), // "updateState"
 QT_MOC_LITERAL(9, 85, 7), // "UIState"
 QT_MOC_LITERAL(10, 93, 1), // "s"
-QT_MOC_LITERAL(11, 95, 16), // "FrogPilotUIState"
+QT_MOC_LITERAL(11, 95, 16), // "StarPilotUIState"
 QT_MOC_LITERAL(12, 112, 2), // "fs"
 QT_MOC_LITERAL(13, 115, 13), // "connectStatus"
 QT_MOC_LITERAL(14, 129, 10), // "ItemStatus"
@@ -58,7 +58,7 @@ QT_MOC_LITERAL(22, 222, 13) // "storageStatus"
     },
     "Sidebar\0openSettings\0\0index\0param\0"
     "valueChanged\0offroadTransition\0offroad\0"
-    "updateState\0UIState\0s\0FrogPilotUIState\0"
+    "updateState\0UIState\0s\0StarPilotUIState\0"
     "fs\0connectStatus\0ItemStatus\0pandaStatus\0"
     "tempStatus\0netType\0netStrength\0"
     "recordingAudio\0chipStatus\0memoryStatus\0"
@@ -135,7 +135,7 @@ void Sidebar::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
         case 2: _t->openSettings(); break;
         case 3: _t->valueChanged(); break;
         case 4: _t->offroadTransition((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 5: _t->updateState((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const FrogPilotUIState(*)>(_a[2]))); break;
+        case 5: _t->updateState((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const StarPilotUIState(*)>(_a[2]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {

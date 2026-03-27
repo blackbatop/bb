@@ -94,7 +94,7 @@ private:
 Params::Params(const std::string &path, bool memory) {
   params_prefix = "/" + util::getenv("OPENPILOT_PREFIX", "d");
 
-  // FrogPilot variables
+  // StarPilot variables
   std::string params_folder;
   if (memory) {
     params_folder = Path::shm_path() + "/params";
@@ -179,7 +179,7 @@ int Params::remove(const std::string &key) {
   FileLock file_lock(params_path + "/.lock");
   int result = unlink(getParamPath(key).c_str());
 
-  // FrogPilot variables
+  // StarPilot variables
   if (!cache_path.empty()) {
     unlink((cache_path + key).c_str());
   }
@@ -231,7 +231,7 @@ void Params::clearAll(ParamKeyFlag key_flag) {
         if (it == keys.end() || (it->second.flags & key_flag)) {
           unlink(getParamPath(de->d_name).c_str());
 
-          // FrogPilot variables
+          // StarPilot variables
           if (!cache_path.empty()) {
             unlink((cache_path + de->d_name).c_str());
           }
@@ -261,7 +261,7 @@ void Params::asyncWriteThread() {
   }
 }
 
-// FrogPilot variables
+// StarPilot variables
 int Params::getTuningLevel(const std::string &key) {
   return keys[key].tuning_level;
 }

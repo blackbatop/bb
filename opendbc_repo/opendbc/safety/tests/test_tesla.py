@@ -353,7 +353,7 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
         # Recover
         self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # DI_state, DI_cruiseState is the cruise state, 1 is standby
     values = {"DI_cruiseState": 1 if toggle_on else 0}

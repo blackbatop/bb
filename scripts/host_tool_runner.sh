@@ -319,7 +319,7 @@ setup_build_env() {
 }
 
 export_workdir_pythonpath() {
-  export PYTHONPATH="${WORK_DIR}:${WORK_DIR}/frogpilot/third_party"
+  export PYTHONPATH="${WORK_DIR}:${WORK_DIR}/starpilot/third_party"
   local repo_dir=""
   for repo_dir in "${WORK_DIR}"/*_repo; do
     [[ -d "${repo_dir}" ]] && export PYTHONPATH="${PYTHONPATH}:${repo_dir}"

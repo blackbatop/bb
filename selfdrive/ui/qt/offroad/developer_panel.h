@@ -2,7 +2,7 @@
 
 #include "selfdrive/ui/qt/offroad/settings.h"
 
-#include "frogpilot/ui/qt/offroad/frogpilot_settings.h"
+#include "starpilot/ui/qt/offroad/starpilot_settings.h"
 
 class DeveloperPanel : public QFrame {
   Q_OBJECT
@@ -10,7 +10,7 @@ public:
   explicit DeveloperPanel(SettingsWindow *parent);
   void showEvent(QShowEvent *event) override;
 
-// FrogPilot variables
+// StarPilot variables
 signals:
   void openSubPanel();
   void openSubSubPanel();
@@ -24,7 +24,7 @@ private:
   bool is_release;
   bool offroad = false;
 
-  // FrogPilot variables
+  // StarPilot variables
   bool forceOpenDescriptions = false;
   bool hasBSM = true;
   bool hasOpenpilotLongitudinal = true;
@@ -36,13 +36,13 @@ private:
 
   std::vector<QString> sidebarMetricsToggles;
 
-  FrogPilotButtonsControl *sidebarMetricsToggle;
+  StarPilotButtonsControl *sidebarMetricsToggle;
 
-  FrogPilotButtonToggleControl *borderMetricsButton;
+  StarPilotButtonToggleControl *borderMetricsButton;
 
-  FrogPilotManageControl *developerUIToggle;
+  StarPilotManageControl *developerUIToggle;
 
-  QJsonObject frogpilotToggleLevels;
+  QJsonObject starpilotToggleLevels;
 
   QSet<QString> developerMetricKeys = {"AdjacentPathMetrics", "BorderMetrics", "FPSCounter", "LeadInfo", "NumericalTemp", "SidebarMetrics", "UseSI"};
   QSet<QString> developerSidebarKeys = {"DeveloperSidebarMetric1", "DeveloperSidebarMetric2", "DeveloperSidebarMetric3", "DeveloperSidebarMetric4", "DeveloperSidebarMetric5", "DeveloperSidebarMetric6", "DeveloperSidebarMetric7"};

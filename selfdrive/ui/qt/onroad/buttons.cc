@@ -27,17 +27,17 @@ ExperimentalButton::ExperimentalButton(QWidget *parent) : experimental_mode(fals
   experimental_img = loadPixmap("../assets/icons/experimental.svg", {img_size, img_size});
   QObject::connect(this, &QPushButton::clicked, this, &ExperimentalButton::changeMode);
 
-  // FrogPilot variables
-  QObject::connect(frogpilotUIState(), &FrogPilotUIState::themeUpdated, this, &ExperimentalButton::updateTheme);
+  // StarPilot variables
+  QObject::connect(starpilotUIState(), &StarPilotUIState::themeUpdated, this, &ExperimentalButton::updateTheme);
 }
 
 void ExperimentalButton::changeMode() {
   const auto cp = (*uiState()->sm)["carParams"].getCarParams();
   bool can_change = hasLongitudinalControl(cp) && params.getBool("ExperimentalModeConfirmed");
   if (can_change) {
-    // FrogPilot variables
-    if (frogpilot_toggles.value("conditional_experimental_mode").toBool()) {
-      int override_value = (frogpilot_scene.conditional_status == 1 || frogpilot_scene.conditional_status == 2) ? 0 : experimental_mode ? 1 : 2;
+    // StarPilot variables
+    if (starpilot_toggles.value("conditional_experimental_mode").toBool()) {
+      int override_value = (starpilot_scene.conditional_status == 1 || starpilot_scene.conditional_status == 2) ? 0 : experimental_mode ? 1 : 2;
       params_memory.putInt("CEStatus", override_value);
     } else {
       params.putBool("ExperimentalMode", !experimental_mode);
@@ -45,25 +45,25 @@ void ExperimentalButton::changeMode() {
   }
 }
 
-void ExperimentalButton::updateState(const UIState &s, const FrogPilotUIState &fs) {
+void ExperimentalButton::updateState(const UIState &s, const StarPilotUIState &fs) {
   const auto cs = (*s.sm)["selfdriveState"].getSelfdriveState();
-  bool eng = cs.getEngageable() || cs.getEnabled() || fs.frogpilot_scene.always_on_lateral_active;
+  bool eng = cs.getEngageable() || cs.getEnabled() || fs.starpilot_scene.always_on_lateral_active;
   if ((cs.getExperimentalMode() != experimental_mode) || (eng != engageable)) {
     engageable = eng;
     experimental_mode = cs.getExperimentalMode();
     update();
   }
 
-  // FrogPilot variables
+  // StarPilot variables
   const cereal::CarState::Reader &carState = (*s.sm)["carState"].getCarState();
 
   updateBackgroundColor();
 
   int current_steering_angle_deg = -carState.getSteeringAngleDeg();
-  if (current_steering_angle_deg != steering_angle_deg && frogpilot_toggles.value("rotating_wheel").toBool()) {
+  if (current_steering_angle_deg != steering_angle_deg && starpilot_toggles.value("rotating_wheel").toBool()) {
     steering_angle_deg = current_steering_angle_deg;
     update();
-  } else if (!frogpilot_toggles.value("rotating_wheel").toBool()) {
+  } else if (!starpilot_toggles.value("rotating_wheel").toBool()) {
     steering_angle_deg = 0;
   }
 
@@ -78,7 +78,7 @@ void ExperimentalButton::paintEvent(QPaintEvent *event) {
   p.setClipRegion(QRegion(QRect(0, 0, btn_size, btn_size), QRegion::Ellipse));
   p.setRenderHint(QPainter::Antialiasing);
 
-  if (frogpilot_toggles.value("wheel_image").toString() == "stock") {
+  if (starpilot_toggles.value("wheel_image").toString() == "stock") {
     QPixmap img = experimental_mode ? experimental_img : engage_img;
     drawIcon(p, QPoint(btn_size / 2, btn_size / 2), img, background_color, (isDown() || !engageable) ? 0.6 : 1.0, steering_angle_deg);
   } else if (wheel_gif) {
@@ -88,7 +88,7 @@ void ExperimentalButton::paintEvent(QPaintEvent *event) {
   }
 }
 
-// FrogPilot variables
+// StarPilot variables
 void ExperimentalButton::showEvent(QShowEvent *event) {
   updateTheme();
 }
@@ -96,13 +96,13 @@ void ExperimentalButton::showEvent(QShowEvent *event) {
 void ExperimentalButton::updateBackgroundColor() {
   if (isDown() || !engageable) {
     background_color = QColor(0, 0, 0, 166);
-  } else if (frogpilot_scene.always_on_lateral_active) {
+  } else if (starpilot_scene.always_on_lateral_active) {
     background_color = bg_colors[STATUS_ALWAYS_ON_LATERAL_ACTIVE];
-  } else if (frogpilot_scene.conditional_status == 1) {
+  } else if (starpilot_scene.conditional_status == 1) {
     background_color = bg_colors[STATUS_CEM_DISABLED];
   } else if (experimental_mode) {
     background_color = bg_colors[STATUS_EXPERIMENTAL_MODE_ENABLED];
-  } else if (frogpilot_scene.traffic_mode_enabled) {
+  } else if (starpilot_scene.traffic_mode_enabled) {
     background_color = bg_colors[STATUS_TRAFFIC_MODE_ENABLED];
   } else {
     background_color = QColor(0, 0, 0, 166);
@@ -110,5 +110,5 @@ void ExperimentalButton::updateBackgroundColor() {
 }
 
 void ExperimentalButton::updateTheme() {
-  loadImage("../../frogpilot/assets/active_theme/steering_wheel/wheel", wheel_img, wheel_gif, QSize(img_size, img_size), this);
+  loadImage("../../starpilot/assets/active_theme/steering_wheel/wheel", wheel_img, wheel_gif, QSize(img_size, img_size), this);
 }

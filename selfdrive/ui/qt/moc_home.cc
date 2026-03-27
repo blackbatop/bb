@@ -163,14 +163,14 @@ QT_MOC_LITERAL(11, 105, 11), // "showSidebar"
 QT_MOC_LITERAL(12, 117, 11), // "updateState"
 QT_MOC_LITERAL(13, 129, 7), // "UIState"
 QT_MOC_LITERAL(14, 137, 1), // "s"
-QT_MOC_LITERAL(15, 139, 16), // "FrogPilotUIState"
+QT_MOC_LITERAL(15, 139, 16), // "StarPilotUIState"
 QT_MOC_LITERAL(16, 156, 2) // "fs"
 
     },
     "HomeWindow\0openSettings\0\0index\0param\0"
     "closeSettings\0offroadTransition\0offroad\0"
     "showDriverView\0show\0started\0showSidebar\0"
-    "updateState\0UIState\0s\0FrogPilotUIState\0"
+    "updateState\0UIState\0s\0StarPilotUIState\0"
     "fs"
 };
 #undef QT_MOC_LITERAL
@@ -231,7 +231,7 @@ void HomeWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 5: _t->showDriverView((*reinterpret_cast< bool(*)>(_a[1])),(*reinterpret_cast< bool(*)>(_a[2]))); break;
         case 6: _t->showDriverView((*reinterpret_cast< bool(*)>(_a[1]))); break;
         case 7: _t->showSidebar((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 8: _t->updateState((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const FrogPilotUIState(*)>(_a[2]))); break;
+        case 8: _t->updateState((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const StarPilotUIState(*)>(_a[2]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {

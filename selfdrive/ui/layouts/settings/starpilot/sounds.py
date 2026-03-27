@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 from openpilot.common.basedir import BASEDIR
-from openpilot.frogpilot.common.frogpilot_variables import ACTIVE_THEME_PATH
+from openpilot.starpilot.common.starpilot_variables import ACTIVE_THEME_PATH
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult

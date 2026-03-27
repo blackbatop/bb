@@ -70,7 +70,7 @@ std::string resolve_program_path(const char *path) {
     }
 
     // Recover from build-path-embedded absolute paths like "/work/selfdrive/...".
-    for (const char *marker : {"/selfdrive/", "/frogpilot/", "/common/"}) {
+    for (const char *marker : {"/selfdrive/", "/starpilot/", "/common/"}) {
       if (const size_t idx = resolved_path.find(marker); idx != std::string::npos) {
         const std::string candidate = basedir + "/" + resolved_path.substr(idx + 1);
         if (util::file_exists(candidate)) {

@@ -71,7 +71,7 @@ class HyundaiButtonBase:
       self.assertEqual(controls_allowed, self.safety.get_controls_allowed())
       self._rx(self._button_msg(Buttons.NONE))
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     """
       Simulates toggling the main cruise button. The safety model requires a

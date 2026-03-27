@@ -484,7 +484,7 @@ def pick_source_url(system_entry: dict, override: str | None) -> str:
 
 def find_default_reference_manifest(primary_manifest_path: Path) -> Path | None:
   # Expected tree layout for local development:
-  #   <parent>/frogpilot/system/hardware/tici/agnos.json
+  #   <parent>/starpilot/system/hardware/tici/agnos.json
   #   <parent>/openpilot/system/hardware/tici/agnos.json
   repo_root = primary_manifest_path
   for _ in range(4):

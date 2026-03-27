@@ -15,8 +15,8 @@ on:
 env:
   GIT_EMAIL: "91348155+FrogAi@users.noreply.github.com"
   GIT_NAME: "James"
-  GITLAB_REPO_DIR: "FrogPilot-Resources"
-  GITLAB_URL: "gitlab.com/FrogAi/FrogPilot-Resources.git"
+  GITLAB_REPO_DIR: "StarPilot-Resources"
+  GITLAB_URL: "gitlab.com/FrogAi/StarPilot-Resources.git"
   OPENPILOT_DIR: "/data/openpilot"
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
       - name: Get Version
         id: get_version
         run: |
-          VERSION=$(grep -oP '^VERSION\s*=\s*"\K[^"]+' "$OPENPILOT_DIR/frogpilot/assets/model_manager.py")
+          VERSION=$(grep -oP '^VERSION\s*=\s*"\K[^"]+' "$OPENPILOT_DIR/starpilot/assets/model_manager.py")
           echo "VERSION=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -35,7 +35,7 @@ jobs:
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
-          WORK_DIR="$RUNNER_TEMP/frogpilot_tinygrad"
+          WORK_DIR="$RUNNER_TEMP/starpilot_tinygrad"
           rm -rf "$WORK_DIR" && mkdir -p "$WORK_DIR"
           echo "work_dir=$WORK_DIR" >> "$GITHUB_OUTPUT"
 

@@ -197,7 +197,7 @@ class SubMaster:
       self.data[s] = getattr(data.as_reader(), s)
       self.freq_tracker[s] = FrequencyTracker(SERVICE_LIST[s].frequency, self.update_freq, s == poll)
 
-    # FrogPilot variables
+    # StarPilot variables
     self.addr = addr
     self.poll = poll
 
@@ -252,7 +252,7 @@ class SubMaster:
   def all_checks(self, service_list: Optional[List[str]] = None) -> bool:
     return self.all_alive(service_list) and self.all_freq_ok(service_list) and self.all_valid(service_list)
 
-  # FrogPilot variables
+  # StarPilot variables
   def extend(self, new_services: List[str]):
     return SubMaster(
       self.services + new_services,
@@ -286,7 +286,7 @@ class PubMaster:
   def all_readers_updated(self, s: str) -> bool:
     return self.sock[s].all_readers_updated()  # type: ignore
 
-  # FrogPilot variables
+  # StarPilot variables
   def extend(self, new_services: List[str]):
     for service in new_services:
       if service not in self.sock:

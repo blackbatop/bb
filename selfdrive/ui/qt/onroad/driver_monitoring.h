@@ -4,7 +4,7 @@
 #include <QPainter>
 #include "selfdrive/ui/ui.h"
 
-#include "frogpilot/ui/qt/onroad/frogpilot_annotated_camera.h"
+#include "starpilot/ui/qt/onroad/starpilot_annotated_camera.h"
 
 class DriverMonitorRenderer {
 public:
@@ -12,12 +12,12 @@ public:
   void updateState(const UIState &s);
   void draw(QPainter &painter, const QRect &surface_rect);
 
-  // FrogPilot variables
-  FrogPilotAnnotatedCameraWidget *frogpilot_nvg;
+  // StarPilot variables
+  StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
   bool onroad_distance_btn_enabled;
 
-  QJsonObject frogpilot_toggles;
+  QJsonObject starpilot_toggles;
 
 private:
   float driver_pose_vals[3] = {};

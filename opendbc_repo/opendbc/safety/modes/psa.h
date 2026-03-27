@@ -10,7 +10,7 @@
 #define PSA_DAT_BSI               1042U // RX from BSI, brake
 #define PSA_LANE_KEEP_ASSIST      1010U // TX from OP,  EPS
 
-// FrogPilot variables
+// StarPilot variables
 #define PSA_HS2_DYN1_MDD_ETAT_2B6 694U  // RX from BSI, ACC status
 
 // CAN bus
@@ -24,7 +24,7 @@ static uint8_t psa_get_counter(const CANPacket_t *msg) {
     cnt = (msg->data[3] >> 4) & 0xFU;
   } else if (msg->addr == PSA_HS2_DYN_ABR_38D) {
     cnt = (msg->data[5] >> 4) & 0xFU;
-  // FrogPilot variables
+  // StarPilot variables
   } else if (msg->addr == PSA_HS2_DYN1_MDD_ETAT_2B6) {
     cnt = (msg->data[7] >> 4) & 0xFU;
   } else {
@@ -38,7 +38,7 @@ static uint32_t psa_get_checksum(const CANPacket_t *msg) {
     chksum = msg->data[5] & 0xFU;
   } else if (msg->addr == PSA_HS2_DYN_ABR_38D) {
     chksum = msg->data[5] & 0xFU;
-  // FrogPilot variables
+  // StarPilot variables
   } else if (msg->addr == PSA_HS2_DYN1_MDD_ETAT_2B6) {
     chksum = msg->data[7] & 0xFU;
   } else {
@@ -68,7 +68,7 @@ static uint32_t psa_compute_checksum(const CANPacket_t *msg) {
     chk = _psa_compute_checksum(msg, 0x4, 5);
   } else if (msg->addr == PSA_HS2_DYN_ABR_38D) {
     chk = _psa_compute_checksum(msg, 0x7, 5);
-  // FrogPilot variables
+  // StarPilot variables
   } else if (msg->addr == PSA_HS2_DYN1_MDD_ETAT_2B6) {
     chk = _psa_compute_checksum(msg, 0x3, 7);
   } else {
@@ -96,7 +96,7 @@ static void psa_rx_hook(const CANPacket_t *msg) {
     if (msg->addr == PSA_HS2_DAT_MDD_CMD_452) {
       pcm_cruise_check((msg->data[2U] >> 7U) & 1U); // RVV_ACC_ACTIVATION_REQ
     }
-    // FrogPilot variables
+    // StarPilot variables
     if (msg->addr == PSA_HS2_DYN1_MDD_ETAT_2B6) {
       acc_main_on = (msg->data[3] & 0x0FU) > 2;
     }
@@ -153,7 +153,7 @@ static safety_config psa_init(uint16_t param) {
     {.msg = {{PSA_DYN_CMM, PSA_MAIN_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},      // gas pedal
     {.msg = {{PSA_DAT_BSI, PSA_CAM_BUS, 8, 20U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},        // brake
 
-    // FrogPilot variables
+    // StarPilot variables
     {.msg = {{PSA_HS2_DYN1_MDD_ETAT_2B6, PSA_ADAS_BUS, 8, 20U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},                      // ACC status
   };
 

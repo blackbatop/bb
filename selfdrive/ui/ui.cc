@@ -18,7 +18,7 @@ static void update_sockets(UIState *s) {
   s->sm->update(0);
 }
 
-static void update_state(UIState *s, FrogPilotUIState *fs) {
+static void update_state(UIState *s, StarPilotUIState *fs) {
   SubMaster &sm = *(s->sm);
   UIScene &scene = s->scene;
 
@@ -64,21 +64,21 @@ static void update_state(UIState *s, FrogPilotUIState *fs) {
   auto params = Params();
   scene.recording_audio = params.getBool("RecordAudio") && scene.started;
 
-  // FrogPilot variables
-  FrogPilotUIScene &frogpilot_scene = fs->frogpilot_scene;
+  // StarPilot variables
+  StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
 
   if (sm.updated("carState")) {
     const cereal::CarState::Reader &carState = sm["carState"].getCarState();
-    frogpilot_scene.parked = carState.getGearShifter() == cereal::CarState::GearShifter::PARK;
-    frogpilot_scene.reverse = carState.getGearShifter() == cereal::CarState::GearShifter::REVERSE;
-    frogpilot_scene.standstill = carState.getStandstill() && !frogpilot_scene.reverse;
+    starpilot_scene.parked = carState.getGearShifter() == cereal::CarState::GearShifter::PARK;
+    starpilot_scene.reverse = carState.getGearShifter() == cereal::CarState::GearShifter::REVERSE;
+    starpilot_scene.standstill = carState.getStandstill() && !starpilot_scene.reverse;
   }
 
   if (scene.started) {
-    frogpilot_scene.started_timer += 1;
+    starpilot_scene.started_timer += 1;
   }
-  scene.started |= frogpilot_scene.frogpilot_toggles.value("force_onroad").toBool();
-  scene.started &= !frogpilot_scene.frogpilot_toggles.value("force_offroad").toBool();
+  scene.started |= starpilot_scene.starpilot_toggles.value("force_onroad").toBool();
+  scene.started &= !starpilot_scene.starpilot_toggles.value("force_offroad").toBool();
 }
 
 void ui_update_params(UIState *s) {
@@ -86,30 +86,30 @@ void ui_update_params(UIState *s) {
   s->scene.is_metric = params.getBool("IsMetric");
 }
 
-void UIState::updateStatus(FrogPilotUIState *fs) {
-  // FrogPilot variables
-  FrogPilotUIScene &frogpilot_scene = fs->frogpilot_scene;
-  QJsonObject &frogpilot_toggles = frogpilot_scene.frogpilot_toggles;
+void UIState::updateStatus(StarPilotUIState *fs) {
+  // StarPilot variables
+  StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
+  QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
   if (scene.started && sm->updated("selfdriveState")) {
     auto ss = (*sm)["selfdriveState"].getSelfdriveState();
     auto state = ss.getState();
 
-    // FrogPilot variables
+    // StarPilot variables
     const UIStatus previous_status = status;
 
     if (state == cereal::SelfdriveState::OpenpilotState::PRE_ENABLED || state == cereal::SelfdriveState::OpenpilotState::OVERRIDING) {
       status = STATUS_OVERRIDE;
-    } else if (frogpilot_scene.always_on_lateral_active) {
+    } else if (starpilot_scene.always_on_lateral_active) {
       status = STATUS_ALWAYS_ON_LATERAL_ACTIVE;
-    } else if (frogpilot_scene.traffic_mode_enabled && ss.getEnabled()) {
+    } else if (starpilot_scene.traffic_mode_enabled && ss.getEnabled()) {
       status = STATUS_TRAFFIC_MODE_ENABLED;
     } else {
       status = ss.getEnabled() ? STATUS_ENGAGED : STATUS_DISENGAGED;
     }
 
-    // FrogPilot variables
-    frogpilot_scene.wake_up_screen = ss.getAlertStatus() != cereal::SelfdriveState::AlertStatus::NORMAL || (status != previous_status && status != STATUS_OVERRIDE);
+    // StarPilot variables
+    starpilot_scene.wake_up_screen = ss.getAlertStatus() != cereal::SelfdriveState::AlertStatus::NORMAL || (status != previous_status && status != STATUS_OVERRIDE);
   }
 
   if (engaged() != engaged_prev) {
@@ -126,8 +126,8 @@ void UIState::updateStatus(FrogPilotUIState *fs) {
     started_prev = scene.started;
     emit offroadTransition(!scene.started);
 
-    // FrogPilot variables
-    if (frogpilot_toggles.value("tethering_config").toInt() == 2) {
+    // StarPilot variables
+    if (starpilot_toggles.value("tethering_config").toInt() == 2) {
       fs->wifi->setTetheringEnabled(scene.started);
     }
   }
@@ -150,21 +150,21 @@ UIState::UIState(QObject *parent) : QObject(parent) {
 
 void UIState::update() {
   update_sockets(this);
-  update_state(this, frogpilotUIState());
-  updateStatus(frogpilotUIState());
+  update_state(this, starpilotUIState());
+  updateStatus(starpilotUIState());
 
   if (sm->frame % UI_FREQ == 0) {
     watchdog_kick(nanos_since_boot());
   }
-  emit uiUpdate(*this, *frogpilotUIState());
+  emit uiUpdate(*this, *starpilotUIState());
 
-  // FrogPilot variables
-  FrogPilotUIState *fs = frogpilotUIState();
-  FrogPilotUIScene &frogpilot_scene = fs->frogpilot_scene;
-  QJsonObject &frogpilot_toggles = frogpilot_scene.frogpilot_toggles;
+  // StarPilot variables
+  StarPilotUIState *fs = starpilotUIState();
+  StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
+  QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
-  if (frogpilot_scene.downloading_update || frogpilot_scene.frogpilot_panel_active) {
-    device()->resetInteractiveTimeout(frogpilot_toggles.value("screen_timeout").toInt(), frogpilot_toggles.value("screen_timeout_onroad").toInt());
+  if (starpilot_scene.downloading_update || starpilot_scene.starpilot_panel_active) {
+    device()->resetInteractiveTimeout(starpilot_toggles.value("screen_timeout").toInt(), starpilot_toggles.value("screen_timeout_onroad").toInt());
   }
 
   fs->update();
@@ -177,7 +177,7 @@ Device::Device(QObject *parent) : brightness_filter(BACKLIGHT_OFFROAD, BACKLIGHT
   QObject::connect(uiState(), &UIState::uiUpdate, this, &Device::update);
 }
 
-void Device::update(const UIState &s, const FrogPilotUIState &fs) {
+void Device::update(const UIState &s, const StarPilotUIState &fs) {
   updateBrightness(s, fs);
   updateWakefulness(s, fs);
 }
@@ -195,16 +195,16 @@ void Device::resetInteractiveTimeout(int timeout, int timeout_onroad) {
   if (timeout == -1) {
     timeout = (ignition_on ? 10 : 30);
   } else {
-    // FrogPilot variables
+    // StarPilot variables
     timeout = (ignition_on ? timeout_onroad : timeout);
   }
   interactive_timeout = timeout * UI_FREQ;
 }
 
-void Device::updateBrightness(const UIState &s, const FrogPilotUIState &fs) {
-  // FrogPilot variables
-  const FrogPilotUIScene &frogpilot_scene = fs.frogpilot_scene;
-  const QJsonObject &frogpilot_toggles = frogpilot_scene.frogpilot_toggles;
+void Device::updateBrightness(const UIState &s, const StarPilotUIState &fs) {
+  // StarPilot variables
+  const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
+  const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
   float clipped_brightness = offroad_brightness;
   if (s.scene.started && s.scene.light_sensor >= 0) {
@@ -224,12 +224,12 @@ void Device::updateBrightness(const UIState &s, const FrogPilotUIState &fs) {
   int brightness = brightness_filter.update(clipped_brightness);
   if (!awake) {
     brightness = 0;
-  } else if (s.scene.started && !frogpilot_scene.wake_up_screen && interactive_timeout == 0 && frogpilot_toggles.value("standby_mode").toBool()) {
+  } else if (s.scene.started && !starpilot_scene.wake_up_screen && interactive_timeout == 0 && starpilot_toggles.value("standby_mode").toBool()) {
     brightness = 0;
-  } else if (s.scene.started && frogpilot_toggles.value("screen_brightness_onroad").toInt() != 101) {
-    brightness = interactive_timeout > 0 ? fmax(5, frogpilot_toggles.value("screen_brightness_onroad").toInt()) : frogpilot_toggles.value("screen_brightness_onroad").toInt();
-  } else if (frogpilot_toggles.value("screen_brightness").toInt() != 101) {
-    brightness = frogpilot_toggles.value("screen_brightness").toInt();
+  } else if (s.scene.started && starpilot_toggles.value("screen_brightness_onroad").toInt() != 101) {
+    brightness = interactive_timeout > 0 ? fmax(5, starpilot_toggles.value("screen_brightness_onroad").toInt()) : starpilot_toggles.value("screen_brightness_onroad").toInt();
+  } else if (starpilot_toggles.value("screen_brightness").toInt() != 101) {
+    brightness = starpilot_toggles.value("screen_brightness").toInt();
   }
 
   if (brightness != last_brightness) {
@@ -240,23 +240,23 @@ void Device::updateBrightness(const UIState &s, const FrogPilotUIState &fs) {
   }
 }
 
-void Device::updateWakefulness(const UIState &s, const FrogPilotUIState &fs) {
-  // FrogPilot variables
-  const FrogPilotUIScene &frogpilot_scene = fs.frogpilot_scene;
-  const QJsonObject &frogpilot_toggles = frogpilot_scene.frogpilot_toggles;
+void Device::updateWakefulness(const UIState &s, const StarPilotUIState &fs) {
+  // StarPilot variables
+  const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
+  const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
   bool ignition_just_turned_off = !s.scene.ignition && ignition_on;
   ignition_on = s.scene.ignition;
 
-  if (ignition_on && frogpilot_toggles.value("standby_mode").toBool()) {
-    if (frogpilot_scene.wake_up_screen) {
-      resetInteractiveTimeout(frogpilot_toggles.value("screen_timeout").toInt(), frogpilot_toggles.value("screen_timeout_onroad").toInt());
+  if (ignition_on && starpilot_toggles.value("standby_mode").toBool()) {
+    if (starpilot_scene.wake_up_screen) {
+      resetInteractiveTimeout(starpilot_toggles.value("screen_timeout").toInt(), starpilot_toggles.value("screen_timeout_onroad").toInt());
     } else {
       resetInteractiveTimeout(0, 0);
     }
   } else if (ignition_just_turned_off) {
-    resetInteractiveTimeout(frogpilot_toggles.value("screen_timeout").toInt(), frogpilot_toggles.value("screen_timeout_onroad").toInt());
-  } else if (ignition_on && frogpilot_toggles.value("screen_brightness_onroad").toInt() == 0) {
+    resetInteractiveTimeout(starpilot_toggles.value("screen_timeout").toInt(), starpilot_toggles.value("screen_timeout_onroad").toInt());
+  } else if (ignition_on && starpilot_toggles.value("screen_brightness_onroad").toInt() == 0) {
     resetInteractiveTimeout(0, 0);
   } else if (interactive_timeout > 0 && --interactive_timeout == 0) {
     emit interactiveTimeout();

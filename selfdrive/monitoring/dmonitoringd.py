@@ -18,8 +18,8 @@ def dmonitoringd_thread():
   DM = DriverMonitoring(rhd_saved=params.get_bool("IsRhdDetected"), always_on=params.get_bool("AlwaysOnDM"))
   demo_mode=False
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotCarState'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotCarState'])
 
   driver_view_enabled = params.get_bool("IsDriverViewEnabled")
 
@@ -35,7 +35,7 @@ def dmonitoringd_thread():
       DM.run_step(sm, demo=demo_mode)
     elif valid:
       DM.run_step(sm, demo=demo_mode)
-    # FrogPilot variables
+    # StarPilot variables
     elif driver_view_enabled:
       DM.face_detected = sm['driverStateV2'].leftDriverData.faceProb > DM.settings._FACE_THRESHOLD or sm['driverStateV2'].rightDriverData.faceProb > DM.settings._FACE_THRESHOLD
 

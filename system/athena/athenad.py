@@ -40,7 +40,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.system.version import get_build_metadata
 from openpilot.system.hardware.hw import Paths
 
-from openpilot.frogpilot.common.frogpilot_utilities import use_konik_server
+from openpilot.starpilot.common.starpilot_utilities import use_konik_server
 
 
 ATHENA_HOST = os.getenv('ATHENA_HOST', f"wss://athena.{'konik.ai' if use_konik_server() else 'comma.ai'}")

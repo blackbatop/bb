@@ -61,7 +61,7 @@ HIDDEN_KEYS = {
     "ToyotaDoors",
 }
 
-# Keys that are boolean toggles despite ambiguous defaults in frogpilot_variables.py.
+# Keys that are boolean toggles despite ambiguous defaults in starpilot_variables.py.
 FORCE_BOOL_KEYS = {"EVTuning"}
 
 DEVELOPER_SIDEBAR_METRIC_KEYS = {
@@ -149,7 +149,7 @@ for cmap in PARENT_KEYS_MAPPING.values():
         ALL_PARENT_KEYS.add(parent)
 
 def get_variables_data():
-    filepath = os.path.join(REPO_ROOT, "frogpilot/common/frogpilot_variables.py")
+    filepath = os.path.join(REPO_ROOT, "starpilot/common/starpilot_variables.py")
     excluded = set()
     defaults = {}
     if not os.path.exists(filepath):
@@ -197,10 +197,10 @@ def get_variables_data():
                         excluded = ast.literal_eval(node.value)
                     except:
                         pass
-                elif getattr(target, 'id', '') in ('frogpilot_default_params', 'misc_tuning_levels'):
+                elif getattr(target, 'id', '') in ('starpilot_default_params', 'misc_tuning_levels'):
                     parse_params_list(node.value)
         elif isinstance(node, ast.AnnAssign):
-            if getattr(node.target, 'id', '') in ('frogpilot_default_params', 'misc_tuning_levels'):
+            if getattr(node.target, 'id', '') in ('starpilot_default_params', 'misc_tuning_levels'):
                 parse_params_list(node.value)
 
     return excluded, defaults
@@ -208,7 +208,7 @@ def get_variables_data():
 EXCLUDED_KEYS, DEFAULT_TYPES = get_variables_data()
 
 def get_editable_keys():
-    filepath = os.path.join(REPO_ROOT, "frogpilot/common/frogpilot_variables.py")
+    filepath = os.path.join(REPO_ROOT, "starpilot/common/starpilot_variables.py")
     editable = set()
     if not os.path.exists(filepath):
         return editable
@@ -220,11 +220,11 @@ def get_editable_keys():
         value_node = None
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if getattr(target, 'id', '') == 'frogpilot_default_params':
+                if getattr(target, 'id', '') == 'starpilot_default_params':
                     value_node = node.value
                     break
         elif isinstance(node, ast.AnnAssign):
-            if getattr(node.target, 'id', '') == 'frogpilot_default_params':
+            if getattr(node.target, 'id', '') == 'starpilot_default_params':
                 value_node = node.value
 
         if isinstance(value_node, ast.List):
@@ -301,7 +301,7 @@ def extract_bracket_block(text, start_idx):
     return ""
 
 def parse_cpp_file(filename):
-    filepath = os.path.join(REPO_ROOT, "frogpilot/ui/qt/offroad", filename)
+    filepath = os.path.join(REPO_ROOT, "starpilot/ui/qt/offroad", filename)
     if not os.path.exists(filepath): return []
 
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -322,7 +322,7 @@ def parse_cpp_file(filename):
     child_to_qsets = {}
 
     header_filename = filename.replace(".cc", ".h")
-    header_filepath = os.path.join(REPO_ROOT, "frogpilot/ui/qt/offroad", header_filename)
+    header_filepath = os.path.join(REPO_ROOT, "starpilot/ui/qt/offroad", header_filename)
     full_source = content
     if os.path.exists(header_filepath):
         with open(header_filepath, 'r', encoding='utf-8') as fh:
@@ -421,7 +421,7 @@ def parse_cpp_file(filename):
 
             if snippet_match:
                 assignment = snippet_match.group(1)
-                if "FrogPilotParamValueControl" in assignment or "FrogPilotParamValueButtonControl" in assignment:
+                if "StarPilotParamValueControl" in assignment or "StarPilotParamValueButtonControl" in assignment:
                     widget_type = "numeric"
                     if data_type in ("string", "bool", "unknown"):
                         data_type = "float"
@@ -491,7 +491,7 @@ def parse_cpp_file(filename):
 
         items.append(s)
 
-        # Mirror CELead's split sub-toggles from FrogPilotButtonToggleControl.
+        # Mirror CELead's split sub-toggles from StarPilotButtonToggleControl.
         if key == "CELead":
             items.extend([
                 {
@@ -542,7 +542,7 @@ def main():
                 "icon": cat["icon"],
                 "params": items
             })
-    output_path = os.path.join(REPO_ROOT, "frogpilot/system/the_pond/assets/components/tools/device_settings_layout.json")
+    output_path = os.path.join(REPO_ROOT, "starpilot/system/the_pond/assets/components/tools/device_settings_layout.json")
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(layout, f, indent=2)
 

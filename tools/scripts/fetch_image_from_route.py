@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 
-from openpilot.frogpilot.common.frogpilot_utilities import use_konik_server
+from openpilot.starpilot.common.starpilot_utilities import use_konik_server
 
 if len(sys.argv) < 4:
   print(f"{sys.argv[0]} <route> <segment> <frame number> [front|wide|driver]")

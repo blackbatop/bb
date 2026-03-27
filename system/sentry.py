@@ -13,7 +13,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.system.hardware.hw import Paths
 from openpilot.system.version import get_build_metadata, get_version
 
-from openpilot.frogpilot.common.frogpilot_variables import ERROR_LOGS_PATH, params
+from openpilot.starpilot.common.starpilot_variables import ERROR_LOGS_PATH, params
 
 class SentryProject(Enum):
   # python project
@@ -71,7 +71,7 @@ def capture_exception(*args, crash_log=True, **kwargs) -> None:
     cloudlog.exception("sentry exception")
 
 
-def capture_report(discord_user, report, frogpilot_toggles):
+def capture_report(discord_user, report, starpilot_toggles):
   error_file_path = ERROR_LOGS_PATH / "error.txt"
   error_content = "No error log found."
 
@@ -80,7 +80,7 @@ def capture_report(discord_user, report, frogpilot_toggles):
 
   with sentry_sdk.push_scope() as scope:
     scope.set_context("Error Log", {"content": error_content})
-    scope.set_context("Toggle Values", frogpilot_toggles)
+    scope.set_context("Toggle Values", starpilot_toggles)
     sentry_sdk.capture_message(f"{discord_user} submitted report: {report}", level="fatal")
     sentry_sdk.flush()
 

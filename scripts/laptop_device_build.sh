@@ -237,8 +237,8 @@ scrub_mixed_arch_artifacts() {
     "${ROOT_DIR}/common/transformations/transformations.so" \
     "${ROOT_DIR}/selfdrive/modeld/models/commonmodel_pyx.o" \
     "${ROOT_DIR}/selfdrive/modeld/models/commonmodel_pyx.so" \
-    "${ROOT_DIR}/frogpilot/tinygrad_modeld/models/commonmodel_pyx.o" \
-    "${ROOT_DIR}/frogpilot/tinygrad_modeld/models/commonmodel_pyx.so"
+    "${ROOT_DIR}/starpilot/tinygrad_modeld/models/commonmodel_pyx.o" \
+    "${ROOT_DIR}/starpilot/tinygrad_modeld/models/commonmodel_pyx.so"
 }
 
 sync_sysroot_from_device() {

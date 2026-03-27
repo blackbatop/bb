@@ -121,13 +121,13 @@ build_mac() {
     system/timed.py \
     common/spinner.py \
     common/text_window.py \
-    frogpilot/system/frogpilot_stats.py
+    starpilot/system/starpilot_stats.py
 
   python -m compileall -q \
     selfdrive/ui \
     system/ui \
-    frogpilot/system/the_pond \
-    frogpilot/system/galaxy
+    starpilot/system/the_pond \
+    starpilot/system/galaxy
 
   SP_DISABLE_AUTO_DEVICE_SCONS=1 scons -j"${jobs}" selfdrive/ui/ui
 

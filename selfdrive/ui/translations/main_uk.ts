@@ -404,7 +404,7 @@
 <context>
     <name>DriveStats</name>
     <message>
-        <source>FROGPILOT</source>
+        <source>STARPILOT</source>
         <translation>ЖАБОПІЛОТ</translation>
     </message>
     <message>
@@ -459,7 +459,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotAnnotatedCameraWidget</name>
+    <name>StarPilotAnnotatedCameraWidget</name>
     <message>
         <source> m/s²</source>
         <translation> м/с²</translation>
@@ -526,7 +526,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotConfirmationDialog</name>
+    <name>StarPilotConfirmationDialog</name>
     <message>
         <source>Reboot required to take effect.</source>
         <translation>Треба перезавантажити для змін</translation>
@@ -549,7 +549,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotDataPanel</name>
+    <name>StarPilotDataPanel</name>
     <message>
         <source>DELETE</source>
         <translation>ВИДАЛ.</translation>
@@ -599,8 +599,8 @@
         <translation>Перейменовано!</translation>
     </message>
     <message>
-        <source>FrogPilot Backups</source>
-        <translation>Бєкапи FrogPilot</translation>
+        <source>StarPilot Backups</source>
+        <translation>Бєкапи StarPilot</translation>
     </message>
     <message>
         <source>BACKUP</source>
@@ -695,8 +695,8 @@
         <translation>Імʼя вже використовується. Виберіть інше імʼя.</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Create, delete, or restore FrogPilot backups.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Створити, видалити чи відновити резервні копії FrogPilot.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;Create, delete, or restore StarPilot backups.&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Створити, видалити чи відновити резервні копії StarPilot.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>Enter a name for this backup</source>
@@ -707,8 +707,8 @@
         <translation>Стиснути цю резервну копію? Це збереже місце і буде працювати в фоновому режиму але займе трохи більше часу.</translation>
     </message>
     <message>
-        <source>Choose a FrogPilot backup to delete</source>
-        <translation>Виберіть резервну копію FrogPilot для видалення</translation>
+        <source>Choose a StarPilot backup to delete</source>
+        <translation>Виберіть резервну копію StarPilot для видалення</translation>
     </message>
     <message>
         <source>Delete this backup?</source>
@@ -735,12 +735,12 @@
         <translation>Виберіть резервну копію для видалення</translation>
     </message>
     <message>
-        <source>FrogPilot Stats</source>
-        <translation type="gpt-5-generated">Статистика FrogPilot</translation>
+        <source>StarPilot Stats</source>
+        <translation type="gpt-5-generated">Статистика StarPilot</translation>
     </message>
     <message>
-        <source>&lt;b&gt;View your collected FrogPilot stats.&lt;/b&gt;</source>
-        <translation type="gpt-5-generated">&lt;b&gt;Перегляньте зібрану статистику FrogPilot.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;View your collected StarPilot stats.&lt;/b&gt;</source>
+        <translation type="gpt-5-generated">&lt;b&gt;Перегляньте зібрану статистику StarPilot.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>RESET</source>
@@ -751,8 +751,8 @@
         <translation type="gpt-5-generated">ПЕРЕГЛЯД</translation>
     </message>
     <message>
-        <source>Are you sure you want to reset all of your FrogPilot stats?</source>
-        <translation type="gpt-5-generated">Ви впевнені, що хочете скинути всі ваші статистики FrogPilot?</translation>
+        <source>Are you sure you want to reset all of your StarPilot stats?</source>
+        <translation type="gpt-5-generated">Ви впевнені, що хочете скинути всі ваші статистики StarPilot?</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -968,7 +968,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotDevicePanel</name>
+    <name>StarPilotDevicePanel</name>
     <message>
         <source>Device Settings</source>
         <translation>Налаштування пристрою</translation>
@@ -1147,7 +1147,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotDriveSummary</name>
+    <name>StarPilotDriveSummary</name>
     <message>
         <source>Random Events Summary</source>
         <translation type="gpt-5-generated">Підсумок випадкових подій</translation>
@@ -1266,7 +1266,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotLateralPanel</name>
+    <name>StarPilotLateralPanel</name>
     <message>
         <source>Advanced Lateral Tuning</source>
         <translation>Розш. тюнінг кермування</translation>
@@ -1557,7 +1557,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotLongitudinalPanel</name>
+    <name>StarPilotLongitudinalPanel</name>
     <message>
         <source>Advanced Longitudinal Tuning</source>
         <translation>Розш. поздовжній тюнінг</translation>
@@ -2608,14 +2608,14 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotManageControl</name>
+    <name>StarPilotManageControl</name>
     <message>
         <source>MANAGE</source>
         <translation>КЕРУВАТИ</translation>
     </message>
 </context>
 <context>
-    <name>FrogPilotMapsPanel</name>
+    <name>StarPilotMapsPanel</name>
     <message>
         <source>Manually</source>
         <translation>Уручну</translation>
@@ -2806,7 +2806,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotModelPanel</name>
+    <name>StarPilotModelPanel</name>
     <message>
         <source>Automatically Download New Models</source>
         <translation>Автоматично завантажувати нові моделі</translation>
@@ -3049,7 +3049,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotModelReview</name>
+    <name>StarPilotModelReview</name>
     <message>
         <source>Drive Rating Selection</source>
         <translation>Вибір рейтингу поїздки</translation>
@@ -3116,7 +3116,7 @@
     </message>
 </context>
 <context>
-    <name>FrogPilotNavigationPanel</name>
+    <name>StarPilotNavigationPanel</name>
     <message>
         <source>ADD</source>
         <translation>ДОДАТ</translation>
@@ -3206,8 +3206,8 @@
         <translation>&lt;b&gt;Інструкції щодо налаштування Mapbox&lt;/b&gt; для «Навігації без Prime підписки від comma».</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Automatically collect missing or incorrect speed limits while you drive&lt;/b&gt; using speeds limits sourced from your dashboard (if supported), Mapbox, and "Navigate on openpilot".&lt;br&gt;&lt;br&gt;When you're parked and connected to Wi-Fi, FrogPilot will automatically processes this data into a file to be used with the tool located at "SpeedLimitFiller.frogpilot.com".&lt;br&gt;&lt;br&gt;You can download this file from "The Pond" in the "Download Speed Limits" menu.&lt;br&gt;&lt;br&gt;Need a step-by-step guide? Visit &lt;b&gt;#speed-limit-filler&lt;/b&gt; in the FrogPilot Discord!</source>
-        <translation>&lt;b&gt;Автоматично збирайте відсутні або неправильні обмеження швидкості під час руху&lt;/b&gt; за допомогою обмежень швидкості, отриманих з вашої приладової панелі (якщо це підтримується), Mapbox та «Navigate on openpilot».&lt;br&gt;&lt;br&gt;Коли ви припаркувалися і підключилися до Wi-Fi, FrogPilot автоматично обробляє ці дані у файл, який можна використовувати за допомогою інструменту, розташованого за адресою «SpeedLimitFiller.frogpilot.com». &lt;br&gt;&lt;br&gt;Ви можете завантажити цей файл з «The Pond» у меню «Завантажити обмеження швидкості».&lt;br&gt;&lt;br&gt;Потрібна покрокова інструкція? Відвідайте &lt;b&gt;#speed-limit-filler&lt;/b&gt; у FrogPilot Discord!</translation>
+        <source>&lt;b&gt;Automatically collect missing or incorrect speed limits while you drive&lt;/b&gt; using speeds limits sourced from your dashboard (if supported), Mapbox, and "Navigate on openpilot".&lt;br&gt;&lt;br&gt;When you're parked and connected to Wi-Fi, StarPilot will automatically process this data into a file to be used with the "Speed Limit Filler" tool in "The Pond".&lt;br&gt;&lt;br&gt;You can download this file from "The Pond" in the "Download Speed Limits" menu.&lt;br&gt;&lt;br&gt;Need a step-by-step guide? Visit &lt;b&gt;#speed-limit-filler&lt;/b&gt; in the StarPilot Discord!</source>
+        <translation>&lt;b&gt;Автоматично збирайте відсутні або неправильні обмеження швидкості під час руху&lt;/b&gt; за допомогою обмежень швидкості, отриманих з вашої приладової панелі (якщо це підтримується), Mapbox та «Navigate on openpilot».&lt;br&gt;&lt;br&gt;Коли ви припаркувалися і підключилися до Wi-Fi, StarPilot автоматично обробляє ці дані у файл для використання з інструментом «Speed Limit Filler» у «The Pond».&lt;br&gt;&lt;br&gt;Ви можете завантажити цей файл з «The Pond» у меню «Завантажити обмеження швидкості».&lt;br&gt;&lt;br&gt;Потрібна покрокова інструкція? Відвідайте &lt;b&gt;#speed-limit-filler&lt;/b&gt; у StarPilot Discord!</translation>
     </message>
     <message>
         <source>Cancel the speed-limit update?</source>
@@ -3279,14 +3279,14 @@ It will reset in %1 hours and %2 minutes.</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotOnroadWindow</name>
+    <name>StarPilotOnroadWindow</name>
     <message>
         <source>FPS: %1 | Min: %2 | Max: %3 | Avg: %4</source>
         <translation>КНС: %1 | Мін: %2 | Макс: %3 | Сер.: %4</translation>
     </message>
 </context>
 <context>
-    <name>FrogPilotSettingsWindow</name>
+    <name>StarPilotSettingsWindow</name>
     <message>
         <source>MANAGE</source>
         <translation>КЕРУВАТИ</translation>
@@ -3380,8 +3380,8 @@ It will reset in %1 hours and %2 minutes.</source>
         <translation>&lt;b&gt;Налаштуйте гучність сповіщень та увімкніть персоналізовані сповіщення.&lt;/b&gt;</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Fine-tune custom FrogPilot acceleration, braking, and steering controls.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Точне налаштування користувацьких елементів керування прискоренням, гальмуванням та рульовим керуванням FrogPilot.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;Fine-tune custom StarPilot acceleration, braking, and steering controls.&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Точне налаштування користувацьких елементів керування прискоренням, гальмуванням та рульовим керуванням StarPilot.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;Download map data for the "Speed Limit Controller" and configure "Navigate on openpilot" (NOO).&lt;/b&gt;</source>
@@ -3392,8 +3392,8 @@ It will reset in %1 hours and %2 minutes.</source>
         <translation>Налаштування системи</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Manage backups, device settings, screen options, storage, and tools to keep FrogPilot running smoothly.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Керуйте резервними копіями, налаштуваннями пристрою, параметрами екрана, сховищем та інструментами, щоб забезпечити безперебійну роботу FrogPilot.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;Manage backups, device settings, screen options, storage, and tools to keep StarPilot running smoothly.&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Керуйте резервними копіями, налаштуваннями пристрою, параметрами екрана, сховищем та інструментами, щоб забезпечити безперебійну роботу StarPilot.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;Customize the look of the driving screen and interface, including themes!&lt;/b&gt;</source>
@@ -3431,7 +3431,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotSoundsPanel</name>
+    <name>StarPilotSoundsPanel</name>
     <message>
         <source>Disengage Volume</source>
         <translation>Гучність деактивації</translation>
@@ -3461,8 +3461,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>Гучність негайн. сповіщ.</translation>
     </message>
     <message>
-        <source>FrogPilot Alerts</source>
-        <translation>Сповіщення FrogPilot</translation>
+        <source>StarPilot Alerts</source>
+        <translation>Сповіщення StarPilot</translation>
     </message>
     <message>
         <source>Green Light Alert</source>
@@ -3529,8 +3529,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>&lt;b&gt;Встановіть гучність для найгучніших попереджень, які вимагають негайної уваги.&lt;/b&gt;&lt;br&gt;&lt;br&gt;Приклади: «НЕГАЙНА ДЕАКТИВАЦІЯ — Водій відволікся», «НЕГАЙНА ДЕАКТИВАЦІЯ — Водій не реагує».</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Optional FrogPilot alerts&lt;/b&gt; that highlight driving events in a more noticeable way.</source>
-        <translation>&lt;b&gt;Додаткові сповіщення FrogPilot&lt;/b&gt;, які більш помітно підкреслюють події під час руху.</translation>
+        <source>&lt;b&gt;Optional StarPilot alerts&lt;/b&gt; that highlight driving events in a more noticeable way.</source>
+        <translation>&lt;b&gt;Додаткові сповіщення StarPilot&lt;/b&gt;, які більш помітно підкреслюють події під час руху.</translation>
     </message>
     <message>
         <source>Goat Scream</source>
@@ -3558,7 +3558,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotThemesPanel</name>
+    <name>StarPilotThemesPanel</name>
     <message>
         <source>Color Scheme</source>
         <translation>Колірна гамма</translation>
@@ -3696,8 +3696,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>ШТАТН.</translation>
     </message>
     <message>
-        <source>FROGPILOT</source>
-        <translation>FROGPILOT</translation>
+        <source>STARPILOT</source>
+        <translation>STARPILOT</translation>
     </message>
     <message>
         <source>CUSTOM</source>
@@ -3845,7 +3845,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotUtilitiesPanel</name>
+    <name>StarPilotUtilitiesPanel</name>
     <message>
         <source>Debug Mode</source>
         <translation>Режим зневадження</translation>
@@ -3967,8 +3967,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>Ви впевнені, що хочете скинути всі налаштування, щоб вони відповідали стандартним налаштуванням openpilot?</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Use FrogPilot's developer metrics on your next drive&lt;/b&gt; to diagnose issues and improve bug reports.</source>
-        <translation>&lt;b&gt;Використовуйте показники розробника FrogPilot під час наступної поїздки&lt;/b&gt;, щоб діагностувати проблеми та поліпшити звіти про помилки.</translation>
+        <source>&lt;b&gt;Use StarPilot's developer metrics on your next drive&lt;/b&gt; to diagnose issues and improve bug reports.</source>
+        <translation>&lt;b&gt;Використовуйте показники розробника StarPilot під час наступної поїздки&lt;/b&gt;, щоб діагностувати проблеми та поліпшити звіти про помилки.</translation>
     </message>
     <message>
         <source>&lt;b&gt;Reinstall the Panda firmware&lt;/b&gt; to fix connection or reliability issues.</source>
@@ -4044,7 +4044,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotVehiclesPanel</name>
+    <name>StarPilotVehiclesPanel</name>
     <message>
         <source>SELECT</source>
         <translation>ВИБІР</translation>
@@ -4146,8 +4146,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>&lt;b&gt;Вимкніть поздовжне керування openpilot&lt;/b&gt; і замість цього використовуйте стандартну систему ACC автомобіля.</translation>
     </message>
     <message>
-        <source>&lt;b&gt;FrogPilot features for General Motors vehicles.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Функції FrogPilot для автомобілів General Motors.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;StarPilot features for General Motors vehicles.&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Функції StarPilot для автомобілів General Motors.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;Experimental GM tune by FrogsGoMoo&lt;/b&gt; that attempts to smoothen stopping and takeoff control. Use at your own risk!</source>
@@ -4166,8 +4166,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>&lt;b&gt;Примусове зупинення та рушання&lt;/b&gt; на автомобілі Chevy Volt 2017 року.</translation>
     </message>
     <message>
-        <source>&lt;b&gt;FrogPilot features for Genesis, Hyundai, and Kia vehicles.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Функції FrogPilot для авто Genesis, Hyundai та Kia.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;StarPilot features for Genesis, Hyundai, and Kia vehicles.&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Функції StarPilot для авто Genesis, Hyundai та Kia.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;comma's new gas and brake control system&lt;/b&gt; that improves acceleration and braking but may cause issues on some Genesis/Hyundai/Kia vehicles.</source>
@@ -4178,8 +4178,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>&lt;b&gt;Хак для підвищення крутного моменту рульового управління з «Taco Bell Run» від comma 2022 року.&lt;/b&gt; Призначений для підвищення крутного моменту рульового управління на низьких швидкостях при поворотах вліво і вправо.</translation>
     </message>
     <message>
-        <source>&lt;b&gt;FrogPilot features for Lexus and Toyota vehicles.&lt;/b&gt;</source>
-        <translation>&lt;b&gt;Функції FrogPilot для авто Lexus і Toyota.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;StarPilot features for Lexus and Toyota vehicles.&lt;/b&gt;</source>
+        <translation>&lt;b&gt;Функції StarPilot для авто Lexus і Toyota.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>&lt;b&gt;Automatically lock/unlock doors&lt;/b&gt; when shifting in and out of drive.</source>
@@ -4290,8 +4290,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation type="gpt-5-generated">Налаштування Acura/Honda</translation>
     </message>
     <message>
-        <source>&lt;b&gt;FrogPilot features for Acura and Honda vehicles.&lt;/b&gt;</source>
-        <translation type="gpt-5-generated">&lt;b&gt;Функції FrogPilot для автомобілів Acura та Honda.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;StarPilot features for Acura and Honda vehicles.&lt;/b&gt;</source>
+        <translation type="gpt-5-generated">&lt;b&gt;Функції StarPilot для автомобілів Acura та Honda.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>Gentle Following</source>
@@ -4322,8 +4322,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation type="gpt-5-generated">Налаштування Subaru</translation>
     </message>
     <message>
-        <source>&lt;b&gt;FrogPilot features for Subaru vehicles.&lt;/b&gt;</source>
-        <translation type="gpt-5-generated">&lt;b&gt;Функції FrogPilot для автомобілів Subaru.&lt;/b&gt;</translation>
+        <source>&lt;b&gt;StarPilot features for Subaru vehicles.&lt;/b&gt;</source>
+        <translation type="gpt-5-generated">&lt;b&gt;Функції StarPilot для автомобілів Subaru.&lt;/b&gt;</translation>
     </message>
     <message>
         <source>Stop and Go</source>
@@ -4335,7 +4335,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotVisualsPanel</name>
+    <name>StarPilotVisualsPanel</name>
     <message>
         <source>Advanced UI Controls</source>
         <translation>Розш. параметри інтерфейсу</translation>
@@ -4901,8 +4901,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>&lt;b&gt;Відобразити всі точки радара&lt;/b&gt;, згенеровані радаром автомобіля.</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Custom FrogPilot widgets&lt;/b&gt; for the driving screen.</source>
-        <translation>&lt;b&gt;Спеціальні віджети FrogPilot&lt;/b&gt; для екрану водіння.</translation>
+        <source>&lt;b&gt;Custom StarPilot widgets&lt;/b&gt; for the driving screen.</source>
+        <translation>&lt;b&gt;Спеціальні віджети StarPilot&lt;/b&gt; для екрану водіння.</translation>
     </message>
     <message>
         <source>&lt;b&gt;Color the driving path by planned acceleration and braking.&lt;/b&gt;</source>
@@ -4969,8 +4969,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>&lt;b&gt;Збільште розмір карти&lt;/b&gt; для зручнішого читання навігації.</translation>
     </message>
     <message>
-        <source>&lt;b&gt;Select the map style&lt;/b&gt; for "Navigate on openpilot" (NOO):&lt;br&gt;&lt;br&gt;&lt;b&gt;Stock openpilot&lt;/b&gt;: Default comma.ai style&lt;br&gt;&lt;b&gt;FrogPilot&lt;/b&gt;: Official FrogPilot map style&lt;br&gt;&lt;b&gt;Mapbox Streets&lt;/b&gt;: Standard street-focused view&lt;br&gt;&lt;b&gt;Mapbox Outdoors&lt;/b&gt;: Emphasizes outdoor and terrain features&lt;br&gt;&lt;b&gt;Mapbox Light&lt;/b&gt;: Minimalist, bright theme&lt;br&gt;&lt;b&gt;Mapbox Dark&lt;/b&gt;: Minimalist, dark theme&lt;br&gt;&lt;b&gt;Mapbox Navigation Day&lt;/b&gt;: Optimized for daytime navigation&lt;br&gt;&lt;b&gt;Mapbox Navigation Night&lt;/b&gt;: Optimized for nighttime navigation&lt;br&gt;&lt;b&gt;Mapbox Satellite&lt;/b&gt;: Satellite imagery only&lt;br&gt;&lt;b&gt;Mapbox Satellite Streets&lt;/b&gt;: Hybrid satellite imagery with street labels&lt;br&gt;&lt;b&gt;Mapbox Traffic Night&lt;/b&gt;: Dark theme emphasizing traffic conditions&lt;br&gt;&lt;b&gt;Mike's Personalized Style&lt;/b&gt;: Customized hybrid satellite view</source>
-        <translation>&lt;b&gt;Виберіть стиль карти&lt;/b&gt; для «Навігація на openpilot» (NOO):&lt;br&gt;&lt;br&gt;&lt;b&gt;Стандартний openpilot&lt;/b&gt;: Стиль comma.ai за замовчуванням&lt;br&gt;&lt;b&gt;FrogPilot&lt;/b&gt;: Офіційний стиль карти FrogPilot&lt;br&gt;&lt;b&gt;Mapbox Streets&lt;/b&gt;: Стандартний вигляд з акцентом на вулицях&lt;br&gt;&lt;b&gt;Mapbox Outdoors&lt;/b&gt;: Акцент на особливостях місцевості та ландшафту&lt;br&gt;&lt;b&gt;Mapbox Light&lt;/b&gt;: Мінімалістична, світла тема&lt;br&gt;&lt;b&gt;Mapbox Dark&lt;/b&gt;: Мінімалістична, темна тема&lt;br&gt;&lt;b&gt;Mapbox Navigation Day&lt;/b&gt;: Оптимізовано для денної навігації&lt;br&gt;&lt;b&gt;Mapbox Navigation Night&lt;/b&gt;: Оптимізовано для нічної навігації&lt;br&gt;&lt;b&gt;Mapbox Satellite&lt;/b&gt;: Тільки супутникові знімки&lt;br&gt;&lt;b&gt;Mapbox Satellite Streets&lt;/b&gt;: Гібридні супутникові знімки з позначками вулиць&lt;br&gt;&lt;b&gt;Mapbox Traffic Night&lt;/b&gt;: Темна тема, що підкреслює дорожні умови&lt;br&gt;&lt;b&gt;Mike's Personalized Style&lt;/b&gt;: Індивідуальний гібридний супутниковий вигляд</translation>
+        <source>&lt;b&gt;Select the map style&lt;/b&gt; for "Navigate on openpilot" (NOO):&lt;br&gt;&lt;br&gt;&lt;b&gt;Stock openpilot&lt;/b&gt;: Default comma.ai style&lt;br&gt;&lt;b&gt;StarPilot&lt;/b&gt;: Official StarPilot map style&lt;br&gt;&lt;b&gt;Mapbox Streets&lt;/b&gt;: Standard street-focused view&lt;br&gt;&lt;b&gt;Mapbox Outdoors&lt;/b&gt;: Emphasizes outdoor and terrain features&lt;br&gt;&lt;b&gt;Mapbox Light&lt;/b&gt;: Minimalist, bright theme&lt;br&gt;&lt;b&gt;Mapbox Dark&lt;/b&gt;: Minimalist, dark theme&lt;br&gt;&lt;b&gt;Mapbox Navigation Day&lt;/b&gt;: Optimized for daytime navigation&lt;br&gt;&lt;b&gt;Mapbox Navigation Night&lt;/b&gt;: Optimized for nighttime navigation&lt;br&gt;&lt;b&gt;Mapbox Satellite&lt;/b&gt;: Satellite imagery only&lt;br&gt;&lt;b&gt;Mapbox Satellite Streets&lt;/b&gt;: Hybrid satellite imagery with street labels&lt;br&gt;&lt;b&gt;Mapbox Traffic Night&lt;/b&gt;: Dark theme emphasizing traffic conditions&lt;br&gt;&lt;b&gt;Mike's Personalized Style&lt;/b&gt;: Customized hybrid satellite view</source>
+        <translation>&lt;b&gt;Виберіть стиль карти&lt;/b&gt; для «Навігація на openpilot» (NOO):&lt;br&gt;&lt;br&gt;&lt;b&gt;Стандартний openpilot&lt;/b&gt;: Стиль comma.ai за замовчуванням&lt;br&gt;&lt;b&gt;StarPilot&lt;/b&gt;: Офіційний стиль карти StarPilot&lt;br&gt;&lt;b&gt;Mapbox Streets&lt;/b&gt;: Стандартний вигляд з акцентом на вулицях&lt;br&gt;&lt;b&gt;Mapbox Outdoors&lt;/b&gt;: Акцент на особливостях місцевості та ландшафту&lt;br&gt;&lt;b&gt;Mapbox Light&lt;/b&gt;: Мінімалістична, світла тема&lt;br&gt;&lt;b&gt;Mapbox Dark&lt;/b&gt;: Мінімалістична, темна тема&lt;br&gt;&lt;b&gt;Mapbox Navigation Day&lt;/b&gt;: Оптимізовано для денної навігації&lt;br&gt;&lt;b&gt;Mapbox Navigation Night&lt;/b&gt;: Оптимізовано для нічної навігації&lt;br&gt;&lt;b&gt;Mapbox Satellite&lt;/b&gt;: Тільки супутникові знімки&lt;br&gt;&lt;b&gt;Mapbox Satellite Streets&lt;/b&gt;: Гібридні супутникові знімки з позначками вулиць&lt;br&gt;&lt;b&gt;Mapbox Traffic Night&lt;/b&gt;: Темна тема, що підкреслює дорожні умови&lt;br&gt;&lt;b&gt;Mike's Personalized Style&lt;/b&gt;: Індивідуальний гібридний супутниковий вигляд</translation>
     </message>
     <message>
         <source>&lt;b&gt;Display the road name at the bottom of the driving screen&lt;/b&gt; using data from "OpenStreetMap (OSM)".</source>
@@ -5009,7 +5009,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>Сховай мапу</translation>
     </message>
     <message>
-        <source>FrogPilot</source>
+        <source>StarPilot</source>
         <translation>ЖабоПілот</translation>
     </message>
     <message>
@@ -5026,7 +5026,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
     </message>
 </context>
 <context>
-    <name>FrogPilotWheelPanel</name>
+    <name>StarPilotWheelPanel</name>
     <message>
         <source>Distance Button</source>
         <translation>Кнопка відстані</translation>
@@ -5268,8 +5268,8 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>openpilot завис 💩</translation>
     </message>
     <message>
-        <source>Please post the "Error Log" in the FrogPilot Discord!</source>
-        <translation>Будь ласка, відправте «Журнал помилок» у FrogPilot Discord!</translation>
+        <source>Please post the "Error Log" in the StarPilot Discord!</source>
+        <translation>Будь ласка, відправте «Журнал помилок» у StarPilot Discord!</translation>
     </message>
     <message>
         <source>openpilot crashed</source>
@@ -5395,7 +5395,7 @@ Developer - Highly customizable settings for seasoned enthusiasts</source>
         <translation>Вихід</translation>
     </message>
     <message>
-        <source>FrogPilot</source>
+        <source>StarPilot</source>
         <translation>ЖабоПілот</translation>
     </message>
     <message>
@@ -5538,32 +5538,32 @@ This may take up to a minute.</source>
         <translation>Програма</translation>
     </message>
     <message>
-        <source>FrogPilot</source>
+        <source>StarPilot</source>
         <translation>ЖабоПілот</translation>
     </message>
     <message>
-        <source>Welcome to FrogPilot! Since you're new to openpilot, the "Minimal" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
-        <translation>Ласкаво просимо до FrogPilot! Оскільки ви новачок в openpilot, було застосовано попереднє налаштування «Мінімальне», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
+        <source>Welcome to StarPilot! Since you're new to openpilot, the "Minimal" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
+        <translation>Ласкаво просимо до StarPilot! Оскільки ви новачок в openpilot, було застосовано попереднє налаштування «Мінімальне», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
     </message>
     <message>
-        <source>Welcome to FrogPilot! Since you're new to FrogPilot, the "Minimal" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
-        <translation>Ласкаво просимо до FrogPilot! Оскільки ви новачок у FrogPilot, було застосовано попереднє налаштування «Мінімальне», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
+        <source>Welcome to StarPilot! Since you're new to StarPilot, the "Minimal" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
+        <translation>Ласкаво просимо до StarPilot! Оскільки ви новачок у StarPilot, було застосовано попереднє налаштування «Мінімальне», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
     </message>
     <message>
-        <source>Since you're fairly new to FrogPilot, the "Minimal" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
-        <translation>Оскільки ви ще не дуже добре знайомі з FrogPilot, було застосовано попереднє налаштування «Мінімальне», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
+        <source>Since you're fairly new to StarPilot, the "Minimal" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
+        <translation>Оскільки ви ще не дуже добре знайомі з StarPilot, було застосовано попереднє налаштування «Мінімальне», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
     </message>
     <message>
         <source>Since you're experienced with openpilot, the "Standard" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
         <translation>Оскільки ви маєте досвід роботи з openpilot, було застосовано попереднє налаштування «Стандарт», але ви можете змінити його в будь-який час за допомогою кнопки «Рівень налаштування»!</translation>
     </message>
     <message>
-        <source>Since you're experienced with FrogPilot, the "Standard" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
-        <translation>Оскільки ви маєте досвід роботи з FrogPilot, було застосовано стандартне попереднє налаштування «Standard», але ви можете змінити його в будь-який час за допомогою кнопки «Tuning Level»!</translation>
+        <source>Since you're experienced with StarPilot, the "Standard" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
+        <translation>Оскільки ви маєте досвід роботи з StarPilot, було застосовано стандартне попереднє налаштування «Standard», але ви можете змінити його в будь-який час за допомогою кнопки «Tuning Level»!</translation>
     </message>
     <message>
-        <source>Since you're very experienced with FrogPilot, the "Advanced" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
-        <translation>Оскільки ви маєте великий досвід роботи з FrogPilot, було застосовано попереднє налаштування «Advanced», але ви можете змінити його в будь-який час за допомогою кнопки «Tuning Level»!</translation>
+        <source>Since you're very experienced with StarPilot, the "Advanced" toggle preset has been applied, but you can change this at any time via the "Tuning Level" button!</source>
+        <translation>Оскільки ви маєте великий досвід роботи з StarPilot, було застосовано попереднє налаштування «Advanced», але ви можете змінити його в будь-який час за допомогою кнопки «Tuning Level»!</translation>
     </message>
 </context>
 <context>
@@ -5798,12 +5798,12 @@ This may take up to a minute.</source>
         <translation>Поточна версія</translation>
     </message>
     <message>
-        <source>Automatically Update FrogPilot</source>
-        <translation>Автоматично оновлювати FrogPilot</translation>
+        <source>Automatically Update StarPilot</source>
+        <translation>Автоматично оновлювати StarPilot</translation>
     </message>
     <message>
-        <source>FrogPilot will automatically update itself and it's assets when you're offroad and have an active internet connection.</source>
-        <translation>FrogPilot автоматично оновлюватиме себе та свої ресурси, коли ви не в дорозі та маєте активне підключення до Інтернету.</translation>
+        <source>StarPilot will automatically update itself and it's assets when you're offroad and have an active internet connection.</source>
+        <translation>StarPilot автоматично оновлюватиме себе та свої ресурси, коли ви не в дорозі та маєте активне підключення до Інтернету.</translation>
     </message>
     <message>
         <source>Download</source>

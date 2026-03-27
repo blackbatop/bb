@@ -18,7 +18,7 @@ fi
 # Ensure AGNOS python can import openpilot modules when called directly.
 REPO_ROOT="$(cd "$DIR/../../.." >/dev/null 2>&1 && pwd)"
 if [[ -d "$REPO_ROOT" ]]; then
-  export PYTHONPATH="$REPO_ROOT/frogpilot/third_party:$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+  export PYTHONPATH="$REPO_ROOT/starpilot/third_party:$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 fi
 
 run_headless_swap() {

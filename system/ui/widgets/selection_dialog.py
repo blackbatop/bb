@@ -176,7 +176,7 @@ class SelectionDialog(Widget):
     
     if isinstance(self._options_raw, dict):
       series_keys = list(self._options_raw.keys())
-      priority_series = ["FrogPilot", "Comma", "Experimental"]
+      priority_series = ["StarPilot", "Comma", "Experimental"]
       sorted_series_keys = []
       for p in priority_series:
         if p in series_keys:

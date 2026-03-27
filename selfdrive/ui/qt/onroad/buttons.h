@@ -12,12 +12,12 @@ class ExperimentalButton : public QPushButton {
 
 public:
   explicit ExperimentalButton(QWidget *parent = 0);
-  void updateState(const UIState &s, const FrogPilotUIState &fs);
+  void updateState(const UIState &s, const StarPilotUIState &fs);
 
-  // FrogPilot variables
-  FrogPilotUIScene frogpilot_scene;
+  // StarPilot variables
+  StarPilotUIScene starpilot_scene;
 
-  QJsonObject frogpilot_toggles;
+  QJsonObject starpilot_toggles;
 
 private:
   void paintEvent(QPaintEvent *event) override;
@@ -29,7 +29,7 @@ private:
   bool experimental_mode;
   bool engageable;
 
-  // FrogPilot variables
+  // StarPilot variables
   void showEvent(QShowEvent *event) override;
   void updateBackgroundColor();
   void updateTheme();

@@ -22,7 +22,7 @@
 #include "selfdrive/ui/qt/offroad/developer_panel.h"
 #include "selfdrive/ui/qt/offroad/firehose.h"
 
-#include "frogpilot/ui/qt/offroad/frogpilot_settings.h"
+#include "starpilot/ui/qt/offroad/starpilot_settings.h"
 
 TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
   // param, title, desc, icon, restart needed
@@ -128,7 +128,7 @@ TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
   toggles["ExperimentalMode"]->setActiveIcon("../assets/icons/experimental.svg");
   toggles["ExperimentalMode"]->setConfirmation(true, true);
 
-  // FrogPilot variables
+  // StarPilot variables
   connect(toggles["IsMetric"], &ToggleControl::toggleFlipped, [=](bool isMetric) {
     updateMetric(isMetric);
   });
@@ -215,18 +215,18 @@ void TogglesPanel::updateToggles() {
     experimental_mode_toggle->setDescription(e2e_description);
   }
 
-  // FrogPilot variables
-  FrogPilotUIState &fs = *frogpilotUIState();
-  FrogPilotUIScene &frogpilot_scene = fs.frogpilot_scene;
-  QJsonObject &frogpilot_toggles = frogpilot_scene.frogpilot_toggles;
+  // StarPilot variables
+  StarPilotUIState &fs = *starpilotUIState();
+  StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
+  QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
   auto disengage_on_accelerator_toggle = toggles["DisengageOnAccelerator"];
-  disengage_on_accelerator_toggle->setVisible(!frogpilot_toggles.value("always_on_lateral").toBool());
+  disengage_on_accelerator_toggle->setVisible(!starpilot_toggles.value("always_on_lateral").toBool());
   auto driver_camera_toggle = toggles["RecordFront"];
-  driver_camera_toggle->setVisible(!frogpilot_toggles.value("no_logging").toBool());
-  experimental_mode_toggle->setVisible(!frogpilot_toggles.value("conditional_experimental_mode").toBool());
+  driver_camera_toggle->setVisible(!starpilot_toggles.value("no_logging").toBool());
+  experimental_mode_toggle->setVisible(!starpilot_toggles.value("conditional_experimental_mode").toBool());
   auto record_audio_toggle = toggles["RecordAudio"];
-  record_audio_toggle->setVisible(!frogpilot_toggles.value("no_logging").toBool());
+  record_audio_toggle->setVisible(!starpilot_toggles.value("no_logging").toBool());
 }
 
 GalaxyQRPopup::GalaxyQRPopup(const QString &url, QWidget *parent) : DialogBase(parent) {
@@ -279,7 +279,7 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
   });
   addItem(pair_device);
 
-  const std::string galaxy_dir = Hardware::PC() ? (Path::comma_home() + "/frogpilot/data/galaxy") : "/data/galaxy";
+  const std::string galaxy_dir = Hardware::PC() ? (Path::comma_home() + "/starpilot/data/galaxy") : "/data/galaxy";
   const std::string galaxy_auth_path = galaxy_dir + "/glxyauth";
   const std::string galaxy_session_path = galaxy_dir + "/glxysession";
   const std::string galaxy_slug_path = galaxy_dir + "/glxyslug";
@@ -566,7 +566,7 @@ void SettingsWindow::showEvent(QShowEvent *event) {
   setCurrentPanel(0);
 }
 
-// FrogPilot variables
+// StarPilot variables
 void SettingsWindow::hideEvent(QHideEvent *event) {
   closePanel();
   closeSubPanel();
@@ -576,7 +576,7 @@ void SettingsWindow::hideEvent(QHideEvent *event) {
   subSubPanelOpen = false;
   subSubSubPanelOpen = false;
 
-  updateFrogPilotToggles();
+  updateStarPilotToggles();
 }
 
 void SettingsWindow::setCurrentPanel(int index, const QString &param) {
@@ -627,7 +627,7 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
   sidebar_layout->addSpacing(10);
   sidebar_layout->addWidget(close_btn, 0, Qt::AlignRight);
   QObject::connect(close_btn, &QPushButton::clicked, [this]() {
-    // FrogPilot variables
+    // StarPilot variables
     if (subSubSubPanelOpen) {
       closeSubSubSubPanel();
       subSubSubPanelOpen = false;
@@ -657,15 +657,15 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
   auto networking = new Networking(this);
   QObject::connect(uiState()->prime_state, &PrimeState::changed, networking, &Networking::setPrimeType);
 
-  // FrogPilot variables
+  // StarPilot variables
   QObject::connect(toggles, &TogglesPanel::updateMetric, this, &SettingsWindow::updateMetric);
 
-  FrogPilotSettingsWindow *frogpilotSettingsWindow = new FrogPilotSettingsWindow(this);
-  QObject::connect(frogpilotSettingsWindow, &FrogPilotSettingsWindow::openPanel, [this]() {panelOpen=true;});
-  QObject::connect(frogpilotSettingsWindow, &FrogPilotSettingsWindow::openSubPanel, [this]() {subPanelOpen=true;});
-  QObject::connect(frogpilotSettingsWindow, &FrogPilotSettingsWindow::openSubSubPanel, [this]() {subSubPanelOpen=true;});
-  QObject::connect(frogpilotSettingsWindow, &FrogPilotSettingsWindow::openSubSubSubPanel, [this]() {subSubSubPanelOpen=true;});
-  QObject::connect(frogpilotSettingsWindow, &FrogPilotSettingsWindow::tuningLevelChanged, this, &SettingsWindow::updateDeveloperToggle);
+  StarPilotSettingsWindow *starpilotSettingsWindow = new StarPilotSettingsWindow(this);
+  QObject::connect(starpilotSettingsWindow, &StarPilotSettingsWindow::openPanel, [this]() {panelOpen=true;});
+  QObject::connect(starpilotSettingsWindow, &StarPilotSettingsWindow::openSubPanel, [this]() {subPanelOpen=true;});
+  QObject::connect(starpilotSettingsWindow, &StarPilotSettingsWindow::openSubSubPanel, [this]() {subSubPanelOpen=true;});
+  QObject::connect(starpilotSettingsWindow, &StarPilotSettingsWindow::openSubSubSubPanel, [this]() {subSubSubPanelOpen=true;});
+  QObject::connect(starpilotSettingsWindow, &StarPilotSettingsWindow::tuningLevelChanged, this, &SettingsWindow::updateDeveloperToggle);
 
   DeveloperPanel *developerPanel = new DeveloperPanel(this);
   QObject::connect(developerPanel, &DeveloperPanel::openSubPanel, [this]() {subPanelOpen=true;});
@@ -677,7 +677,7 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     {tr("Toggles"), toggles},
     {tr("Software"), new SoftwarePanel(this)},
     {tr("Developer"), developerPanel},
-    {tr("StarPilot"), frogpilotSettingsWindow},
+    {tr("StarPilot"), starpilotSettingsWindow},
   };
 
   nav_btns = new QButtonGroup(this);
@@ -711,45 +711,45 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     panel_widget->addWidget(panel_frame);
 
     QObject::connect(btn, &QPushButton::clicked, [=, w = panel_frame]() {
-      // FrogPilot variables
-      if (w->widget() == frogpilotSettingsWindow) {
+      // StarPilot variables
+      if (w->widget() == starpilotSettingsWindow) {
         bool tuningLevelConfirmed = params.getBool("TuningLevelConfirmed");
 
         if (!tuningLevelConfirmed) {
-          int frogpilotHours = QJsonDocument::fromJson(QString::fromStdString(params.get("FrogPilotStats")).toUtf8()).object().value("FrogPilotSeconds").toInt() / (60 * 60);
+          int starpilotHours = QJsonDocument::fromJson(QString::fromStdString(params.get("StarPilotStats")).toUtf8()).object().value("StarPilotSeconds").toInt() / (60 * 60);
           int openpilotHours = params.getInt("KonikMinutes") / 60 + params.getInt("openpilotMinutes") / 60;
 
-          if (frogpilotHours < 1 && openpilotHours < 100) {
+          if (starpilotHours < 1 && openpilotHours < 100) {
             if (openpilotHours < 10) {
-              if (ConfirmationDialog::alert(tr("Welcome to FrogPilot! Since you're new to openpilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
+              if (ConfirmationDialog::alert(tr("Welcome to StarPilot! Since you're new to openpilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
                 params.putBool("TuningLevelConfirmed", true);
                 params.putInt("TuningLevel", 0);
               }
             } else {
-              if (ConfirmationDialog::alert(tr("Welcome to FrogPilot! Since you're new to FrogPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
+              if (ConfirmationDialog::alert(tr("Welcome to StarPilot! Since you're new to StarPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
                 params.putBool("TuningLevelConfirmed", true);
                 params.putInt("TuningLevel", 0);
               }
             }
-          } else if (frogpilotHours < 50 && openpilotHours < 100) {
-            if (ConfirmationDialog::alert(tr("Since you're fairly new to FrogPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
+          } else if (starpilotHours < 50 && openpilotHours < 100) {
+            if (ConfirmationDialog::alert(tr("Since you're fairly new to StarPilot, the \"Minimal\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
               params.putBool("TuningLevelConfirmed", true);
               params.putInt("TuningLevel", 0);
             }
-          } else if (frogpilotHours < 100) {
+          } else if (starpilotHours < 100) {
             if (openpilotHours >= 100) {
               if (ConfirmationDialog::alert(tr("Since you're experienced with openpilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
                 params.putBool("TuningLevelConfirmed", true);
                 params.putInt("TuningLevel", 1);
               }
             } else {
-              if (ConfirmationDialog::alert(tr("Since you're experienced with FrogPilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
+              if (ConfirmationDialog::alert(tr("Since you're experienced with StarPilot, the \"Standard\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
                 params.putBool("TuningLevelConfirmed", true);
                 params.putInt("TuningLevel", 1);
               }
             }
-          } else if (frogpilotHours >= 100) {
-            if (ConfirmationDialog::alert(tr("Since you're very experienced with FrogPilot, the \"Advanced\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
+          } else if (starpilotHours >= 100) {
+            if (ConfirmationDialog::alert(tr("Since you're very experienced with StarPilot, the \"Advanced\" toggle preset has been applied, but you can change this at any time via the \"Tuning Level\" button!"), this, true)) {
               params.putBool("TuningLevelConfirmed", true);
               params.putInt("TuningLevel", 2);
             }
@@ -801,11 +801,11 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     }
   )");
 
-  // FrogPilot variables
+  // StarPilot variables
   updateDeveloperToggle(params.getInt("TuningLevel"));
 }
 
-// FrogPilot variables
+// StarPilot variables
 void SettingsWindow::updateDeveloperToggle(int tuningLevel) {
   for (QAbstractButton *btn : nav_btns->buttons()) {
     if (btn->text() == tr("Developer")) {

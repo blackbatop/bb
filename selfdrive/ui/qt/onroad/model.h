@@ -5,7 +5,7 @@
 
 #include "selfdrive/ui/ui.h"
 
-#include "frogpilot/ui/qt/onroad/frogpilot_annotated_camera.h"
+#include "starpilot/ui/qt/onroad/starpilot_annotated_camera.h"
 
 class ModelRenderer {
 public:
@@ -13,12 +13,12 @@ public:
   void setTransform(const Eigen::Matrix3f &transform) { car_space_transform = transform; }
   void draw(QPainter &painter, const QRect &surface_rect);
 
-  // FrogPilot variables
-  FrogPilotAnnotatedCameraWidget *frogpilot_nvg;
+  // StarPilot variables
+  StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
-  FrogPilotUIScene frogpilot_scene;
+  StarPilotUIScene starpilot_scene;
 
-  QJsonObject frogpilot_toggles;
+  QJsonObject starpilot_toggles;
 
 private:
   bool mapToScreen(float in_x, float in_y, float in_z, QPointF *out);
@@ -46,10 +46,10 @@ private:
   Eigen::Matrix3f car_space_transform = Eigen::Matrix3f::Zero();
   QRectF clip_region;
 
-  // FrogPilot variables
+  // StarPilot variables
   void mapAveragedLineToPolygon(const cereal::XYZTData::Reader &line1, const cereal::XYZTData::Reader &line2, float y_off, float z_off,
                                 QPolygonF *pvd, int max_idx, float height, bool allow_invert = true);
-  void updateAdjacentLeads(const cereal::FrogPilotRadarState::Reader &radar_state, const cereal::XYZTData::Reader &line);
+  void updateAdjacentLeads(const cereal::StarPilotRadarState::Reader &radar_state, const cereal::XYZTData::Reader &line);
   void updateRadarTracks(const cereal::XYZTData::Reader &line);
 
   QPointF adjacent_lead_vertices[2] = {};

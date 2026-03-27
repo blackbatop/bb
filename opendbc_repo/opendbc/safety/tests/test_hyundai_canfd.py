@@ -81,7 +81,7 @@ class TestHyundaiCanfdBase(HyundaiButtonBase, common.CarSafetyTest, common.Drive
     }
     return self.packer.make_can_msg_safety("CRUISE_BUTTONS", bus, values)
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     if not hasattr(self, "_aol_state"):
       self._aol_state = False
@@ -172,7 +172,7 @@ class TestHyundaiCanfdLFASteeringAltButtonsBase(TestHyundaiCanfdLFASteeringBase)
       self.assertFalse(self._tx(self._acc_cancel_msg(True, accel=1)))
       self.assertFalse(self._tx(self._acc_cancel_msg(False)))
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     if not hasattr(self, "_aol_state"):
       self._aol_state = False

@@ -60,7 +60,7 @@ bool acc_main_on = false;  // referred to as "ACC off" in ISO 15622:2018
 int cruise_button_prev = 0;
 bool safety_rx_checks_invalid = false;
 
-// FrogPilot variables
+// StarPilot variables
 bool aol_allowed = false;
 bool lkas_button_prev = false;
 bool lkas_on = false;
@@ -375,7 +375,7 @@ static void generic_rx_checks(void) {
   }
   steering_disengage_prev = steering_disengage;
 
-  // FrogPilot variables
+  // StarPilot variables
   aol_allowed = (acc_main_on || lkas_on) && (alternative_experience & ALT_EXP_ALWAYS_ON_LATERAL);
 }
 
@@ -501,7 +501,7 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
   enable_gas_interceptor = false;
   gas_interceptor_prev = 0;
 
-  // FrogPilot variables
+  // StarPilot variables
   aol_allowed = false;
   lkas_button_prev = false;
   lkas_on = false;

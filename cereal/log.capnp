@@ -2625,15 +2625,15 @@ struct Event {
     # DO change the name of the field and struct
     # DON'T change the ID (e.g. @107)
     # DON'T change which struct it points to
-    frogpilotCarControl @107 :Custom.FrogPilotCarControl;
-    frogpilotCarParams @108 :Custom.FrogPilotCarParams;
-    frogpilotCarState @109 :Custom.FrogPilotCarState;
-    frogpilotDeviceState @110 :Custom.FrogPilotDeviceState;
-    frogpilotModelV2 @111 :Custom.FrogPilotModelDataV2;
-    frogpilotOnroadEvents @112 :List(Custom.FrogPilotOnroadEvent);
-    frogpilotPlan @113 :Custom.FrogPilotPlan;
-    frogpilotRadarState @114 :Custom.FrogPilotRadarState;
-    frogpilotSelfdriveState @115 :Custom.FrogPilotSelfdriveState;
+    starpilotCarControl @107 :Custom.StarPilotCarControl;
+    starpilotCarParams @108 :Custom.StarPilotCarParams;
+    starpilotCarState @109 :Custom.StarPilotCarState;
+    starpilotDeviceState @110 :Custom.StarPilotDeviceState;
+    starpilotModelV2 @111 :Custom.StarPilotModelDataV2;
+    starpilotOnroadEvents @112 :List(Custom.StarPilotOnroadEvent);
+    starpilotPlan @113 :Custom.StarPilotPlan;
+    starpilotRadarState @114 :Custom.StarPilotRadarState;
+    starpilotSelfdriveState @115 :Custom.StarPilotSelfdriveState;
     customReserved9 @116 :Custom.CustomReserved9;
     customReserved10 @136 :Custom.CustomReserved10;
     customReserved11 @137 :Custom.CustomReserved11;

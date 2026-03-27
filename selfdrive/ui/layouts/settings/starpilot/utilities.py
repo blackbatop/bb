@@ -12,7 +12,7 @@ from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPan
 EXCLUDED_KEYS = {
   "AvailableModels",
   "AvailableModelNames",
-  "FrogPilotStats",
+  "StarPilotStats",
   "GithubSshKeys",
   "GithubUsername",
   "MapBoxRequests",
@@ -54,13 +54,6 @@ class StarPilotUtilitiesLayout(StarPilotPanel):
         "on_click": self._on_force_drive_state,
         "color": "#FA6800",
       },
-      {
-        "title": tr_noop("The Pond"),
-        "type": "value",
-        "get_value": lambda: tr("Paired") if self._params.get_bool("PondPaired") else tr("Not paired"),
-        "on_click": self._on_pond_clicked,
-        "color": "#FA6800",
-      },
       {"title": tr_noop("Report Issue"), "type": "hub", "on_click": self._on_report_issue, "color": "#FA6800"},
       {"title": tr_noop("Reset to Defaults"), "type": "hub", "on_click": self._on_reset_defaults, "color": "#FA6800"},
       {"title": tr_noop("Reset to Stock"), "type": "hub", "on_click": self._on_reset_stock, "color": "#FA6800"},
@@ -100,20 +93,6 @@ class StarPilotUtilitiesLayout(StarPilotPanel):
 
     current = self._get_force_drive_state()
     gui_app.set_modal_overlay(SelectionDialog(tr("Force Drive State"), options, current, on_close=on_select))
-
-  def _on_pond_clicked(self):
-    paired = self._params.get_bool("PondPaired")
-    if paired:
-
-      def on_unpair(res):
-        if res == DialogResult.CONFIRM:
-          self._params.put_bool("PondPaired", False)
-          gui_app.set_modal_overlay(alert_dialog(tr("Unpaired from The Pond.")))
-          self._rebuild_grid()
-
-      gui_app.set_modal_overlay(ConfirmDialog(tr("Unpair from The Pond?"), tr("Unpair"), on_close=on_unpair))
-    else:
-      gui_app.set_modal_overlay(alert_dialog(tr("Visit frogpilot.com/the_pond to pair your device.")))
 
   def _on_report_issue(self):
     def on_category(res, val):

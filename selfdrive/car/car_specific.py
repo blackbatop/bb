@@ -18,7 +18,7 @@ class MockCarState:
   def __init__(self):
     self.sm = messaging.SubMaster(['gpsLocation', 'gpsLocationExternal'])
 
-  def update(self, CS: car.CarState, FPCS: custom.FrogPilotCarState):
+  def update(self, CS: car.CarState, FPCS: custom.StarPilotCarState):
     self.sm.update(0)
     gps_sock = 'gpsLocationExternal' if self.sm.recv_frame['gpsLocationExternal'] > 1 else 'gpsLocation'
 

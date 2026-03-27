@@ -7,7 +7,7 @@ from collections.abc import Callable
 from openpilot.system.ui.widgets.label import gui_label, MiciLabel, UnifiedLabel
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.lib.application import gui_app, FontWeight, DEFAULT_TEXT_COLOR, MousePos
-from openpilot.frogpilot.common.frogpilot_variables import MODELS_PATH
+from openpilot.starpilot.common.starpilot_variables import MODELS_PATH
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.text import wrap_text
 from openpilot.system.version import training_version, RELEASE_BRANCHES

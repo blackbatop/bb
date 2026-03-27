@@ -30,7 +30,7 @@ function agnos_init {
   sudo chgrp gpu /dev/adsprpc-smd /dev/ion /dev/kgsl-3d0
   sudo chmod 660 /dev/adsprpc-smd /dev/ion /dev/kgsl-3d0
 
-  # FrogPilot variables
+  # StarPilot variables
   sudo chmod 0777 /cache
 
   # Check if AGNOS update is required
@@ -85,7 +85,7 @@ function launch {
   # handle pythonpath
   ln -sfn $(pwd) /data/pythonpath
   export BASEDIR="$DIR"
-  export PYTHONPATH="$DIR/frogpilot/third_party:$PWD"
+  export PYTHONPATH="$DIR/starpilot/third_party:$PWD"
 
   # hardware specific init
   if [ -f /AGNOS ]; then

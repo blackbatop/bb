@@ -28,8 +28,8 @@ void HudRenderer::updateState(const UIState &s) {
   is_cruise_set = set_speed > 0 && set_speed != SET_SPEED_NA;
   is_cruise_available = set_speed != -1;
 
-  if (is_cruise_set && frogpilot_toggles.value("set_speed_offset").toDouble() > 0) {
-    set_speed += frogpilot_toggles.value("set_speed_offset").toDouble();
+  if (is_cruise_set && starpilot_toggles.value("set_speed_offset").toDouble() > 0) {
+    set_speed += starpilot_toggles.value("set_speed_offset").toDouble();
   }
 
   if (is_cruise_set && !is_metric) {
@@ -38,7 +38,7 @@ void HudRenderer::updateState(const UIState &s) {
 
   // Handle older routes where vEgoCluster is not set
   v_ego_cluster_seen = v_ego_cluster_seen || car_state.getVEgoCluster() != 0.0;
-  float v_ego = v_ego_cluster_seen && !frogpilot_toggles.value("use_wheel_speed").toBool() ? car_state.getVEgoCluster() : car_state.getVEgo();
+  float v_ego = v_ego_cluster_seen && !starpilot_toggles.value("use_wheel_speed").toBool() ? car_state.getVEgoCluster() : car_state.getVEgo();
   speed = std::max<float>(0.0f, v_ego * (is_metric ? MS_TO_KPH : MS_TO_MPH));
 }
 
@@ -55,7 +55,7 @@ void HudRenderer::draw(QPainter &p, const QRect &surface_rect) {
   if (is_cruise_available) {
     drawSetSpeed(p, surface_rect);
   }
-  if (frogpilot_nvg->standstillDuration == 0 && !frogpilot_toggles.value("hide_speed").toBool()) {
+  if (starpilot_nvg->standstillDuration == 0 && !starpilot_toggles.value("hide_speed").toBool()) {
     drawCurrentSpeed(p, surface_rect);
   }
 
@@ -67,17 +67,17 @@ void HudRenderer::drawSetSpeed(QPainter &p, const QRect &surface_rect) {
   const QSize default_size = {172, 204};
   QSize set_speed_size = is_metric ? QSize(200, 204) : default_size;
 
-  // FrogPilot variables
-  if (frogpilot_nvg->speedLimitHeight != 0) {
-    set_speed_size.rheight() += frogpilot_nvg->speedLimitHeight;
-    if (frogpilot_toggles.value("speed_limit_vienna").toBool()) {
+  // StarPilot variables
+  if (starpilot_nvg->speedLimitHeight != 0) {
+    set_speed_size.rheight() += starpilot_nvg->speedLimitHeight;
+    if (starpilot_toggles.value("speed_limit_vienna").toBool()) {
       set_speed_size.rwidth() = 200;
     }
   }
 
   QRect set_speed_rect(QPoint(60 + (default_size.width() - set_speed_size.width()) / 2, 45), set_speed_size);
 
-  if (!frogpilot_toggles.value("hide_max_speed").toBool()) {
+  if (!starpilot_toggles.value("hide_max_speed").toBool()) {
     // Draw set speed box
     p.setPen(QPen(QColor(255, 255, 255, 75), 6));
     p.setBrush(QColor(0, 0, 0, 166));
@@ -109,11 +109,11 @@ void HudRenderer::drawSetSpeed(QPainter &p, const QRect &surface_rect) {
     p.drawText(set_speed_rect.adjusted(0, 77, 0, 0), Qt::AlignTop | Qt::AlignHCenter, setSpeedStr);
   }
 
-  // FrogPilot variables
-  frogpilot_nvg->defaultSize = default_size;
-  frogpilot_nvg->isCruiseSet = is_cruise_set;
-  frogpilot_nvg->setSpeedRect = set_speed_rect;
-  frogpilot_nvg->speed = speed;
+  // StarPilot variables
+  starpilot_nvg->defaultSize = default_size;
+  starpilot_nvg->isCruiseSet = is_cruise_set;
+  starpilot_nvg->setSpeedRect = set_speed_rect;
+  starpilot_nvg->speed = speed;
 }
 
 void HudRenderer::drawCurrentSpeed(QPainter &p, const QRect &surface_rect) {

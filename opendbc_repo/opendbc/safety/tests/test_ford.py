@@ -378,7 +378,7 @@ class TestFordSafetyBase(common.CarSafetyTest):
       for bus in (0, 2):
         self.assertEqual(enabled, self._tx(self._acc_button_msg(Buttons.CANCEL, bus)))
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # EngBrakeData, CcStat_D_Actl is the cruise state
     # 3 is standby (main on), 5 is active (engaged)

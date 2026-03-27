@@ -567,5 +567,5 @@ STEER_THRESHOLD = 1.0
 
 DBC = CAR.create_dbc_map()
 
-# FrogPilot variables
+# StarPilot variables
 CAMERA_ACC_CAR.update({CAR.CHEVROLET_TRAX})

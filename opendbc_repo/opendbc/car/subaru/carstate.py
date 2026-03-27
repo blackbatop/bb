@@ -16,7 +16,7 @@ class CarState(CarStateBase):
 
     self.angle_rate_calulator = CanSignalRateCalculator(50)
 
-  def update(self, can_parsers, frogpilot_toggles) -> structs.CarState:
+  def update(self, can_parsers, starpilot_toggles) -> structs.CarState:
     cp = can_parsers[Bus.pt]
     cp_cam = can_parsers[Bus.cam]
     cp_alt = can_parsers[Bus.alt]
@@ -124,10 +124,10 @@ class CarState(CarStateBase):
     if self.CP.flags & SubaruFlags.SEND_INFOTAINMENT:
       self.es_infotainment_msg = copy.copy(cp_cam.vl["ES_Infotainment"])
 
-    # FrogPilot variables
-    fp_ret = custom.FrogPilotCarState.new_message()
+    # StarPilot variables
+    fp_ret = custom.StarPilotCarState.new_message()
 
-    if frogpilot_toggles.subaru_sng:
+    if starpilot_toggles.subaru_sng:
       self.brake_pedal_msg = copy.copy(cp.vl["Brake_Pedal"])
       self.car_follow = cp_es_distance.vl["ES_Distance"]["Car_Follow"]
       self.close_distance = cp_es_distance.vl["ES_Distance"]["Close_Distance"]

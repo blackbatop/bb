@@ -11,7 +11,7 @@ from opendbc.car.subaru.values import DBC, GLOBAL_ES_ADDR, CanBus, CarController
 MAX_STEER_RATE = 25  # deg/s
 MAX_STEER_RATE_FRAMES = 7  # tx control frames needed before torque can be cut
 
-# FrogPilot variables
+# StarPilot variables
 _SNG_ACC_MIN_DIST = 3
 _SNG_ACC_MAX_DIST = 4.5
 
@@ -27,7 +27,7 @@ class CarController(CarControllerBase):
     self.p = CarControllerParams(CP)
     self.packer = CANPacker(DBC[CP.carFingerprint][Bus.pt])
 
-    # FrogPilot variables
+    # StarPilot variables
     self.manual_hold = False
     self.prev_standstill = False
     self.sng_acc_resume = False
@@ -37,7 +37,7 @@ class CarController(CarControllerBase):
     self.sng_acc_resume_cnt = 0
     self.standstill_start = 0
 
-  def update(self, CC, CS, now_nanos, frogpilot_toggles):
+  def update(self, CC, CS, now_nanos, starpilot_toggles):
     actuators = CC.actuators
     hud_control = CC.hudControl
     pcm_cancel_cmd = CC.cruiseControl.cancel
@@ -71,9 +71,9 @@ class CarController(CarControllerBase):
 
       self.apply_torque_last = apply_torque
 
-    # FrogPilot variables
+    # StarPilot variables
     # *** stop and go ***
-    if frogpilot_toggles.subaru_sng:
+    if starpilot_toggles.subaru_sng:
       throttle_cmd, speed_cmd = self.stop_and_go(CC, CS)
 
     # *** longitudinal ***
@@ -112,8 +112,8 @@ class CarController(CarControllerBase):
 
         can_sends.append(subarucan.create_preglobal_es_distance(self.packer, cruise_button, CS.es_distance_msg))
 
-      # FrogPilot variables
-      if frogpilot_toggles.subaru_sng:
+      # StarPilot variables
+      if starpilot_toggles.subaru_sng:
         can_sends.append(subarucan.create_preglobal_throttle(self.packer, CS.throttle_msg["COUNTER"] + 1, CS.throttle_msg, throttle_cmd))
     else:
       if self.frame % 10 == 0:
@@ -127,8 +127,8 @@ class CarController(CarControllerBase):
         if self.CP.flags & SubaruFlags.SEND_INFOTAINMENT:
           can_sends.append(subarucan.create_es_infotainment(self.packer, self.frame // 10, CS.es_infotainment_msg, hud_control.visualAlert))
 
-      # FrogPilot variables
-      if frogpilot_toggles.subaru_sng:
+      # StarPilot variables
+      if starpilot_toggles.subaru_sng:
         can_sends.append(subarucan.create_throttle(self.packer, CS.throttle_msg["COUNTER"] + 1, CS.throttle_msg, throttle_cmd))
         if self.frame % 2 == 0:
           can_sends.append(subarucan.create_brake_pedal(self.packer, self.frame // 2, CS.brake_pedal_msg, speed_cmd, pcm_cancel_cmd))
@@ -171,7 +171,7 @@ class CarController(CarControllerBase):
     self.frame += 1
     return new_actuators, can_sends
 
-  # FrogPilot variables
+  # StarPilot variables
   def stop_and_go(self, CC, CS, speed_cmd=False, throttle_cmd=False):
     if self.CP.flags & SubaruFlags.PREGLOBAL:
       trigger_resume = CC.enabled

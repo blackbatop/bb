@@ -78,7 +78,7 @@ class CarState(CarStateBase):
           return True
     return False
 
-  def update(self, can_parsers, frogpilot_toggles) -> structs.CarState:
+  def update(self, can_parsers, starpilot_toggles) -> structs.CarState:
     pt_cp = can_parsers[Bus.pt]
     cam_cp = can_parsers[Bus.cam]
     loopback_cp = can_parsers[Bus.loopback]
@@ -133,7 +133,7 @@ class CarState(CarStateBase):
       pt_cp.vl["EBCMWheelSpdRear"]["RLWheelSpd"],
       pt_cp.vl["EBCMWheelSpdRear"]["RRWheelSpd"],
     )
-    ret.vEgoCluster = ret.vEgo * getattr(frogpilot_toggles, "cluster_offset", 1.0)
+    ret.vEgoCluster = ret.vEgo * getattr(starpilot_toggles, "cluster_offset", 1.0)
     # standstill=True if ECM allows engagement with brake.
     ret.standstill = abs(pt_cp.vl["EBCMWheelSpdRear"]["RLWheelSpd"]) <= STANDSTILL_THRESHOLD and \
                      abs(pt_cp.vl["EBCMWheelSpdRear"]["RRWheelSpd"]) <= STANDSTILL_THRESHOLD
@@ -283,7 +283,7 @@ class CarState(CarStateBase):
     remap_cancel_to_distance = bool(self.CP.alternativeExperience & ALTERNATIVE_EXPERIENCE.GM_REMAP_CANCEL_TO_DISTANCE)
     if not remap_cancel_to_distance:
       remap_cancel_to_distance = (
-        getattr(frogpilot_toggles, "remap_cancel_to_distance", False) and
+        getattr(starpilot_toggles, "remap_cancel_to_distance", False) and
         self.CP.openpilotLongitudinalControl and
         bool(self.CP.flags & GMFlags.PEDAL_LONG.value) and
         self.CP.carFingerprint in (BOLT_GEN1_CANCEL_PERSONALITY_CARS | {CAR.CHEVROLET_MALIBU_HYBRID_CC})
@@ -342,7 +342,7 @@ class CarState(CarStateBase):
     if ret.vEgo < self.CP.minSteerSpeed:
       ret.lowSpeedAlert = True
 
-    fp_ret = custom.FrogPilotCarState.new_message()
+    fp_ret = custom.StarPilotCarState.new_message()
     if bolt_cancel_personality and self.cruise_buttons == CruiseButtons.CANCEL:
       # Feed long-press personality logic as if distance is held while CANCEL is held.
       fp_ret.distancePressed = True

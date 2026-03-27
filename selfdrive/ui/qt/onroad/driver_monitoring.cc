@@ -73,7 +73,7 @@ void DriverMonitorRenderer::draw(QPainter &painter, const QRect &surface_rect) {
   float y = surface_rect.height() - offset;
   float opacity = is_active ? 0.65f : 0.2f;
 
-  // FrogPilot variables
+  // StarPilot variables
   if (onroad_distance_btn_enabled) {
     if (is_rhd) {
       x -= UI_BORDER_SIZE + (btn_size + UI_BORDER_SIZE) + UI_BORDER_SIZE;
@@ -82,7 +82,7 @@ void DriverMonitorRenderer::draw(QPainter &painter, const QRect &surface_rect) {
     }
   }
 
-  if (frogpilot_toggles.value("road_name_ui").toBool()) {
+  if (starpilot_toggles.value("road_name_ui").toBool()) {
     y -= UI_BORDER_SIZE;
   }
 
@@ -118,10 +118,10 @@ void DriverMonitorRenderer::draw(QPainter &painter, const QRect &surface_rect) {
 
   painter.restore();
 
-  // FrogPilot variables
-  if (frogpilot_nvg) {
-    frogpilot_nvg->dmIconPosition.setX(x);
-    frogpilot_nvg->dmIconPosition.setY(y);
-    frogpilot_nvg->rightHandDM = is_rhd;
+  // StarPilot variables
+  if (starpilot_nvg) {
+    starpilot_nvg->dmIconPosition.setX(x);
+    starpilot_nvg->dmIconPosition.setY(y);
+    starpilot_nvg->rightHandDM = is_rhd;
   }
 }

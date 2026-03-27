@@ -26,7 +26,7 @@ fi
 
 export STAGING_ROOT="/data/safe_staging"
 
-# FrogPilot variables (only available after StarPilot is installed to /data/openpilot)
-if [ -x /data/openpilot/frogpilot/system/environment_variables ]; then
-  eval "$(/data/openpilot/frogpilot/system/environment_variables)"
+# StarPilot variables (only available after StarPilot is installed to /data/openpilot)
+if [ -x /data/openpilot/starpilot/system/environment_variables ]; then
+  eval "$(/data/openpilot/starpilot/system/environment_variables)"
 fi

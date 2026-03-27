@@ -74,15 +74,15 @@ void MainWindow::closeSettings() {
   main_layout->setCurrentWidget(homeWindow);
 
   if (uiState()->scene.started) {
-    homeWindow->showSidebar(params.getBool("SidebarOpen") || frogpilotUIState()->frogpilot_scene.frogpilot_toggles.value("debug_mode").toBool());
+    homeWindow->showSidebar(params.getBool("SidebarOpen") || starpilotUIState()->starpilot_scene.starpilot_toggles.value("debug_mode").toBool());
   }
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
-  // FrogPilot variables
-  FrogPilotUIState &fs = *frogpilotUIState();
-  FrogPilotUIScene &frogpilot_scene = fs.frogpilot_scene;
-  QJsonObject &frogpilot_toggles = frogpilot_scene.frogpilot_toggles;
+  // StarPilot variables
+  StarPilotUIState &fs = *starpilotUIState();
+  StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
+  QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
   bool ignore = false;
   switch (event->type()) {
@@ -92,8 +92,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
     case QEvent::MouseButtonPress:
     case QEvent::MouseMove: {
       // ignore events when device is awakened by resetInteractiveTimeout
-      ignore = !device()->isAwake() || frogpilot_scene.driver_camera_timer >= UI_FREQ / 2;
-      device()->resetInteractiveTimeout(frogpilot_toggles.value("screen_timeout").toInt(), frogpilot_toggles.value("screen_timeout_onroad").toInt());
+      ignore = !device()->isAwake() || starpilot_scene.driver_camera_timer >= UI_FREQ / 2;
+      device()->resetInteractiveTimeout(starpilot_toggles.value("screen_timeout").toInt(), starpilot_toggles.value("screen_timeout_onroad").toInt());
       break;
     }
     default:

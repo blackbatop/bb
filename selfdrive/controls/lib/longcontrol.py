@@ -24,14 +24,14 @@ def apply_deadzone(error, deadzone):
 
 
 def long_control_state_trans(CP, active, long_control_state, v_ego,
-                             should_stop, brake_pressed, cruise_standstill, frogpilot_toggles):
+                             should_stop, brake_pressed, cruise_standstill, starpilot_toggles):
   # Ignore cruise standstill if car has a gas interceptor
   cruise_standstill = cruise_standstill and not CP.enableGasInterceptorDEPRECATED
   stopping_condition = should_stop
   starting_condition = (not should_stop and
                         not cruise_standstill and
                         not brake_pressed)
-  started_condition = v_ego > frogpilot_toggles.vEgoStarting
+  started_condition = v_ego > starpilot_toggles.vEgoStarting
 
   if not active:
     long_control_state = LongCtrlState.off
@@ -60,20 +60,20 @@ def long_control_state_trans(CP, active, long_control_state, v_ego,
   return long_control_state
 
 def long_control_state_trans_old_long(CP, active, long_control_state, v_ego, v_target,
-                                      v_target_1sec, brake_pressed, cruise_standstill, frogpilot_toggles):
+                                      v_target_1sec, brake_pressed, cruise_standstill, starpilot_toggles):
   accelerating = v_target_1sec > v_target
-  planned_stop = (v_target < frogpilot_toggles.vEgoStopping and
-                  v_target_1sec < frogpilot_toggles.vEgoStopping and
+  planned_stop = (v_target < starpilot_toggles.vEgoStopping and
+                  v_target_1sec < starpilot_toggles.vEgoStopping and
                   not accelerating)
-  stay_stopped = (v_ego < frogpilot_toggles.vEgoStopping and
+  stay_stopped = (v_ego < starpilot_toggles.vEgoStopping and
                   (brake_pressed or cruise_standstill))
   stopping_condition = planned_stop or stay_stopped
 
-  starting_condition = (v_target_1sec > frogpilot_toggles.vEgoStarting and
+  starting_condition = (v_target_1sec > starpilot_toggles.vEgoStarting and
                         accelerating and
                         not cruise_standstill and
                         not brake_pressed)
-  started_condition = v_ego > frogpilot_toggles.vEgoStarting
+  started_condition = v_ego > starpilot_toggles.vEgoStarting
 
   if not active:
     long_control_state = LongCtrlState.off
@@ -173,27 +173,27 @@ class LongControl:
 
     return self.integrator_hold_frames > 0 or sat_pushing_lower or sat_pushing_upper
 
-  def update(self, active, CS, a_target, should_stop, accel_limits, frogpilot_toggles):
+  def update(self, active, CS, a_target, should_stop, accel_limits, starpilot_toggles):
     """Update longitudinal control. This updates the state machine and runs a PID loop"""
     self.pid.neg_limit = accel_limits[0]
     self.pid.pos_limit = accel_limits[1]
 
     self.long_control_state = long_control_state_trans(self.CP, active, self.long_control_state, CS.vEgo,
                                                        should_stop, CS.brakePressed,
-                                                       CS.cruiseState.standstill, frogpilot_toggles)
+                                                       CS.cruiseState.standstill, starpilot_toggles)
     if self.long_control_state == LongCtrlState.off:
       self.reset()
       output_accel = 0.
 
     elif self.long_control_state == LongCtrlState.stopping:
       output_accel = self.last_output_accel
-      if output_accel > frogpilot_toggles.stopAccel:
+      if output_accel > starpilot_toggles.stopAccel:
         output_accel = min(output_accel, 0.0)
-        output_accel -= frogpilot_toggles.stoppingDecelRate * DT_CTRL
+        output_accel -= starpilot_toggles.stoppingDecelRate * DT_CTRL
       self.reset()
 
     elif self.long_control_state == LongCtrlState.starting:
-      output_accel = (a_target if frogpilot_toggles.human_acceleration else frogpilot_toggles.startAccel)
+      output_accel = (a_target if starpilot_toggles.human_acceleration else starpilot_toggles.startAccel)
       self.reset()
 
     else:  # LongCtrlState.pid
@@ -229,7 +229,7 @@ class LongControl:
     self.last_a_target = 0.0
     self.integrator_hold_frames = 0
 
-  def update_old_long(self, active, CS, long_plan, accel_limits, t_since_plan, frogpilot_toggles):
+  def update_old_long(self, active, CS, long_plan, accel_limits, t_since_plan, starpilot_toggles):
     """Update longitudinal control. This updates the state machine and runs a PID loop"""
     # Interp control trajectory
     speeds = long_plan.speeds
@@ -237,10 +237,10 @@ class LongControl:
       v_target_now = interp(t_since_plan, CONTROL_N_T_IDX, speeds)
       a_target_now = interp(t_since_plan, CONTROL_N_T_IDX, long_plan.accels)
 
-      v_target = interp(frogpilot_toggles.longitudinalActuatorDelay + t_since_plan, CONTROL_N_T_IDX, speeds)
-      a_target = 2 * (v_target - v_target_now) / frogpilot_toggles.longitudinalActuatorDelay - a_target_now
+      v_target = interp(starpilot_toggles.longitudinalActuatorDelay + t_since_plan, CONTROL_N_T_IDX, speeds)
+      a_target = 2 * (v_target - v_target_now) / starpilot_toggles.longitudinalActuatorDelay - a_target_now
 
-      v_target_1sec = interp(frogpilot_toggles.longitudinalActuatorDelay + t_since_plan + 1.0, CONTROL_N_T_IDX, speeds)
+      v_target_1sec = interp(starpilot_toggles.longitudinalActuatorDelay + t_since_plan + 1.0, CONTROL_N_T_IDX, speeds)
     else:
       v_target = 0.0
       v_target_now = 0.0
@@ -253,20 +253,20 @@ class LongControl:
     output_accel = self.last_output_accel
     self.long_control_state = long_control_state_trans_old_long(self.CP, active, self.long_control_state, CS.vEgo,
                                                                 v_target, v_target_1sec, CS.brakePressed,
-                                                                CS.cruiseState.standstill, frogpilot_toggles)
+                                                                CS.cruiseState.standstill, starpilot_toggles)
 
     if self.long_control_state == LongCtrlState.off:
       self.reset_old_long(CS.vEgo)
       output_accel = 0.
 
     elif self.long_control_state == LongCtrlState.stopping:
-      if output_accel > frogpilot_toggles.stopAccel:
+      if output_accel > starpilot_toggles.stopAccel:
         output_accel = min(output_accel, 0.0)
-        output_accel -= frogpilot_toggles.stoppingDecelRate * DT_CTRL
+        output_accel -= starpilot_toggles.stoppingDecelRate * DT_CTRL
       self.reset_old_long(CS.vEgo)
 
     elif self.long_control_state == LongCtrlState.starting:
-      output_accel = frogpilot_toggles.startAccel
+      output_accel = starpilot_toggles.startAccel
       self.reset_old_long(CS.vEgo)
 
     elif self.long_control_state == LongCtrlState.pid:

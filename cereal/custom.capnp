@@ -12,7 +12,7 @@ using Car = import "car.capnp";
 # DO rename the structs
 # DON'T change the identifier (e.g. @0x81c2f05a394cf4af)
 
-struct FrogPilotCarControl @0x81c2f05a394cf4af {
+struct StarPilotCarControl @0x81c2f05a394cf4af {
   hudControl @0 :HUDControl;
 
   struct HUDControl {
@@ -51,7 +51,7 @@ struct FrogPilotCarControl @0x81c2f05a394cf4af {
   }
 }
 
-struct FrogPilotCarParams @0xaedffd8f31e7b55d {
+struct StarPilotCarParams @0xaedffd8f31e7b55d {
   alternativeExperience @0 :Int16;
   canUsePedal @1 :Bool;
   canUseSDSU @2 :Bool;
@@ -65,7 +65,7 @@ struct FrogPilotCarParams @0xaedffd8f31e7b55d {
   }
 }
 
-struct FrogPilotCarState @0xf35cc4560bbf6ec2 {
+struct StarPilotCarState @0xf35cc4560bbf6ec2 {
   accelPressed @0 :Bool;
   alwaysOnLateralEnabled @1 :Bool;
   brakeLights @2 :Bool;
@@ -84,12 +84,12 @@ struct FrogPilotCarState @0xf35cc4560bbf6ec2 {
   gasStack @15 :Bool;  # Compatibility with older StarPilot payloads
 }
 
-struct FrogPilotDeviceState @0xda96579883444c35 {
+struct StarPilotDeviceState @0xda96579883444c35 {
   freeSpace @0 :Int16;
   usedSpace @1 :Int16;
 }
 
-struct FrogPilotModelDataV2 @0x80ae746ee2596b11 {
+struct StarPilotModelDataV2 @0x80ae746ee2596b11 {
   turnDirection @0 :TurnDirection;
 
   enum TurnDirection {
@@ -99,7 +99,7 @@ struct FrogPilotModelDataV2 @0x80ae746ee2596b11 {
   }
 }
 
-struct FrogPilotOnroadEvent @0xa5cd762cd951a455 {
+struct StarPilotOnroadEvent @0xa5cd762cd951a455 {
   name @0 :EventName;
 
   enable @1 :Bool;
@@ -148,7 +148,7 @@ struct FrogPilotOnroadEvent @0xa5cd762cd951a455 {
   }
 }
 
-struct FrogPilotPlan @0xf98d843bfd7004a3 {
+struct StarPilotPlan @0xf98d843bfd7004a3 {
   accelerationJerk @0 :Float32;
   cscControllingSpeed @1 :Bool;
   cscSpeed @2 :Float32;
@@ -159,8 +159,8 @@ struct FrogPilotPlan @0xf98d843bfd7004a3 {
   experimentalMode @7 :Bool;
   forcingStop @8 :Bool;
   forcingStopLength @9 :Float32;
-  frogpilotEvents @10 :List(FrogPilotOnroadEvent);
-  frogpilotToggles @11 :Text;
+  starpilotEvents @10 :List(StarPilotOnroadEvent);
+  starpilotToggles @11 :Text;
   increasedStoppedDistance @12 :Float32;
   lateralCheck @13 :Bool;
   laneWidthLeft @14 :Float32;
@@ -188,7 +188,7 @@ struct FrogPilotPlan @0xf98d843bfd7004a3 {
   trackingLead @36 :Bool;
 }
 
-struct FrogPilotRadarState @0xb86e6369214c01c8 {
+struct StarPilotRadarState @0xb86e6369214c01c8 {
   leadLeft @0 :LeadData;
   leadRight @1 :LeadData;
 
@@ -213,7 +213,7 @@ struct FrogPilotRadarState @0xb86e6369214c01c8 {
   }
 }
 
-struct FrogPilotSelfdriveState @0xf416ec09499d9d19 {
+struct StarPilotSelfdriveState @0xf416ec09499d9d19 {
   alertText1 @0 :Text;
   alertText2 @1 :Text;
   alertStatus @2 :AlertStatus;
@@ -225,7 +225,7 @@ struct FrogPilotSelfdriveState @0xf416ec09499d9d19 {
     normal @0;
     userPrompt @1;
     critical @2;
-    frogpilot @3;
+    starpilot @3;
   }
 
   enum AlertSize {

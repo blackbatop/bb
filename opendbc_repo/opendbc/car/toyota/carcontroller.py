@@ -35,7 +35,7 @@ MAX_STEER_RATE_FRAMES = 18  # tx control frames needed before torque can be cut
 # EPS allows user torque above threshold for 50 frames before permanently faulting
 MAX_USER_TORQUE = 500
 
-# FrogPilot variables
+# StarPilot variables
 PARK = structs.CarState.GearShifter.park
 
 # Lock / unlock door commands - Credit goes to AlexandreSato!
@@ -86,10 +86,10 @@ class CarController(CarControllerBase):
     self.secoc_acc_message_counter = 0
     self.secoc_prev_reset_counter = 0
 
-    # FrogPilot variables
+    # StarPilot variables
     self.doors_locked = False
 
-  def update(self, CC, CS, now_nanos, frogpilot_toggles):
+  def update(self, CC, CS, now_nanos, starpilot_toggles):
     actuators = CC.actuators
     stopping = actuators.longControlState == LongCtrlState.stopping
     hud_control = CC.hudControl
@@ -183,7 +183,7 @@ class CarController(CarControllerBase):
 
     # on entering standstill, send standstill request for older TSS-P cars that aren't designed to stay engaged at a stop
     if self.CP.carFingerprint not in NO_STOP_TIMER_CAR:
-      if CS.out.standstill and not self.last_standstill and not frogpilot_toggles.sng_hack:
+      if CS.out.standstill and not self.last_standstill and not starpilot_toggles.sng_hack:
         self.standstill_req = True
       if CS.pcm_acc_status != 8:
         # pcm entered standstill or it's disabled
@@ -194,7 +194,7 @@ class CarController(CarControllerBase):
       # brakes can take a while to ramp up causing a lurch forward. prevent resume press until planner wants to move.
       # don't use CC.cruiseControl.resume since it is gated on CS.cruiseState.standstill which goes false for 3s after resume press
       # TODO: hybrids do not have this issue and can stay stopped after resume press, whitelist them
-      should_resume = actuators.accel > 0 or frogpilot_toggles.sng_hack
+      should_resume = actuators.accel > 0 or starpilot_toggles.sng_hack
       if should_resume:
         self.standstill_req = False
 
@@ -241,7 +241,7 @@ class CarController(CarControllerBase):
         self.aego.update(a_ego_blended)
         j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
 
-        if frogpilot_toggles.frogsgomoo_tweak:
+        if starpilot_toggles.frogsgomoo_tweak:
           future_t = float(np.interp(CS.out.vEgo, [2., 5.], [0.35, 1.0]))
         else:
           future_t = float(np.interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
@@ -279,7 +279,7 @@ class CarController(CarControllerBase):
 
         main_accel_cmd = 0. if self.CP.flags & ToyotaFlags.SECOC.value else pcm_accel_cmd
         can_sends.append(toyotacan.create_accel_command(self.packer, main_accel_cmd, pcm_cancel_cmd, self.permit_braking, self.standstill_req, lead,
-                                                        CS.acc_type, fcw_alert, self.distance_button, frogpilot_toggles.reverse_cruise_increase))
+                                                        CS.acc_type, fcw_alert, self.distance_button, starpilot_toggles.reverse_cruise_increase))
         if self.CP.flags & ToyotaFlags.SECOC.value:
           acc_cmd_2 = toyotacan.create_accel_command_2(self.packer, pcm_accel_cmd)
           acc_cmd_2 = add_mac(self.secoc_key,
@@ -298,7 +298,7 @@ class CarController(CarControllerBase):
         if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
           can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
         else:
-          can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button, frogpilot_toggles.reverse_cruise_increase))
+          can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button, starpilot_toggles.reverse_cruise_increase))
 
     # *** hud ui ***
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
@@ -334,13 +334,13 @@ class CarController(CarControllerBase):
 
     self.frame += 1
 
-    # FrogPilot variables
+    # StarPilot variables
     if not self.doors_locked and CS.out.gearShifter != PARK:
-      if frogpilot_toggles.lock_doors:
+      if starpilot_toggles.lock_doors:
         can_sends.append(CanData(0x750, LOCK_CMD, 0))
       self.doors_locked = True
     elif self.doors_locked and CS.out.gearShifter == PARK:
-      if frogpilot_toggles.unlock_doors:
+      if starpilot_toggles.unlock_doors:
         can_sends.append(CanData(0x750, UNLOCK_CMD, 0))
       self.doors_locked = False
 

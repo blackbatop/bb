@@ -1,16 +1,16 @@
-name: Schedule FrogPilot Update
+name: Schedule StarPilot Update
 
 on:
   workflow_dispatch:
     inputs:
       scheduled_date:
-        description: "Enter the date to update the \"FrogPilot\" branch (YYYY-MM-DD)"
+        description: "Enter the date to update the \"StarPilot\" branch (YYYY-MM-DD)"
         required: true
 
 env:
   GIT_EMAIL: "91348155+FrogAi@users.noreply.github.com"
   GIT_NAME: "James"
-  TARGET_BRANCH: "FrogPilot-Staging"
+  TARGET_BRANCH: "StarPilot-Staging"
   UPDATE_FILE_PATH: ".github/update_date"
 
 jobs:

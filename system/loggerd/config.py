@@ -29,7 +29,7 @@ def get_available_bytes(default: int) -> int:
   return available_bytes
 
 
-# FrogPilot variables
+# StarPilot variables
 def get_used_bytes(default: int) -> int:
   try:
     statvfs = os.statvfs(Paths.log_root())

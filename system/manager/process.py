@@ -250,7 +250,7 @@ class DaemonProcess(ManagerProcess):
     self.params = None
 
   @staticmethod
-  def should_run(started, params, CP, frogpilot_toggles):
+  def should_run(started, params, CP, starpilot_toggles):
     return True
 
   def prepare(self) -> None:
@@ -286,7 +286,7 @@ class DaemonProcess(ManagerProcess):
 
 
 def ensure_running(procs: ValuesView[ManagerProcess], started: bool, params=None, CP: car.CarParams=None,
-                   not_run: list[str] | None=None, frogpilot_toggles: SimpleNamespace=None) -> list[ManagerProcess]:
+                   not_run: list[str] | None=None, starpilot_toggles: SimpleNamespace=None) -> list[ManagerProcess]:
   if not_run is None:
     not_run = []
 
@@ -297,7 +297,7 @@ def ensure_running(procs: ValuesView[ManagerProcess], started: bool, params=None
       cloudlog.error(f"Process {p.name} crashed with exitcode {p.proc.exitcode}, restarting")
       p.stop(retry=False)
 
-    if p.enabled and p.name not in not_run and p.should_run(started, params, CP, frogpilot_toggles):
+    if p.enabled and p.name not in not_run and p.should_run(started, params, CP, starpilot_toggles):
       running.append(p)
     else:
       p.stop(block=False)

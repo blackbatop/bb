@@ -79,7 +79,7 @@ static void chrysler_rx_hook(const CANPacket_t *msg) {
     bool cruise_engaged = GET_BIT(msg, 21U);
     pcm_cruise_check(cruise_engaged);
 
-    // FrogPilot variables
+    // StarPilot variables
     acc_main_on = GET_BIT(msg, 20U);
   }
 

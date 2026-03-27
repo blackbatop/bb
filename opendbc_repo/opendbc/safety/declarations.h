@@ -268,7 +268,7 @@ extern bool acc_main_on; // referred to as "ACC off" in ISO 15622:2018
 extern int cruise_button_prev;
 extern bool safety_rx_checks_invalid;
 
-// FrogPilot variables
+// StarPilot variables
 extern bool aol_allowed;
 extern bool lkas_button_prev;
 extern bool lkas_on;
@@ -317,7 +317,7 @@ extern bool gm_remote_start_boots_comma;
 // This flag allows AEB to be commanded from openpilot.
 #define ALT_EXP_ALLOW_AEB 16
 
-// FrogPilot variables
+// StarPilot variables
 #define ALT_EXP_ALWAYS_ON_LATERAL 32
 #define ALT_EXP_GM_REMAP_CANCEL_TO_DISTANCE 64
 

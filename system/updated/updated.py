@@ -22,7 +22,7 @@ from openpilot.selfdrive.selfdrived.alertmanager import set_offroad_alert
 from openpilot.system.hardware import AGNOS, HARDWARE
 from openpilot.system.version import get_build_metadata
 
-from openpilot.frogpilot.common.frogpilot_variables import BACKUP_PATH, get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import BACKUP_PATH, get_starpilot_toggles
 
 LOCK_FILE = os.getenv("UPDATER_LOCK_FILE", "/tmp/safe_staging_overlay.lock")
 STAGING_ROOT = os.getenv("UPDATER_STAGING_ROOT", "/data/safe_staging")
@@ -413,7 +413,7 @@ class Updater:
     finalize_update()
     cloudlog.info("finalize success!")
 
-    # FrogPilot variables
+    # StarPilot variables
     if os.path.isfile(BACKUP_PATH):
       os.remove(BACKUP_PATH)
 
@@ -454,15 +454,15 @@ def main() -> None:
     # Run the update loop
     first_run = True
 
-    # FrogPilot variables
+    # StarPilot variables
     params_memory = Params(memory=True)
 
     while True:
       wait_helper.ready_event.clear()
 
-      # FrogPilot variables
-      frogpilot_toggles = get_frogpilot_toggles()
-      automatic_updates_enabled = getattr(frogpilot_toggles, "automatic_updates", True)
+      # StarPilot variables
+      starpilot_toggles = get_starpilot_toggles()
+      automatic_updates_enabled = getattr(starpilot_toggles, "automatic_updates", True)
       user_requested_action = wait_helper.user_request != UserRequest.NONE
 
       manual_update_requested = params_memory.get_bool("ManualUpdateInitiated")

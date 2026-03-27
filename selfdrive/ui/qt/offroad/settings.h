@@ -26,7 +26,7 @@ public:
 protected:
   void showEvent(QShowEvent *event) override;
 
-  // FrogPilot variables
+  // StarPilot variables
   void hideEvent(QHideEvent *event) override;
 
 signals:
@@ -36,7 +36,7 @@ signals:
   void expandToggleDescription(const QString &param);
   void scrollToToggle(const QString &param);
 
-  // FrogPilot variables
+  // StarPilot variables
   void closePanel();
   void closeSubPanel();
   void closeSubSubPanel();
@@ -50,7 +50,7 @@ private:
   QButtonGroup *nav_btns;
   QStackedWidget *panel_widget;
 
-  // FrogPilot variables
+  // StarPilot variables
   void updateDeveloperToggle(int tuningLevel);
 
   bool panelOpen;
@@ -104,7 +104,7 @@ public:
   void showEvent(QShowEvent *event) override;
 
 signals:
-  // FrogPilot variables
+  // StarPilot variables
   void updateMetric(bool metric, bool bootRun=false);
 
 public slots:

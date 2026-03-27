@@ -31,7 +31,7 @@ from openpilot.selfdrive.modeld.constants import ModelConstants, Plan
 from openpilot.selfdrive.modeld.models.commonmodel_pyx import DrivingModelFrame, CLContext
 from openpilot.selfdrive.modeld.runners.tinygrad_helpers import qcom_tensor_from_opencl_address
 
-from openpilot.frogpilot.common.frogpilot_variables import MODELS_PATH, get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import MODELS_PATH, get_starpilot_toggles
 
 
 PROCESS_NAME = "selfdrive.modeld.modeld"
@@ -258,8 +258,8 @@ class ModelState:
 def main(demo=False):
   cloudlog.warning("modeld init")
 
-  # FrogPilot variables
-  frogpilot_toggles = get_frogpilot_toggles()
+  # StarPilot variables
+  starpilot_toggles = get_starpilot_toggles()
 
   if not USBGPU:
     # USB GPU currently saturates a core so can't do this yet,
@@ -327,14 +327,14 @@ def main(demo=False):
 
   # TODO this needs more thought, use .2s extra for now to estimate other delays
   # TODO Move smooth seconds to action function
-  long_delay = frogpilot_toggles.longitudinalActuatorDelay + LONG_SMOOTH_SECONDS
+  long_delay = starpilot_toggles.longitudinalActuatorDelay + LONG_SMOOTH_SECONDS
   prev_action = log.ModelDataV2.Action()
 
   DH = DesireHelper()
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotPlan'])
-  pm = pm.extend(['frogpilotModelV2'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotPlan'])
+  pm = pm.extend(['starpilotModelV2'])
 
   while True:
     # Keep receiving frames until we are at least 1 frame ahead of previous extra frame
@@ -429,7 +429,7 @@ def main(demo=False):
       l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
       r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
       lane_change_prob = l_lane_change_prob + r_lane_change_prob
-      DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob, sm['frogpilotPlan'], frogpilot_toggles)
+      DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob, sm['starpilotPlan'], starpilot_toggles)
       modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
       modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
       drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
@@ -440,15 +440,15 @@ def main(demo=False):
       pm.send('drivingModelData', drivingdata_send)
       pm.send('cameraOdometry', posenet_send)
 
-      # FrogPilot variables
-      frogpilot_modelv2_send = messaging.new_message('frogpilotModelV2')
-      frogpilot_modelv2_send.frogpilotModelV2.turnDirection = DH.turn_direction
+      # StarPilot variables
+      starpilot_modelv2_send = messaging.new_message('starpilotModelV2')
+      starpilot_modelv2_send.starpilotModelV2.turnDirection = DH.turn_direction
 
-      pm.send('frogpilotModelV2', frogpilot_modelv2_send)
+      pm.send('starpilotModelV2', starpilot_modelv2_send)
     last_vipc_frame_id = meta_main.frame_id
 
-    # FrogPilot variables
-    frogpilot_toggles = get_frogpilot_toggles(sm)
+    # StarPilot variables
+    starpilot_toggles = get_starpilot_toggles(sm)
 
 
 if __name__ == "__main__":

@@ -23,6 +23,6 @@ private:
   SettingsWindow *settingsWindow;
   OnboardingWindow *onboardingWindow;
 
-  // FrogPilot variables
+  // StarPilot variables
   Params params;
 };

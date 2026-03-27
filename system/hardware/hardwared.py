@@ -26,7 +26,7 @@ from openpilot.system.hardware.fan_controller import TiciFanController
 from openpilot.system.version import terms_version, training_version
 from openpilot.system.athena.registration import UNREGISTERED_DONGLE_ID
 
-from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import get_starpilot_toggles
 
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
@@ -214,11 +214,11 @@ def hardware_thread(end_event, hw_queue) -> None:
 
   fan_controller = None
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotPlan'])
-  pm = pm.extend(['frogpilotDeviceState'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotPlan'])
+  pm = pm.extend(['starpilotDeviceState'])
 
-  frogpilot_toggles = get_frogpilot_toggles()
+  starpilot_toggles = get_starpilot_toggles()
 
   while not end_event.is_set():
     sm.update(PANDA_STATES_TIMEOUT)
@@ -300,8 +300,8 @@ def hardware_thread(end_event, hw_queue) -> None:
     if fan_controller is not None:
       msg.deviceState.fanSpeedPercentDesired = fan_controller.update(all_comp_temp, onroad_conditions["ignition"])
 
-    # FrogPilot variables
-    if frogpilot_toggles.increase_thermal_limits:
+    # StarPilot variables
+    if starpilot_toggles.increase_thermal_limits:
       all_comp_temp -= (THERMAL_BANDS[ThermalStatus.danger].min_temp - THERMAL_BANDS[ThermalStatus.red].min_temp)
 
     is_offroad_for_5_min = (started_ts is None) and ((not started_seen) or (off_ts is None) or (time.monotonic() - off_ts > 60 * 5))
@@ -353,9 +353,9 @@ def hardware_thread(end_event, hw_queue) -> None:
     if started_ts is None:
       should_start = should_start and all(startup_conditions.values())
 
-    # FrogPilot variables
-    should_start |= frogpilot_toggles.force_onroad
-    should_start &= not frogpilot_toggles.force_offroad
+    # StarPilot variables
+    should_start |= starpilot_toggles.force_onroad
+    should_start &= not starpilot_toggles.force_offroad
 
     if should_start != should_start_prev or (count == 0):
       params.put_bool("IsEngaged", False)
@@ -412,7 +412,7 @@ def hardware_thread(end_event, hw_queue) -> None:
     msg.deviceState.somPowerDrawW = som_power_draw
 
     # Check if we need to shut down
-    if power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen, frogpilot_toggles):
+    if power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen, starpilot_toggles):
       cloudlog.warning(f"shutting device down, offroad since {off_ts}")
       params.put_bool("DoShutdown", True)
 
@@ -426,13 +426,13 @@ def hardware_thread(end_event, hw_queue) -> None:
     msg.deviceState.thermalStatus = thermal_status
     pm.send("deviceState", msg)
 
-    # FrogPilot variables
-    fpmsg = messaging.new_message('frogpilotDeviceState')
+    # StarPilot variables
+    fpmsg = messaging.new_message('starpilotDeviceState')
 
-    fpmsg.frogpilotDeviceState.freeSpace = round(get_available_bytes(default=32.0 * (2 ** 30)) / (2 ** 30))
-    fpmsg.frogpilotDeviceState.usedSpace = round(get_used_bytes(default=0.0) / (2 ** 30))
+    fpmsg.starpilotDeviceState.freeSpace = round(get_available_bytes(default=32.0 * (2 ** 30)) / (2 ** 30))
+    fpmsg.starpilotDeviceState.usedSpace = round(get_used_bytes(default=0.0) / (2 ** 30))
 
-    pm.send("frogpilotDeviceState", fpmsg)
+    pm.send("starpilotDeviceState", fpmsg)
 
     # Log to statsd
     statlog.gauge("free_space_percent", msg.deviceState.freeSpacePercent)
@@ -487,8 +487,8 @@ def hardware_thread(end_event, hw_queue) -> None:
     count += 1
     should_start_prev = should_start
 
-    # FrogPilot variables
-    frogpilot_toggles = get_frogpilot_toggles(sm)
+    # StarPilot variables
+    starpilot_toggles = get_starpilot_toggles(sm)
 
 
 def main():

@@ -7,7 +7,7 @@ from openpilot.selfdrive.controls.lib.ldw import LaneDepartureWarning
 from openpilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlanner
 import cereal.messaging as messaging
 
-from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import get_starpilot_toggles
 
 
 def main():
@@ -24,15 +24,15 @@ def main():
   sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'liveParameters', 'radarState', 'modelV2', 'selfdriveState'],
                            poll='modelV2')
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotCarState', 'frogpilotPlan'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotCarState', 'starpilotPlan'])
 
-  frogpilot_toggles = get_frogpilot_toggles()
+  starpilot_toggles = get_starpilot_toggles()
 
   while True:
     sm.update()
     if sm.updated['modelV2']:
-      longitudinal_planner.update(sm, frogpilot_toggles)
+      longitudinal_planner.update(sm, starpilot_toggles)
       longitudinal_planner.publish(sm, pm)
 
       ldw.update(sm.frame, sm['modelV2'], sm['carState'], sm['carControl'])
@@ -42,8 +42,8 @@ def main():
       msg.driverAssistance.rightLaneDeparture = ldw.right
       pm.send('driverAssistance', msg)
 
-    # FrogPilot variables
-    frogpilot_toggles = get_frogpilot_toggles(sm)
+    # StarPilot variables
+    starpilot_toggles = get_starpilot_toggles(sm)
 
 
 if __name__ == "__main__":

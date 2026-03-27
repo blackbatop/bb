@@ -20,7 +20,7 @@ REPO_ROOT = get_repo_root()
 PARAMS_CC_PATH = os.path.join(REPO_ROOT, 'common/params.cc')
 UI_DIRECTORIES = [
     os.path.join(REPO_ROOT, 'selfdrive/ui'),
-    os.path.join(REPO_ROOT, 'frogpilot/ui')
+    os.path.join(REPO_ROOT, 'starpilot/ui')
 ]
 
 # A curated list of parameters that are known to be strictly readable state metadata
@@ -31,8 +31,8 @@ KNOWN_READ_ONLY = {
     "ClusterOffset", "Compass", "DeveloperSidebarMetric1", "DeveloperSidebarMetric2",
     "DeveloperSidebarMetric3", "DeveloperSidebarMetric4", "DeveloperSidebarMetric5",
     "DeveloperSidebarMetric6", "DeveloperSidebarMetric7", "DongleId",
-    "FrogPilotCarParamsPersistent", "FrogPilotDrives", "FrogPilotKilometers",
-    "FrogPilotMinutes", "GitBranch", "GitCommit", "GitCommitDate", "GitDiff",
+    "StarPilotCarParamsPersistent", "StarPilotDrives", "StarPilotKilometers",
+    "StarPilotMinutes", "GitBranch", "GitCommit", "GitCommitDate", "GitDiff",
     "GitRemote", "GithubSshKeys", "GithubUsername", "HardwareSerial", "IMEI",
     "InstallDate", "IsRhdDetected", "KonikMinutes", "LastGPSPosition",
     "LastMapsUpdate", "LastUpdateTime", "ModelDrivesAndScores", "ModelReleasedDates",

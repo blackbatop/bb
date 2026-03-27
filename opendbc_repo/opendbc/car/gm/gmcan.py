@@ -273,12 +273,12 @@ def create_lka_icon_command(bus, active, critical, steer):
   return CanData(0x104c006c, dat, bus)
 
 
-def create_gm_cc_spam_command(packer, controller, CS, actuators, frogpilot_toggles):
+def create_gm_cc_spam_command(packer, controller, CS, actuators, starpilot_toggles):
   accel = actuators.accel
   v_ego = CS.out.vEgo
   cruise_btn = CruiseButtons.INIT
   rate = 1 if abs(accel) <= 0.15 else 0.2
-  ms_convert = CV.MS_TO_KPH if getattr(frogpilot_toggles, "is_metric", False) else CV.MS_TO_MPH
+  ms_convert = CV.MS_TO_KPH if getattr(starpilot_toggles, "is_metric", False) else CV.MS_TO_MPH
   speed_setpoint = int(round(CS.out.cruiseState.speed * ms_convert))
   desired_setpoint = int(round((v_ego * 1.01 + 3 * accel) * ms_convert))
 

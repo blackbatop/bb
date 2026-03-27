@@ -54,7 +54,7 @@ class Plant:
     from opendbc.car.honda.interface import CarInterface
 
     self.planner = LongitudinalPlanner(CarInterface.get_non_essential_params(CAR.HONDA_CIVIC), init_v=self.speed)
-    self.frogpilot_toggles = SimpleNamespace(
+    self.starpilot_toggles = SimpleNamespace(
       taco_tune=False,
       model_version=None,
       stop_distance=6.0,
@@ -136,7 +136,7 @@ class Plant:
     car_control.carControl.orientationNED = [0., float(pitch), 0.]
 
     # ******** get controlsState messages for plotting ***
-    frogpilot_plan = SimpleNamespace(
+    starpilot_plan = SimpleNamespace(
       vCruise=float(v_cruise),
       minAcceleration=float(ACCEL_MIN),
       maxAcceleration=float(ACCEL_MAX),
@@ -159,8 +159,8 @@ class Plant:
           'selfdriveState': ss.selfdriveState,
           'liveParameters': lp.liveParameters,
           'modelV2': model.modelV2,
-          'frogpilotPlan': frogpilot_plan}
-    self.planner.update(sm, self.frogpilot_toggles)
+          'starpilotPlan': starpilot_plan}
+    self.planner.update(sm, self.starpilot_toggles)
     self.acceleration = self.planner.output_a_target
     self.speed = self.speed + self.acceleration * self.ts
     self.should_stop = self.planner.output_should_stop

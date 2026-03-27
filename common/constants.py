@@ -19,7 +19,7 @@ class CV:
   # Mass
   LB_TO_KG = 0.453592
 
-  # FrogPilot variables
+  # StarPilot variables
   METER_TO_FOOT = 3.28084
   FOOT_TO_METER = 1. / METER_TO_FOOT
   CM_TO_INCH = 1. / 2.54

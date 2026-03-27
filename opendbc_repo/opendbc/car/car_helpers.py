@@ -11,15 +11,15 @@ from opendbc.car.structs import CarParams, CarParamsT
 from opendbc.car.fingerprints import eliminate_incompatible_cars, all_legacy_fingerprint_cars
 from opendbc.car.fw_versions import ObdCallback, get_fw_versions_ordered, get_present_ecus, match_fw_to_car
 from opendbc.car.mock.values import CAR as MOCK
-from opendbc.car.toyota.values import ToyotaFrogPilotFlags
+from opendbc.car.toyota.values import ToyotaStarPilotFlags
 from opendbc.car.values import BRANDS
 from opendbc.car.vin import get_vin, is_valid_vin, VIN_UNKNOWN
 from openpilot.common.params import Params
 
 FRAME_FINGERPRINT = 100  # 1s
 
-# FrogPilot variables
-FrogPilotCarParams = custom.FrogPilotCarParams
+# StarPilot variables
+StarPilotCarParams = custom.StarPilotCarParams
 
 
 def load_interfaces(brand_names):
@@ -212,15 +212,15 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
 
 
 def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multiplexing: ObdCallback, alpha_long_allowed: bool,
-            is_release: bool, params: Params, num_pandas: int = 1, cached_params: CarParamsT | None = None, frogpilot_toggles: SimpleNamespace = None):
+            is_release: bool, params: Params, num_pandas: int = 1, cached_params: CarParamsT | None = None, starpilot_toggles: SimpleNamespace = None):
   candidate, fingerprints, vin, car_fw, source, exact_match = fingerprint(can_recv, can_send, set_obd_multiplexing, num_pandas, cached_params)
   candidate = _normalize_gm_bolt_candidate(candidate, fingerprints)
   candidate = _normalize_forced_candidate(candidate)
   fingerprinted_candidate = candidate
 
-  if candidate is None or frogpilot_toggles.force_fingerprint:
-    if frogpilot_toggles.force_fingerprint:
-      forced_candidate = _normalize_forced_candidate(frogpilot_toggles.car_model)
+  if candidate is None or starpilot_toggles.force_fingerprint:
+    if starpilot_toggles.force_fingerprint:
+      forced_candidate = _normalize_forced_candidate(starpilot_toggles.car_model)
       candidate = forced_candidate
       if candidate not in interfaces and fingerprinted_candidate in interfaces:
         carlog.error({
@@ -236,7 +236,7 @@ def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multip
     params.put_nonblocking("CarMake", candidate.split('_')[0].title())
     params.put_nonblocking("CarModel", str(candidate))
 
-  if frogpilot_toggles.block_user:
+  if starpilot_toggles.block_user:
     candidate = "MOCK"
 
   # Legacy branch migration guard: normalize stale platform names from any source
@@ -251,20 +251,20 @@ def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multip
     candidate = fingerprinted_candidate
 
   CarInterface = interfaces[candidate]
-  CP: CarParams = CarInterface.get_params(candidate, fingerprints, car_fw, alpha_long_allowed, is_release, docs=False, frogpilot_toggles=frogpilot_toggles)
+  CP: CarParams = CarInterface.get_params(candidate, fingerprints, car_fw, alpha_long_allowed, is_release, docs=False, starpilot_toggles=starpilot_toggles)
   CP.carVin = vin
   CP.carFw = car_fw
   CP.fingerprintSource = source
   CP.fuzzyFingerprint = not exact_match
 
-  # FrogPilot variables
-  FPCP: FrogPilotCarParams = CarInterface.get_frogpilot_params(candidate, fingerprints, car_fw, CP, frogpilot_toggles)
+  # StarPilot variables
+  FPCP: StarPilotCarParams = CarInterface.get_starpilot_params(candidate, fingerprints, car_fw, CP, starpilot_toggles)
 
-  if CP.brand == "toyota" and FPCP.flags & ToyotaFrogPilotFlags.SMART_DSU.value:
+  if CP.brand == "toyota" and FPCP.flags & ToyotaStarPilotFlags.SMART_DSU.value:
     CP.minEnableSpeed = -1
     CP.openpilotLongitudinalControl = True
 
-  if not CP.alphaLongitudinalAvailable and frogpilot_toggles.disable_openpilot_long:
+  if not CP.alphaLongitudinalAvailable and starpilot_toggles.disable_openpilot_long:
     CP.openpilotLongitudinalControl = False
     FPCP.openpilotLongitudinalControlDisabled = True
 

@@ -16,7 +16,7 @@
 #include "selfdrive/ui/qt/widgets/offroad_alerts.h"
 #include "selfdrive/ui/ui.h"
 
-#include "frogpilot/ui/qt/widgets/developer_sidebar.h"
+#include "starpilot/ui/qt/widgets/developer_sidebar.h"
 
 class OffroadHome : public QFrame {
   Q_OBJECT
@@ -42,7 +42,7 @@ private:
   QPushButton* alert_notif;
   QPushButton* update_notif;
 
-  // FrogPilot variables
+  // StarPilot variables
   ElidedLabel* date;
 };
 
@@ -73,11 +73,11 @@ private:
   DriverViewWindow *driver_view;
   QStackedLayout *slayout;
 
-  // FrogPilot variables
+  // StarPilot variables
   DeveloperSidebar *developer_sidebar;
 
   Params params;
 
 private slots:
-  void updateState(const UIState &s, const FrogPilotUIState &fs);
+  void updateState(const UIState &s, const StarPilotUIState &fs);
 };

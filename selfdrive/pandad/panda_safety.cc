@@ -65,15 +65,15 @@ void PandaSafety::setSafetyMode(const std::string &params_string) {
   auto safety_configs = car_params.getSafetyConfigs();
   uint16_t alternative_experience = car_params.getAlternativeExperience();
 
-  // FrogPilot variables
-  std::string frogpilot_params_string = params_.get("FrogPilotCarParams");
+  // StarPilot variables
+  std::string starpilot_params_string = params_.get("StarPilotCarParams");
 
-  AlignedBuffer frogpilot_aligned_buf;
-  capnp::FlatArrayMessageReader frogpilot_cmsg(frogpilot_aligned_buf.align(frogpilot_params_string.data(), frogpilot_params_string.size()));
-  cereal::FrogPilotCarParams::Reader frogpilot_car_params = frogpilot_cmsg.getRoot<cereal::FrogPilotCarParams>();
+  AlignedBuffer starpilot_aligned_buf;
+  capnp::FlatArrayMessageReader starpilot_cmsg(starpilot_aligned_buf.align(starpilot_params_string.data(), starpilot_params_string.size()));
+  cereal::StarPilotCarParams::Reader starpilot_car_params = starpilot_cmsg.getRoot<cereal::StarPilotCarParams>();
 
-  auto frogpilot_safety_configs = frogpilot_car_params.getSafetyConfigs();
-  alternative_experience |= frogpilot_car_params.getAlternativeExperience();
+  auto starpilot_safety_configs = starpilot_car_params.getSafetyConfigs();
+  alternative_experience |= starpilot_car_params.getAlternativeExperience();
 
   for (int i = 0; i < pandas_.size(); ++i) {
     // Default to SILENT safety model if not specified
@@ -84,9 +84,9 @@ void PandaSafety::setSafetyMode(const std::string &params_string) {
       safety_param = safety_configs[i].getSafetyParam();
     }
 
-    // FrogPilot variables
-    if (i < frogpilot_safety_configs.size()) {
-      safety_param |= frogpilot_safety_configs[i].getSafetyParam();
+    // StarPilot variables
+    if (i < starpilot_safety_configs.size()) {
+      safety_param |= starpilot_safety_configs[i].getSafetyParam();
     }
 
     LOGW("Panda %d: setting safety model: %d, param: %d, alternative experience: %d", i, (int)safety_model, safety_param, alternative_experience);

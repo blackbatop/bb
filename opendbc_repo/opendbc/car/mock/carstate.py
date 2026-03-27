@@ -5,4 +5,4 @@ from opendbc.car.interfaces import CarStateBase
 
 class CarState(CarStateBase):
   def update(self, *_) -> structs.CarState:
-    return structs.CarState(), custom.FrogPilotCarState()
+    return structs.CarState(), custom.StarPilotCarState()

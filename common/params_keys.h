@@ -135,7 +135,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"UptimeOnroad", {PERSISTENT, FLOAT, "0.0"}},
     {"Version", {PERSISTENT, STRING}},
 
-    // FrogPilot variables
+    // StarPilot variables
     {"AccelerationPath", {PERSISTENT, BOOL, "1", "0", 2}},
     {"AccelerationProfile", {PERSISTENT, INT, "2", "0", 0}},
     {"AdjacentLeadsUI", {PERSISTENT, BOOL, "1", "0", 3}},
@@ -261,12 +261,12 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"ForceStops", {PERSISTENT, BOOL, "0", "0", 2}},
     {"ForceTorqueController", {PERSISTENT, BOOL, "0", "0", 3}},
     {"FPSCounter", {PERSISTENT, BOOL, "1", "0", 3}},
-    {"FrogPilotApiToken", {PERSISTENT | DONT_LOG, STRING, "", "", 0}},
-    {"FrogPilotCarParams", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BYTES, "", ""}},
-    {"FrogPilotCarParamsPersistent", {PERSISTENT, BYTES, "", ""}},
-    {"FrogPilotDongleId", {PERSISTENT | DONT_LOG, STRING, "", "", 0}},
-    {"FrogPilotStats", {PERSISTENT | DONT_LOG, JSON, "{}", "{}"}},
-    {"FrogPilotTogglesUpdated", {CLEAR_ON_MANAGER_START, BOOL, "0", "0"}},
+    {"StarPilotApiToken", {PERSISTENT | DONT_LOG, STRING, "", "", 0}},
+    {"StarPilotCarParams", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BYTES, "", ""}},
+    {"StarPilotCarParamsPersistent", {PERSISTENT, BYTES, "", ""}},
+    {"StarPilotDongleId", {PERSISTENT | DONT_LOG, STRING, "", "", 0}},
+    {"StarPilotStats", {PERSISTENT | DONT_LOG, JSON, "{}", "{}"}},
+    {"StarPilotTogglesUpdated", {CLEAR_ON_MANAGER_START, BOOL, "0", "0"}},
     {"FrogsGoMoosTweak", {PERSISTENT, BOOL, "1", "0", 2}},
     {"GoatScream", {PERSISTENT, BOOL, "0", "0", 1}},
     {"GreenLightAlert", {PERSISTENT, BOOL, "0", "0", 0}},

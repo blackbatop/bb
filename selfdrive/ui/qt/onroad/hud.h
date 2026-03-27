@@ -3,7 +3,7 @@
 #include <QPainter>
 #include "selfdrive/ui/ui.h"
 
-#include "frogpilot/ui/qt/onroad/frogpilot_annotated_camera.h"
+#include "starpilot/ui/qt/onroad/starpilot_annotated_camera.h"
 
 class HudRenderer : public QObject {
   Q_OBJECT
@@ -13,10 +13,10 @@ public:
   void updateState(const UIState &s);
   void draw(QPainter &p, const QRect &surface_rect);
 
-  // FrogPilot variables
-  FrogPilotAnnotatedCameraWidget *frogpilot_nvg;
+  // StarPilot variables
+  StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
-  QJsonObject frogpilot_toggles;
+  QJsonObject starpilot_toggles;
 
 private:
   void drawSetSpeed(QPainter &p, const QRect &surface_rect);

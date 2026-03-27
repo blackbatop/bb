@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.frogpilot.assets.model_manager import ModelManager
+from openpilot.starpilot.assets.model_manager import ModelManager
 from openpilot.system.hardware import HARDWARE, PC
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
@@ -19,9 +19,9 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     super().__init__()
 
     if PC:
-      self._model_dir = Path(os.path.expanduser("~/.comma/frogpilot/data/models"))
+      self._model_dir = Path(os.path.expanduser("~/.comma/starpilot/data/models"))
     else:
-      self._model_dir = Path("/data/frogpilot/models")
+      self._model_dir = Path("/data/starpilot/models")
     self._model_dir.mkdir(parents=True, exist_ok=True)
 
     self._available_models = []

@@ -17,7 +17,7 @@ For the full StarPilot branch workflow, including host-native shorthand tools su
 Fast path (no physical comma):
 
 ```bash
-cd /path/to/frogpilot
+cd /path/to/starpilot
 scripts/laptop_device_build.sh setup
 ```
 
@@ -30,7 +30,7 @@ scripts/starpilot_build_flow.sh laptop-setup
 ### Option A: no physical comma (AGNOS-based)
 
 ```bash
-cd /path/to/frogpilot
+cd /path/to/starpilot
 scripts/laptop_device_build.sh build-image
 scripts/laptop_device_build.sh setup-sysroot-agnos
 ```
@@ -38,7 +38,7 @@ scripts/laptop_device_build.sh setup-sysroot-agnos
 ### Option B: copy sysroot from a comma device
 
 ```bash
-cd /path/to/frogpilot
+cd /path/to/starpilot
 scripts/laptop_device_build.sh setup-sysroot <device-ip> comma 22
 scripts/laptop_device_build.sh build-image
 ```
@@ -52,7 +52,7 @@ scripts/laptop_device_build.sh setup <device-ip> comma 22
 ## Build device-compatible artifacts
 
 ```bash
-cd /path/to/frogpilot
+cd /path/to/starpilot
 scripts/laptop_device_build.sh build
 ```
 

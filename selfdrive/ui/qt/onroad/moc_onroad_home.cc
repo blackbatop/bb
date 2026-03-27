@@ -38,12 +38,12 @@ QT_MOC_LITERAL(3, 32, 7), // "offroad"
 QT_MOC_LITERAL(4, 40, 11), // "updateState"
 QT_MOC_LITERAL(5, 52, 7), // "UIState"
 QT_MOC_LITERAL(6, 60, 1), // "s"
-QT_MOC_LITERAL(7, 62, 16), // "FrogPilotUIState"
+QT_MOC_LITERAL(7, 62, 16), // "StarPilotUIState"
 QT_MOC_LITERAL(8, 79, 2) // "fs"
 
     },
     "OnroadWindow\0offroadTransition\0\0offroad\0"
-    "updateState\0UIState\0s\0FrogPilotUIState\0"
+    "updateState\0UIState\0s\0StarPilotUIState\0"
     "fs"
 };
 #undef QT_MOC_LITERAL
@@ -79,7 +79,7 @@ void OnroadWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id
         Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->offroadTransition((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 1: _t->updateState((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const FrogPilotUIState(*)>(_a[2]))); break;
+        case 1: _t->updateState((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const StarPilotUIState(*)>(_a[2]))); break;
         default: ;
         }
     }

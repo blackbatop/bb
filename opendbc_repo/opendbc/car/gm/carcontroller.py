@@ -8,7 +8,7 @@ from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.gm.values import ASCM_INT, CAR, CC_ONLY_CAR, CC_REGEN_PADDLE_CAR, DBC, EV_CAR, SDGM_CAR, AccState, CanBus, CarControllerParams, CruiseButtons, GMFlags
 from opendbc.car.interfaces import CarControllerBase
 from openpilot.common.params import Params, UnknownKeyName
-from openpilot.frogpilot.common.testing_grounds import testing_ground
+from openpilot.starpilot.common.testing_grounds import testing_ground
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 NetworkLocation = structs.CarParams.NetworkLocation
@@ -213,7 +213,7 @@ class CarController(CarControllerBase):
       self.malibu_cancel_phase = phase
       self.malibu_button_phase = phase
 
-  def update(self, CC, CS, now_nanos, frogpilot_toggles):
+  def update(self, CC, CS, now_nanos, starpilot_toggles):
     actuators = CC.actuators
     self.aego = CS.out.aEgo
     accel = actuators.accel
@@ -366,11 +366,11 @@ class CarController(CarControllerBase):
           self.regen_min_on_frames = 0
           self.regen_min_off_frames = 0
         elif near_stop and stopping and not CC.cruiseControl.resume:
-          stop_accel = getattr(frogpilot_toggles, "stopAccel", self.CP.stopAccel)
+          stop_accel = getattr(starpilot_toggles, "stopAccel", self.CP.stopAccel)
           self.apply_gas = self.params.INACTIVE_REGEN
           self.apply_brake = int(min(-100 * stop_accel, self.params.MAX_BRAKE))
         else:
-          long_pitch_enabled = bool(getattr(frogpilot_toggles, "long_pitch", True))
+          long_pitch_enabled = bool(getattr(starpilot_toggles, "long_pitch", True))
           pedal_long_path = bool(self.CP.enableGasInterceptorDEPRECATED and (self.CP.flags & GMFlags.PEDAL_LONG.value))
           long_pitch_for_powertrain = long_pitch_enabled and not pedal_long_path
 
@@ -453,7 +453,7 @@ class CarController(CarControllerBase):
         if self.CP.flags & GMFlags.CC_LONG.value:
           if CC.longActive and CS.out.cruiseState.enabled and CS.out.vEgo > self.CP.minEnableSpeed:
             # Using extend instead of append since the message is only sent intermittently
-            can_sends.extend(gmcan.create_gm_cc_spam_command(self.packer_pt, self, CS, actuators, frogpilot_toggles))
+            can_sends.extend(gmcan.create_gm_cc_spam_command(self.packer_pt, self, CS, actuators, starpilot_toggles))
           elif (CS.out.cruiseState.enabled and CC.enabled and self.frame % 52 == 0 and
                 CS.cruise_buttons == CruiseButtons.UNPRESS and CS.out.gasPressed and CS.out.cruiseState.speed < CS.out.vEgo < hud_v_cruise):
             if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
@@ -479,8 +479,8 @@ class CarController(CarControllerBase):
             resume = actuators.longControlState != LongCtrlState.starting or CC.cruiseControl.resume
             at_full_stop = at_full_stop and not resume
 
-          # FrogPilot variables
-          if CC.cruiseControl.resume and CS.pcm_acc_status == AccState.STANDSTILL and frogpilot_toggles.volt_sng:
+          # StarPilot variables
+          if CC.cruiseControl.resume and CS.pcm_acc_status == AccState.STANDSTILL and starpilot_toggles.volt_sng:
             acc_engaged = False
           else:
             acc_engaged = CC.enabled

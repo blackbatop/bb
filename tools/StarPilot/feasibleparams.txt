@@ -111,7 +111,7 @@ ForceFingerprint
 ForceMPHDashboard
 ForceStops
 ForceTorqueController
-FrogPilotStats
+StarPilotStats
 FrogsGoMoosTweak
 FullMap
 GMPedalLongitudinal

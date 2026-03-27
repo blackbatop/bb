@@ -11,7 +11,7 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
   mainListLayout->setContentsMargins(50, 25, 50, 25);
   mainListLayout->setSpacing(20);
 
-  FrogPilotListWidget *mainList = new FrogPilotListWidget(mainWidget);
+  StarPilotListWidget *mainList = new StarPilotListWidget(mainWidget);
   mainListLayout->addWidget(mainList);
 
   adbToggle = new ParamControl("AdbEnabled", tr("Enable ADB"),
@@ -61,7 +61,7 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
   // Toggles should be not available to change in onroad state
   QObject::connect(uiState(), &UIState::offroadTransition, this, &DeveloperPanel::updateToggles);
 
-  // FrogPilot variables
+  // StarPilot variables
   QJsonObject shownDescriptions = QJsonDocument::fromJson(QString::fromStdString(params.get("ShownToggleDescriptions")).toUtf8()).object();
   QString className = this->metaObject()->className();
 
@@ -71,11 +71,11 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
 
   std::vector<std::string> keys = params.allKeys();
   for (const std::string &key : keys) {
-    frogpilotToggleLevels[QString::fromStdString(key)] = params.getTuningLevel(key);
+    starpilotToggleLevels[QString::fromStdString(key)] = params.getTuningLevel(key);
   }
 
-  developerUIToggle = new FrogPilotManageControl("DeveloperUI", tr("Developer UI"), tr("<b>Detailed information about openpilot's internal operations.</b>"), "");
-  QObject::connect(developerUIToggle, &FrogPilotManageControl::manageButtonClicked, [this]() {
+  developerUIToggle = new StarPilotManageControl("DeveloperUI", tr("Developer UI"), tr("<b>Detailed information about openpilot's internal operations.</b>"), "");
+  QObject::connect(developerUIToggle, &StarPilotManageControl::manageButtonClicked, [this]() {
     mainLayout->setCurrentWidget(developerUIPanel);
     emit openSubPanel();
   });
@@ -83,22 +83,22 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
 
   mainLayout->addWidget(mainWidget);
 
-  FrogPilotListWidget *developerUIList = new FrogPilotListWidget(this);
+  StarPilotListWidget *developerUIList = new StarPilotListWidget(this);
   developerUIList->setContentsMargins(50, 25, 50, 25);
   developerUIPanel = new ScrollView(developerUIList, this);
   mainLayout->addWidget(developerUIPanel);
 
-  FrogPilotListWidget *developerMetricList = new FrogPilotListWidget(this);
+  StarPilotListWidget *developerMetricList = new StarPilotListWidget(this);
   developerMetricList->setContentsMargins(50, 25, 50, 25);
   developerMetricPanel = new ScrollView(developerMetricList, this);
   mainLayout->addWidget(developerMetricPanel);
 
-  FrogPilotListWidget *developerSidebarList = new FrogPilotListWidget(this);
+  StarPilotListWidget *developerSidebarList = new StarPilotListWidget(this);
   developerSidebarList->setContentsMargins(50, 25, 50, 25);
   developerSidebarPanel = new ScrollView(developerSidebarList, this);
   mainLayout->addWidget(developerSidebarPanel);
 
-  FrogPilotListWidget *developerWidgetList = new FrogPilotListWidget(this);
+  StarPilotListWidget *developerWidgetList = new StarPilotListWidget(this);
   developerWidgetList->setContentsMargins(50, 25, 50, 25);
   developerWidgetPanel = new ScrollView(developerWidgetList, this);
   mainLayout->addWidget(developerWidgetPanel);
@@ -132,8 +132,8 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
     AbstractControl *developerToggle;
 
     if (param == "DeveloperMetrics") {
-      FrogPilotManageControl *developerMetricsToggle = new FrogPilotManageControl(param, title, desc, icon);
-      QObject::connect(developerMetricsToggle, &FrogPilotManageControl::manageButtonClicked, [this]() {
+      StarPilotManageControl *developerMetricsToggle = new StarPilotManageControl(param, title, desc, icon);
+      QObject::connect(developerMetricsToggle, &StarPilotManageControl::manageButtonClicked, [this]() {
         mainLayout->setCurrentWidget(developerMetricPanel);
         emit openSubSubPanel();
       });
@@ -141,22 +141,22 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
     } else if (param == "BorderMetrics") {
       std::vector<QString> borderToggles{"BlindSpotMetrics", "ShowSteering", "SignalMetrics"};
       std::vector<QString> borderToggleNames{tr("Blind Spot"), tr("Steering Torque"), tr("Turn Signal")};
-      borderMetricsButton = new FrogPilotButtonToggleControl(param, title, desc, icon, borderToggles, borderToggleNames);
+      borderMetricsButton = new StarPilotButtonToggleControl(param, title, desc, icon, borderToggles, borderToggleNames);
       developerToggle = borderMetricsButton;
     } else if (param == "NumericalTemp") {
       std::vector<QString> temperatureToggles{"Fahrenheit"};
       std::vector<QString> temperatureToggleNames{tr("Fahrenheit")};
-      developerToggle = new FrogPilotButtonToggleControl(param, title, desc, icon, temperatureToggles, temperatureToggleNames);
+      developerToggle = new StarPilotButtonToggleControl(param, title, desc, icon, temperatureToggles, temperatureToggleNames);
     } else if (param == "SidebarMetrics") {
       sidebarMetricsToggles = {"ShowCPU", "ShowGPU", "ShowIP", "ShowMemoryUsage", "ShowStorageLeft", "ShowStorageUsed"};
       std::vector<QString> sidebarMetricsToggleNames{tr("CPU"), tr("GPU"), tr("IP"), tr("RAM"), tr("SSD Left"), tr("SSD Used")};
-      sidebarMetricsToggle = new FrogPilotButtonsControl(title, desc, icon, sidebarMetricsToggleNames, true, false, 150);
+      sidebarMetricsToggle = new StarPilotButtonsControl(title, desc, icon, sidebarMetricsToggleNames, true, false, 150);
       for (int i = 0; i < sidebarMetricsToggles.size(); ++i) {
         if (params.getBool(sidebarMetricsToggles[i].toStdString())) {
           sidebarMetricsToggle->setCheckedButton(i);
         }
       }
-      QObject::connect(sidebarMetricsToggle, &FrogPilotButtonsControl::buttonClicked, [this](int id) {
+      QObject::connect(sidebarMetricsToggle, &StarPilotButtonsControl::buttonClicked, [this](int id) {
         params.putBool(sidebarMetricsToggles[id].toStdString(), !params.getBool(sidebarMetricsToggles[id].toStdString()));
 
         if (id == 0) {
@@ -183,8 +183,8 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
       });
       developerToggle = sidebarMetricsToggle;
     } else if (param == "DeveloperSidebar") {
-      FrogPilotManageControl *developerSidebarToggle = new FrogPilotManageControl(param, title, desc, icon);
-      QObject::connect(developerSidebarToggle, &FrogPilotManageControl::manageButtonClicked, [this]() {
+      StarPilotManageControl *developerSidebarToggle = new StarPilotManageControl(param, title, desc, icon);
+      QObject::connect(developerSidebarToggle, &StarPilotManageControl::manageButtonClicked, [this]() {
         mainLayout->setCurrentWidget(developerSidebarPanel);
         emit openSubSubPanel();
       });
@@ -226,8 +226,8 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
       metricToggle->setValue(developerSidebarMetricOptions.value(params.getInt(param.toStdString()), tr("None")));
       developerToggle = metricToggle;
     } else if (param == "DeveloperWidgets") {
-      FrogPilotManageControl *developerWidgetsToggle = new FrogPilotManageControl(param, title, desc, icon);
-      QObject::connect(developerWidgetsToggle, &FrogPilotManageControl::manageButtonClicked, [this]() {
+      StarPilotManageControl *developerWidgetsToggle = new StarPilotManageControl(param, title, desc, icon);
+      QObject::connect(developerWidgetsToggle, &StarPilotManageControl::manageButtonClicked, [this]() {
         mainLayout->setCurrentWidget(developerWidgetPanel);
         emit openSubSubPanel();
       });
@@ -235,7 +235,7 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
     } else if (param == "ShowStoppingPoint") {
       std::vector<QString> stoppingPointToggles{"ShowStoppingPointMetrics"};
       std::vector<QString> stoppingPointToggleNames{tr("Show Distance")};
-      developerToggle = new FrogPilotButtonToggleControl(param, title, desc, icon, stoppingPointToggles, stoppingPointToggleNames);
+      developerToggle = new StarPilotButtonToggleControl(param, title, desc, icon, stoppingPointToggles, stoppingPointToggleNames);
     } else {
       developerToggle = new ParamControl(param, title, desc, icon);
     }
@@ -272,7 +272,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
       btn->setEnabled(_offroad);
     }
 
-    // FrogPilot variables
+    // StarPilot variables
     for (auto &[key, toggle] : toggles) {
       if (toggle == btn) {
         btn->setEnabled(true);
@@ -305,7 +305,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 
     longManeuverToggle->setEnabled(hasLongitudinalControl(CP) && _offroad);
 
-    // FrogPilot variables
+    // StarPilot variables
     hasOpenpilotLongitudinal = hasLongitudinalControl(CP);
     hasRadar = !CP.getRadarUnavailable();
 
@@ -318,7 +318,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 
   offroad = _offroad;
 
-  // FrogPilot variables
+  // StarPilot variables
   tuningLevel = params.getInt("TuningLevel");
 
   for (auto &[key, toggle] : toggles) {
@@ -332,7 +332,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
       continue;
     }
 
-    bool setVisible = tuningLevel >= frogpilotToggleLevels[key].toDouble();
+    bool setVisible = tuningLevel >= starpilotToggleLevels[key].toDouble();
 
     if (key == "AdjacentLeadsUI") {
       setVisible &= hasRadar && !(params.getBool("AdvancedCustomUI") && params.getBool("HideLeadMarker"));
@@ -363,7 +363,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 
   borderMetricsButton->setVisibleButton(0, hasBSM);
 
-  developerUIToggle->setVisible(tuningLevel >= frogpilotToggleLevels["DeveloperUI"].toDouble());
+  developerUIToggle->setVisible(tuningLevel >= starpilotToggleLevels["DeveloperUI"].toDouble());
 
   openDescriptions(forceOpenDescriptions, toggles);
 
@@ -373,7 +373,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 void DeveloperPanel::showEvent(QShowEvent *event) {
   updateToggles(offroad);
 
-  // FrogPilot variables
+  // StarPilot variables
   for (int i = 0; i < sidebarMetricsToggles.size(); ++i) {
     if (params.getBool(sidebarMetricsToggles[i].toStdString())) {
       sidebarMetricsToggle->setCheckedButton(i);

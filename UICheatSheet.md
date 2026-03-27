@@ -637,7 +637,7 @@ Legend: ✅ = Full | 🟡 = Structure/stub | 🔴 = Not started
 #### Completed (March 17, 2026)
 - **Created `StarPilotState` singleton** (`selfdrive/ui/lib/starpilot_state.py`) with:
   - `StarPilotCarState` dataclass with all car type, capability, and value fields
-  - Reads `CarParamsPersistent`, `FrogPilotCarParamsPersistent`, `LiveTorqueParameters`, `FrogPilotToggles` from Params
+  - Reads `CarParamsPersistent`, `StarPilotCarParamsPersistent`, `LiveTorqueParameters`, `StarPilotToggles` from Params
   - Throttled updates (2.0s interval) to avoid slowing UI
   - PC/desktop fallback mode with configurable car make/model
   - Global import: `from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state`
@@ -1270,7 +1270,7 @@ emit closeSubSubSubPanel(); // Back from Level 4 → Level 3
 
 **Longitudinal Panel Structure** (17 sub-panels, ~80 controls):
 ```
-FROGPILOT LONGITUDINAL LAYOUT (top level - MANAGE buttons)
+STARPILOT LONGITUDINAL LAYOUT (top level - MANAGE buttons)
 ├── Advanced Longitudinal Tuning → StarPilotAdvancedLongLayout
 │   └── 8 value controls
 ├── Conditional Experimental Mode → StarPilotConditionalExpLayout
@@ -1741,7 +1741,7 @@ KM_TO_MILE = 0.621371
 | Rainbow Path | Toggle | | |
 | Random Events | Toggle | | |
 | Random Themes | TOGGLE+TOGGLE | - | Includes "Include Holiday Themes" |
-| Startup Alert | BUTTON | STOCK, FROGPILOT, CUSTOM, CLEAR | |
+| Startup Alert | BUTTON | STOCK, STARPILOT, CUSTOM, CLEAR | |
 | Download Status | LABEL | - | Shows download progress |
 
 **Custom Themes Sub-Panel** (7 theme types, each with DELETE/DOWNLOAD/SELECT):
@@ -1973,7 +1973,7 @@ Acura, Audi, Buick, Cadillac, Chevrolet, Chrysler, CUPRA, Dodge, Ford, Genesis, 
 | Debug Mode | Toggle | |
 | Flash Panda | BUTTON | FLASH |
 | Force Drive State | BUTTONS | OFFROAD / ONROAD / OFF |
-| Pair to "The Pond" | BUTTON | PAIR/UNPAIR |
+| Galaxy | BUTTON | PAIR/UNPAIR |
 | Report a Bug | BUTTON | REPORT |
 | Reset Toggles to Default | BUTTON | RESET |
 | Reset Toggles to Stock | BUTTON | RESET |
@@ -2613,9 +2613,9 @@ ensures that if the car state changes (e.g. from a CarParams update), the UI ref
 
 **Data sources parsed:**
 1.  `CarParamsPersistent` — Car fingerprint, lateral tuning, capabilities
-2.  `FrogPilotCarParamsPersistent` — canUsePedal, canUseSDSU, openpilotLongitudinalControlDisabled
+2.  `StarPilotCarParamsPersistent` — canUsePedal, canUseSDSU, openpilotLongitudinalControlDisabled
 3.  `LiveTorqueParameters` — hasAutoTune (useParams)
-4.  `FrogPilotToggles` — JSON blob with supplementary toggles
+4.  `StarPilotToggles` — JSON blob with supplementary toggles
 
 **Update throttling:** 2.0s minimum interval between heavy param parsing
 

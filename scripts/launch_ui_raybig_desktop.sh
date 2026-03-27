@@ -44,7 +44,7 @@ if [[ ! -x "${PY_BIN}" ]]; then
 fi
 export PATH="${ROOT_DIR}/.venv/bin:${PATH}"
 
-export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/frogpilot/third_party"
+export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/starpilot/third_party"
 for d in "${ROOT_DIR}"/*_repo; do [[ -d "$d" ]] && export PYTHONPATH="${PYTHONPATH}:$d"; done
 [[ -d "${ROOT_DIR}/third_party/acados" ]] && export PYTHONPATH="${PYTHONPATH}:${ROOT_DIR}/third_party/acados"
 export BIG=1
@@ -53,10 +53,10 @@ export SIMULATION=1
 export SKIP_FW_QUERY=1
 export USE_WEBCAM=1
 
-backup_dir="$(mktemp -d /tmp/frogpilot_raybig_ui_backup.XXXXXX)"
+backup_dir="$(mktemp -d /tmp/starpilot_raybig_ui_backup.XXXXXX)"
 backup_manifest="${backup_dir}/.artifact_manifest"
-PRE_TRACKED_DIRTY="$(mktemp /tmp/frogpilot_raybig_pretracked.XXXXXX)"
-POST_TRACKED_DIRTY="$(mktemp /tmp/frogpilot_raybig_posttracked.XXXXXX)"
+PRE_TRACKED_DIRTY="$(mktemp /tmp/starpilot_raybig_pretracked.XXXXXX)"
+POST_TRACKED_DIRTY="$(mktemp /tmp/starpilot_raybig_posttracked.XXXXXX)"
 FAKE_WIFI_PID=""
 
 runtime_artifacts=(

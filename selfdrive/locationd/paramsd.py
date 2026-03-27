@@ -12,7 +12,7 @@ from openpilot.selfdrive.locationd.models.constants import GENERATED_DIR
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 from openpilot.common.swaglog import cloudlog
 
-from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import get_starpilot_toggles
 
 MAX_ANGLE_OFFSET_DELTA = 20 * DT_MDL  # Max 20 deg/s
 ROLL_MAX_DELTA = np.radians(20.0) * DT_MDL  # 20deg in 1 second is well within curvature limits
@@ -59,7 +59,7 @@ class VehicleParamsLearner:
 
     self.reset(None)
 
-    # FrogPilot variables
+    # StarPilot variables
     self.CP = CP
 
   def reset(self, t: float | None):
@@ -166,7 +166,7 @@ class VehicleParamsLearner:
     liveParameters = msg.liveParameters
     liveParameters.posenetValid = True
     liveParameters.sensorValid = sensors_valid
-    liveParameters.steerRatio = float(x[States.STEER_RATIO].item() if not self.frogpilot_toggles.use_custom_steerRatio else self.frogpilot_toggles.steerRatio)
+    liveParameters.steerRatio = float(x[States.STEER_RATIO].item() if not self.starpilot_toggles.use_custom_steerRatio else self.starpilot_toggles.steerRatio)
     liveParameters.stiffnessFactor = float(x[States.STIFFNESS].item())
     liveParameters.roll = float(self.roll)
     liveParameters.angleOffsetAverageDeg = float(self.avg_angle_offset)
@@ -192,7 +192,7 @@ class VehicleParamsLearner:
       liveParameters.debugFilterState.value = x.tolist()
       liveParameters.debugFilterState.std = P.tolist()
 
-    # FrogPilot variables
+    # StarPilot variables
     if self.CP.carFingerprint == "RAM_HD":
       liveParameters.valid = True
 
@@ -285,10 +285,10 @@ def main():
   steer_ratio, stiffness_factor, angle_offset_deg, pInitial = retrieve_initial_vehicle_params(params, CP, REPLAY, DEBUG)
   learner = VehicleParamsLearner(CP, steer_ratio, stiffness_factor, np.radians(angle_offset_deg), pInitial)
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotPlan'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotPlan'])
 
-  learner.frogpilot_toggles = get_frogpilot_toggles()
+  learner.starpilot_toggles = get_starpilot_toggles()
 
   while True:
     sm.update()
@@ -307,8 +307,8 @@ def main():
 
       pm.send('liveParameters', msg_dat)
 
-    # FrogPilot variables
-    learner.frogpilot_toggles = get_frogpilot_toggles(sm)
+    # StarPilot variables
+    learner.starpilot_toggles = get_starpilot_toggles(sm)
 
 
 if __name__ == "__main__":

@@ -68,8 +68,8 @@ class HyundaiSafetyFlags(IntFlag):
   ALT_LIMITS_2 = 512
 
 
-# FrogPilot variables
-class HyundaiFrogPilotSafetyFlags(IntFlag):
+# StarPilot variables
+class HyundaiStarPilotSafetyFlags(IntFlag):
   HAS_LDA_BUTTON = 1024
 
 

@@ -110,7 +110,7 @@ class StarPilotState:
         
         # Read starpilot_toggles from params memory or scene
         try:
-            starpilot_toggles = json.loads(self.params.get("FrogPilotToggles", encoding="utf-8") or "{}")
+            starpilot_toggles = json.loads(self.params.get("StarPilotToggles", encoding="utf-8") or "{}")
         except:
             starpilot_toggles = {}
 
@@ -171,11 +171,11 @@ class StarPilotState:
         elif PC:
             self._apply_desktop_fallback(starpilot_toggles)
 
-        # 2. Parse FrogPilotCarParamsPersistent
-        fpcp_bytes = self.params.get("FrogPilotCarParamsPersistent")
+        # 2. Parse StarPilotCarParamsPersistent
+        fpcp_bytes = self.params.get("StarPilotCarParamsPersistent")
         if fpcp_bytes is not None:
             try:
-                FPCP = messaging.log_from_bytes(fpcp_bytes, custom.FrogPilotCarParams)
+                FPCP = messaging.log_from_bytes(fpcp_bytes, custom.StarPilotCarParams)
                 self.car_state.canUsePedal = FPCP.canUsePedal
                 self.car_state.canUseSDSU = FPCP.canUseSDSU
                 self.car_state.openpilotLongitudinalControlDisabled = FPCP.openpilotLongitudinalControlDisabled

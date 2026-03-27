@@ -36,7 +36,7 @@ struct ParamKeyAttributes {
   ParamKeyType type;
   std::optional<std::string> default_value = std::nullopt;
 
-  // FrogPilot variables
+  // StarPilot variables
   std::optional<std::string> stock_value = std::nullopt;
 
   int tuning_level = 0;
@@ -83,7 +83,7 @@ public:
     putNonBlocking(key, val ? "1" : "0");
   }
 
-  // FrogPilot variables
+  // StarPilot variables
   int getInt(const std::string &key, bool block = false) {
     std::string value = get(key, block);
     return value.empty() ? 0 : std::stoi(value);
@@ -122,6 +122,6 @@ private:
   std::future<void> future;
   SafeQueue<std::pair<std::string, std::string>> queue;
 
-  // FrogPilot variables
+  // StarPilot variables
   std::string cache_path;
 };

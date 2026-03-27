@@ -80,8 +80,8 @@ class ToyotaFlags(IntFlag):
   SNG_WITHOUT_DSU_DEPRECATED = 512
 
 
-# FrogPilot variables
-class ToyotaFrogPilotFlags(IntFlag):
+# StarPilot variables
+class ToyotaStarPilotFlags(IntFlag):
   RADAR_CAN_FILTER = 1
   SMART_DSU = 2
   ZSS = 4

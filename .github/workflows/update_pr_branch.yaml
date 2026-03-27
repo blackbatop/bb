@@ -4,13 +4,13 @@ run-name: Update MAKE-PRS-HERE
 on:
   push:
     branches:
-      - FrogPilot-Testing
+      - StarPilot-Testing
 
 env:
   GIT_EMAIL: "91348155+FrogAi@users.noreply.github.com"
   GIT_NAME: "James"
   GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-  SOURCE_BRANCH: FrogPilot-Testing
+  SOURCE_BRANCH: StarPilot-Testing
   TARGET_BRANCH: MAKE-PRS-HERE
   TZ: America/Phoenix
 
@@ -33,13 +33,13 @@ jobs:
           git config --global user.name "$GIT_NAME"
           git config --global user.email "$GIT_EMAIL"
 
-      - name: Revert "Compile FrogPilot"
+      - name: Revert "Compile StarPilot"
         id: prepare_source
         run: |
-          COMPILE_COMMIT=$(git rev-list HEAD -n 1 --grep="Compile FrogPilot" || true)
+          COMPILE_COMMIT=$(git rev-list HEAD -n 1 --grep="Compile StarPilot" || true)
 
           if [ -n "$COMPILE_COMMIT" ]; then
-            echo "Found 'Compile FrogPilot' at $COMPILE_COMMIT. Reverting..."
+            echo "Found 'Compile StarPilot' at $COMPILE_COMMIT. Reverting..."
             git revert --no-edit "$COMPILE_COMMIT"
           else
             echo "Compile commit not found. Proceeding with current source state."

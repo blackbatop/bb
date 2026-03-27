@@ -142,7 +142,7 @@ InputDialog::InputDialog(const QString &title, QWidget *parent, const QString &s
   QObject::connect(k, &Keyboard::emitBackspace, this, [=]() {
     line->backspace();
 
-    // FrogPilot variables
+    // StarPilot variables
     updateMaxLengthSublabel(line->text());
   });
   QObject::connect(k, &Keyboard::emitKey, this, [=](const QString &key) {
@@ -161,7 +161,7 @@ QString InputDialog::getText(const QString &prompt, QWidget *parent, const QStri
   d.line->setText(defaultText);
   d.setMinLength(minLength);
 
-  // FrogPilot variables
+  // StarPilot variables
   d.setMaxLength(maxLength);
   d.updateMaxLengthSublabel(defaultText);
 
@@ -197,7 +197,7 @@ void InputDialog::setMinLength(int length) {
   minLength = length;
 }
 
-// FrogPilot variables
+// StarPilot variables
 void InputDialog::setMaxLength(int length) {
   maxLength = length;
 }

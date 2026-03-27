@@ -11,50 +11,50 @@ from openpilot.system.manager.process import PythonProcess, NativeProcess, Daemo
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 
-def driverview(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def driverview(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started or params.get_bool("IsDriverViewEnabled")
 
-def notcar(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def notcar(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and CP.notCar
 
-def iscar(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def iscar(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and not CP.notCar
 
-def logging(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def logging(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   run = (not CP.notCar) or not params.get_bool("DisableLogging")
   return started and run
 
 def ublox_available() -> bool:
   return os.path.exists('/dev/ttyHS0') and not os.path.exists('/persist/comma/use-quectel-gps')
 
-def ublox(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def ublox(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   use_ublox = ublox_available()
   if use_ublox != params.get_bool("UbloxAvailable"):
     params.put_bool("UbloxAvailable", use_ublox)
   return started and use_ublox
 
-def joystick(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def joystick(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and params.get_bool("JoystickDebugMode")
 
-def not_joystick(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def not_joystick(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and not params.get_bool("JoystickDebugMode")
 
-def long_maneuver(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def long_maneuver(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and params.get_bool("LongitudinalManeuverMode")
 
-def not_long_maneuver(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def not_long_maneuver(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and not params.get_bool("LongitudinalManeuverMode")
 
-def qcomgps(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def qcomgps(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started and not ublox_available()
 
-def always_run(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def always_run(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return True
 
-def only_onroad(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def only_onroad(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started
 
-def only_offroad(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
+def only_offroad(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return not started
 
 def or_(*fns):
@@ -63,15 +63,15 @@ def or_(*fns):
 def and_(*fns):
   return lambda *args: operator.and_(*(fn(*args) for fn in fns))
 
-# FrogPilot variables
-def allow_logging(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
-  return not frogpilot_toggles.no_logging
+# StarPilot variables
+def allow_logging(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
+  return not starpilot_toggles.no_logging
 
-def allow_uploads(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
-  return params.get_bool("AlwaysAllowUploads") or not frogpilot_toggles.no_uploads or frogpilot_toggles.no_onroad_uploads
+def allow_uploads(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
+  return params.get_bool("AlwaysAllowUploads") or not starpilot_toggles.no_uploads or starpilot_toggles.no_onroad_uploads
 
-def run_speed_limit_filler(started: bool, params: Params, CP: car.CarParams, frogpilot_toggles: SimpleNamespace) -> bool:
-  return frogpilot_toggles.speed_limit_filler
+def run_speed_limit_filler(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
+  return starpilot_toggles.speed_limit_filler
 
 procs = [
   DaemonProcess("manage_athenad", "system.athena.manage_athenad", "AthenadPid"),
@@ -88,8 +88,8 @@ procs = [
   PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
-  PythonProcess("modeld", "frogpilot.tinygrad_modeld.tinygrad_modeld", only_onroad),
-  PythonProcess("dmonitoringmodeld", "frogpilot.tinygrad_modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
+  PythonProcess("modeld", "starpilot.tinygrad_modeld.tinygrad_modeld", only_onroad),
+  PythonProcess("dmonitoringmodeld", "starpilot.tinygrad_modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
 
   PythonProcess("sensord", "system.sensord.sensord", only_onroad, enabled=not PC),
   PythonProcess("soundd", "selfdrive.ui.soundd", driverview),
@@ -126,7 +126,7 @@ procs = [
   PythonProcess("joystick", "tools.joystick.joystick_control", and_(joystick, iscar)),
 ]
 
-# FrogPilot variables
+# StarPilot variables
 device_type = HARDWARE.get_device_type()
 if device_type in ("tici", "tizi"):
   procs.append(NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=5))
@@ -134,12 +134,12 @@ else:
   # C4 (mici) runs the Python raylib UI path; keep watchdog parity with C3/C3X.
   procs.append(PythonProcess("ui", "selfdrive.ui.ui", always_run, watchdog_max_dt=5))
 procs += [
-  PythonProcess("device_syncd", "frogpilot.system.device_syncd", always_run),
-  PythonProcess("frogpilot_process", "frogpilot.frogpilot_process", always_run),
-  PythonProcess("mapd", "frogpilot.navigation.mapd_wrapper", always_run),
-  PythonProcess("the_pond", "frogpilot.system.the_pond.the_pond", always_run, nice=19),
-  PythonProcess("galaxy", "frogpilot.system.galaxy.galaxy", always_run, nice=19),
-  PythonProcess("speed_limit_filler", "frogpilot.system.speed_limit_filler", run_speed_limit_filler),
+  PythonProcess("device_syncd", "starpilot.system.device_syncd", always_run),
+  PythonProcess("starpilot_process", "starpilot.starpilot_process", always_run),
+  PythonProcess("mapd", "starpilot.navigation.mapd_wrapper", always_run),
+  PythonProcess("the_pond", "starpilot.system.the_pond.the_pond", always_run, nice=19),
+  PythonProcess("galaxy", "starpilot.system.galaxy.galaxy", always_run, nice=19),
+  PythonProcess("speed_limit_filler", "starpilot.system.speed_limit_filler", run_speed_limit_filler),
 ]
 
 managed_processes = {p.name: p for p in procs}

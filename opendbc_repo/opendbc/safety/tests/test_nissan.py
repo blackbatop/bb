@@ -79,7 +79,7 @@ class TestNissanSafety(common.CarSafetyTest, common.AngleSteeringSafetyTest):
         tx = self._tx(self._acc_button_cmd(**args))
         self.assertEqual(tx, should_tx)
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # PRO_PILOT, CRUISE_ON is the main on button for X-Trail/Rogue/Altima
     values = {"CRUISE_ON": 1 if toggle_on else 0}
@@ -119,7 +119,7 @@ class TestNissanLeafSafety(TestNissanSafety):
   def test_acc_buttons(self):
     pass
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # CRUISE_THROTTLE, CRUISE_AVAILABLE is the main on button for Leaf
     values = {"CRUISE_AVAILABLE": 1 if toggle_on else 0}

@@ -17,8 +17,8 @@ Openpilot provides
 StarPilot adds support for many GM vehicles along with improved tuning,
 especially for radar-less (camera only) vehicles.
 
-StarPilot is built off of [FrogPilot](https://github.com/FrogAi/FrogPilot)
-and supports the major features FrogPilot offers.
+StarPilot is built off of [StarPilot](https://github.com/FrogAi/StarPilot)
+and supports the major features StarPilot offers.
 
 StarPilot has a vibrant, welcoming community [discord](https://firestar.link/discord).
 Stop by to chat or ask questions!
@@ -48,7 +48,7 @@ Download models, change settings, update software, visualize live model outputs 
 * High quality dashcam recordings*
 * Enhanced tuning for CEM (dynamic experimental mode switching)
 
-\* [Inherited from FrogPilot](https://github.com/FrogAi/FrogPilot#openpilot-vs-frogpilot)
+\* [Inherited from StarPilot](https://github.com/FrogAi/StarPilot#openpilot-vs-starpilot)
 
 ## GM-only Features
 

@@ -12,7 +12,7 @@ from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.locationd.helpers import PointBuckets, ParameterEstimator, PoseCalibrator, Pose
 
-from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import get_starpilot_toggles
 
 HISTORY = 5  # secs
 POINTS_PER_BUCKET = 1500
@@ -232,9 +232,9 @@ class TorqueEstimator(ParameterEstimator):
     if with_points:
       liveTorqueParameters.points = self.filtered_points.get_points()[:, [0, 2]].tolist()
 
-    liveTorqueParameters.latAccelFactorFiltered = float(self.filtered_params['latAccelFactor'].x if not self.frogpilot_toggles.use_custom_latAccelFactor else self.frogpilot_toggles.latAccelFactor)
+    liveTorqueParameters.latAccelFactorFiltered = float(self.filtered_params['latAccelFactor'].x if not self.starpilot_toggles.use_custom_latAccelFactor else self.starpilot_toggles.latAccelFactor)
     liveTorqueParameters.latAccelOffsetFiltered = float(self.filtered_params['latAccelOffset'].x)
-    liveTorqueParameters.frictionCoefficientFiltered = float(self.filtered_params['frictionCoefficient'].x if not self.frogpilot_toggles.use_custom_friction else self.frogpilot_toggles.friction)
+    liveTorqueParameters.frictionCoefficientFiltered = float(self.filtered_params['frictionCoefficient'].x if not self.starpilot_toggles.use_custom_friction else self.starpilot_toggles.friction)
     liveTorqueParameters.totalBucketPoints = len(self.filtered_points)
     liveTorqueParameters.calPerc = self.filtered_points.get_valid_percent()
     liveTorqueParameters.decay = self.decay
@@ -253,15 +253,15 @@ def main(demo=False):
   params = Params()
   estimator = TorqueEstimator(messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams))
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotPlan'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotPlan'])
 
-  frogpilot_toggles = get_frogpilot_toggles()
+  starpilot_toggles = get_starpilot_toggles()
 
-  if not frogpilot_toggles.liveValid:
+  if not starpilot_toggles.liveValid:
     estimator = TorqueEstimator(messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams), decimated=True)
 
-  estimator.frogpilot_toggles = frogpilot_toggles
+  estimator.starpilot_toggles = starpilot_toggles
 
   while True:
     sm.update()
@@ -280,8 +280,8 @@ def main(demo=False):
       msg = estimator.get_msg(valid=sm.all_checks(), with_points=True)
       params.put_nonblocking("LiveTorqueParameters", msg.to_bytes())
 
-    # FrogPilot variables
-    estimator.frogpilot_toggles = get_frogpilot_toggles(sm)
+    # StarPilot variables
+    estimator.starpilot_toggles = get_starpilot_toggles(sm)
 
 
 if __name__ == "__main__":

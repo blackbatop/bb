@@ -20,7 +20,7 @@ AnnotatedCameraWidget::AnnotatedCameraWidget(VisionStreamType type, QWidget *par
   experimental_btn = new ExperimentalButton(this);
   main_layout->addWidget(experimental_btn, 0, Qt::AlignTop | Qt::AlignRight);
 
-  // FrogPilot variables
+  // StarPilot variables
   personality_btn = new DrivingPersonalityButton(this);
   personality_btn->setVisible(false);
 
@@ -28,29 +28,29 @@ AnnotatedCameraWidget::AnnotatedCameraWidget(VisionStreamType type, QWidget *par
   screen_recorder->setVisible(false);
 }
 
-void AnnotatedCameraWidget::updateState(const UIState &s, const FrogPilotUIState &fs) {
+void AnnotatedCameraWidget::updateState(const UIState &s, const StarPilotUIState &fs) {
   // update engageability/experimental mode button
   experimental_btn->updateState(s, fs);
   dmon.updateState(s);
 
-  // FrogPilot variables
+  // StarPilot variables
   const SubMaster &sm = *(s.sm);
 
   const cereal::CarState::Reader &carState = sm["carState"].getCarState();
 
-  frogpilot_nvg->experimentalButtonPosition = QPoint(experimental_btn->x(), experimental_btn->y());
+  starpilot_nvg->experimentalButtonPosition = QPoint(experimental_btn->x(), experimental_btn->y());
 
-  bool onroad_distance_btn_enabled = frogpilot_nvg->dmIconPosition != QPoint(0, 0) && !frogpilot_nvg->hideBottomIcons && frogpilot_toggles.value("onroad_distance_button").toBool();
+  bool onroad_distance_btn_enabled = starpilot_nvg->dmIconPosition != QPoint(0, 0) && !starpilot_nvg->hideBottomIcons && starpilot_toggles.value("onroad_distance_button").toBool();
   personality_btn->setVisible(onroad_distance_btn_enabled);
   if (onroad_distance_btn_enabled) {
-    personality_btn->move(frogpilot_nvg->rightHandDM ? width() - UI_BORDER_SIZE - personality_btn->width() - (UI_BORDER_SIZE / 2) : UI_BORDER_SIZE, frogpilot_nvg->dmIconPosition.y() - personality_btn->height() / 2);
+    personality_btn->move(starpilot_nvg->rightHandDM ? width() - UI_BORDER_SIZE - personality_btn->width() - (UI_BORDER_SIZE / 2) : UI_BORDER_SIZE, starpilot_nvg->dmIconPosition.y() - personality_btn->height() / 2);
     personality_btn->updateState(s, fs);
   }
 
   dmon.onroad_distance_btn_enabled = onroad_distance_btn_enabled;
 
   screen_recorder->move(experimental_btn->x() - UI_BORDER_SIZE - btn_size, experimental_btn->y());
-  screen_recorder->setVisible(frogpilot_nvg->standstillDuration == 0 && !(frogpilot_nvg->signalStyle == "static" && carState.getRightBlinker()) && frogpilot_toggles.value("screen_recorder").toBool());
+  screen_recorder->setVisible(starpilot_nvg->standstillDuration == 0 && !(starpilot_nvg->signalStyle == "static" && carState.getRightBlinker()) && starpilot_toggles.value("screen_recorder").toBool());
 }
 
 void AnnotatedCameraWidget::initializeGL() {
@@ -149,10 +149,10 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
       } else if (v_ego > 15) {
         wide_cam_requested = false;
       }
-      wide_cam_requested = wide_cam_requested && sm["selfdriveState"].getSelfdriveState().getExperimentalMode() && frogpilot_toggles.value("camera_view").toInt() == 0;
+      wide_cam_requested = wide_cam_requested && sm["selfdriveState"].getSelfdriveState().getExperimentalMode() && starpilot_toggles.value("camera_view").toInt() == 0;
     }
-    CameraWidget::setStreamType(frogpilot_toggles.value("camera_view").toInt() == 1 ? VISION_STREAM_DRIVER :
-                                frogpilot_toggles.value("camera_view").toInt() == 3 || wide_cam_requested ? VISION_STREAM_WIDE_ROAD :
+    CameraWidget::setStreamType(starpilot_toggles.value("camera_view").toInt() == 1 ? VISION_STREAM_DRIVER :
+                                starpilot_toggles.value("camera_view").toInt() == 3 || wide_cam_requested ? VISION_STREAM_WIDE_ROAD :
                                 VISION_STREAM_ROAD);
     CameraWidget::setFrameId(sm["modelV2"].getModelV2().getFrameId());
 
@@ -164,26 +164,26 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(Qt::NoPen);
 
-  // FrogPilot variables
-  dmon.frogpilot_nvg = frogpilot_nvg;
-  hud.frogpilot_nvg = frogpilot_nvg;
-  model.frogpilot_nvg = frogpilot_nvg;
+  // StarPilot variables
+  dmon.starpilot_nvg = starpilot_nvg;
+  hud.starpilot_nvg = starpilot_nvg;
+  model.starpilot_nvg = starpilot_nvg;
 
-  experimental_btn->frogpilot_scene = frogpilot_scene;
-  model.frogpilot_scene = frogpilot_scene;
+  experimental_btn->starpilot_scene = starpilot_scene;
+  model.starpilot_scene = starpilot_scene;
 
-  dmon.frogpilot_toggles = frogpilot_toggles;
-  experimental_btn->frogpilot_toggles = frogpilot_toggles;
-  hud.frogpilot_toggles = frogpilot_toggles;
-  model.frogpilot_toggles = frogpilot_toggles;
+  dmon.starpilot_toggles = starpilot_toggles;
+  experimental_btn->starpilot_toggles = starpilot_toggles;
+  hud.starpilot_toggles = starpilot_toggles;
+  model.starpilot_toggles = starpilot_toggles;
 
   model.draw(painter, rect());
   dmon.draw(painter, rect());
   hud.updateState(*s);
   hud.draw(painter, rect());
 
-  // FrogPilot variables
-  frogpilot_nvg->paintFrogPilotWidgets(painter, *s);
+  // StarPilot variables
+  starpilot_nvg->paintStarPilotWidgets(painter, *s);
 
   double cur_draw_t = millis_since_boot();
   double dt = cur_draw_t - prev_draw_t;

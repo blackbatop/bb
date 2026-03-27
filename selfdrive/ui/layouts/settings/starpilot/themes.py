@@ -11,7 +11,7 @@ from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 
 if HARDWARE.get_device_type() == "pc":
-  THEME_SAVE_PATH = Path(Paths.comma_home()) / "frogpilot" / "data" / "themes"
+  THEME_SAVE_PATH = Path(Paths.comma_home()) / "starpilot" / "data" / "themes"
 else:
   THEME_SAVE_PATH = Path("/data/themes")
 
@@ -142,12 +142,12 @@ class StarPilotThemesLayout(StarPilotPanel):
     self._rebuild_grid()
 
   def _on_startup_alert(self):
-    options = ["Stock", "FrogPilot", "Clear"]
+    options = ["Stock", "StarPilot", "Clear"]
     current_top = self._params.get("StartupMessageTop", encoding='utf-8') or ""
     if current_top == "Be ready to take over at any time":
       current = "Stock"
     elif current_top == "Hop in and buckle up!":
-      current = "FrogPilot"
+      current = "StarPilot"
     else:
       current = "Clear"
 
@@ -156,7 +156,7 @@ class StarPilotThemesLayout(StarPilotPanel):
         if val == "Stock":
           self._params.put("StartupMessageTop", "Be ready to take over at any time")
           self._params.put("StartupMessageBottom", "Always keep hands on wheel and eyes on road")
-        elif val == "FrogPilot":
+        elif val == "StarPilot":
           self._params.put("StartupMessageTop", "Hop in and buckle up!")
           self._params.put("StartupMessageBottom", "Human-tested, frog-approved")
         else:

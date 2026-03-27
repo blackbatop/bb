@@ -34,7 +34,7 @@ DARKGRAY = (55, 55, 55, 255)
 RESET_TAP_COUNT = 8
 RESET_TAP_WINDOW_S = 4.0
 
-# FrogPilot variables
+# StarPilot variables
 GREEN = (23, 134, 68, 242)
 
 

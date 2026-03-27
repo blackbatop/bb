@@ -34,5 +34,5 @@ jobs:
             echo "Valid target branch."
 
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
-              --body "Thank you for your PR! If you're not already in the FrogPilot Discord, [feel free to join](https://discord.FrogPilot.com) and let me know you've opened a PR!"
+              --body "Thank you for your PR! If you're not already in the StarPilot Discord, [feel free to join](https://discord.StarPilot.com) and let me know you've opened a PR!"
           fi

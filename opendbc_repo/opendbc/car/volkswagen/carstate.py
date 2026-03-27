@@ -43,7 +43,7 @@ class CarState(CarStateBase):
 
     return button_events
 
-  def update(self, can_parsers, frogpilot_toggles) -> structs.CarState:
+  def update(self, can_parsers, starpilot_toggles) -> structs.CarState:
     pt_cp = can_parsers[Bus.pt]
     cam_cp = can_parsers[Bus.cam]
     ext_cp = pt_cp if self.CP.networkLocation == NetworkLocation.fwdCamera else cam_cp
@@ -139,8 +139,8 @@ class CarState(CarStateBase):
 
     self.frame += 1
 
-    # FrogPilot variables
-    fp_ret = custom.FrogPilotCarState.new_message()
+    # StarPilot variables
+    fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret
 
@@ -234,8 +234,8 @@ class CarState(CarStateBase):
 
     self.frame += 1
 
-    # FrogPilot variables
-    fp_ret = custom.FrogPilotCarState.new_message()
+    # StarPilot variables
+    fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret
 

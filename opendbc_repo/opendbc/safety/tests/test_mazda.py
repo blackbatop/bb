@@ -80,7 +80,7 @@ class TestMazdaSafety(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTes
     self.assertTrue(self._tx(self._button_msg(cancel=True)))
     self.assertTrue(self._tx(self._button_msg(resume=True)))
 
-  # FrogPilot variables
+  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # CRZ_CTRL, CRZ_AVAILABLE is the main on button
     values = {"CRZ_AVAILABLE": 1 if toggle_on else 0}

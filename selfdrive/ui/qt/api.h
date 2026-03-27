@@ -7,7 +7,7 @@
 
 #include "common/util.h"
 
-#include "frogpilot/ui/qt/widgets/frogpilot_controls.h"
+#include "starpilot/ui/qt/widgets/starpilot_controls.h"
 
 namespace CommaApi {
 

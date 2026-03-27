@@ -20,7 +20,7 @@ cdef extern from "common/params.h":
     CLEAR_ON_IGNITION_ON
     ALL
 
-    # FrogPilot variables
+    # StarPilot variables
     DONT_LOG
 
   cpdef enum ParamKeyType:
@@ -48,7 +48,7 @@ cdef extern from "common/params.h":
     void clearAll(ParamKeyFlag)
     vector[string] allKeys()
 
-    # FrogPilot variables
+    # StarPilot variables
     ParamKeyFlag getKeyFlag(string) nogil
 
     optional[string] getStockValue(string) nogil
@@ -108,21 +108,21 @@ cdef class Params:
   cdef c_Params* p
   cdef str d
 
-  # FrogPilot variables
+  # StarPilot variables
   cdef bool m
   cdef bool return_defaults
 
   def __cinit__(self, d="", *, memory=False, return_defaults=False):
     cdef string path = <string>d.encode()
 
-    # FrogPilot variables
+    # StarPilot variables
     cdef bool c_memory = memory
 
     with nogil:
       self.p = new c_Params(path, c_memory)
     self.d = d
 
-    # FrogPilot variables
+    # StarPilot variables
     self.m = memory
 
     self.return_defaults = return_defaults or memory
@@ -241,7 +241,7 @@ cdef class Params:
     cdef ParamKeyType t = self.p.getKeyType(k)
     return self._cpp2python(t, value, None, key)
 
-  # FrogPilot variables
+  # StarPilot variables
   def get_key_flag(self, key):
     return self.p.getKeyFlag(self.check_key(key))
 

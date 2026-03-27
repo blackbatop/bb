@@ -15,7 +15,7 @@
 #include "system/hardware/hw.h"
 #include "selfdrive/ui/qt/prime_state.h"
 
-#include "frogpilot/ui/frogpilot_ui.h"
+#include "starpilot/ui/starpilot_ui.h"
 
 const int UI_BORDER_SIZE = 30;
 const int UI_HEADER_HEIGHT = 420;
@@ -45,7 +45,7 @@ typedef enum UIStatus {
   STATUS_OVERRIDE,
   STATUS_ENGAGED,
 
-  // FrogPilot variables
+  // StarPilot variables
   STATUS_ALWAYS_ON_LATERAL_ACTIVE,
   STATUS_CEM_DISABLED,
   STATUS_EXPERIMENTAL_MODE_ENABLED,
@@ -57,7 +57,7 @@ const QColor bg_colors [] = {
   [STATUS_OVERRIDE] = QColor(0x91, 0x9b, 0x95, 0xf1),
   [STATUS_ENGAGED] = QColor(0x17, 0x86, 0x44, 0xf1),
 
-  // FrogPilot variables
+  // StarPilot variables
   [STATUS_ALWAYS_ON_LATERAL_ACTIVE] = QColor(0x0a, 0xba, 0xb5, 0xf1),
   [STATUS_CEM_DISABLED] = QColor(0xff, 0xff, 0x00, 0xf1),
   [STATUS_EXPERIMENTAL_MODE_ENABLED] = QColor(0xda, 0x6f, 0x25, 0xf1),
@@ -81,7 +81,7 @@ class UIState : public QObject {
 
 public:
   UIState(QObject* parent = 0);
-  void updateStatus(FrogPilotUIState *fs);
+  void updateStatus(StarPilotUIState *fs);
   inline bool engaged() const {
     return scene.started && (*sm)["selfdriveState"].getSelfdriveState().getEnabled();
   }
@@ -93,7 +93,7 @@ public:
   PrimeState *prime_state;
 
 signals:
-  void uiUpdate(const UIState &s, const FrogPilotUIState &fs);
+  void uiUpdate(const UIState &s, const StarPilotUIState &fs);
   void offroadTransition(bool offroad);
   void engagedChanged(bool engaged);
 
@@ -129,8 +129,8 @@ private:
   FirstOrderFilter brightness_filter;
   QFuture<void> brightness_future;
 
-  void updateBrightness(const UIState &s, const FrogPilotUIState &fs);
-  void updateWakefulness(const UIState &s, const FrogPilotUIState &fs);
+  void updateBrightness(const UIState &s, const StarPilotUIState &fs);
+  void updateWakefulness(const UIState &s, const StarPilotUIState &fs);
   void setAwake(bool on);
 
 signals:
@@ -139,7 +139,7 @@ signals:
 
 public slots:
   void resetInteractiveTimeout(int timeout = -1, int timeout_onroad = -1);
-  void update(const UIState &s, const FrogPilotUIState &fs);
+  void update(const UIState &s, const StarPilotUIState &fs);
 };
 
 Device *device();

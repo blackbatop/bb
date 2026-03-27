@@ -6,7 +6,7 @@ from opendbc.car import Bus, DT_CTRL, create_button_events, structs
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.common.filter_simple import FirstOrderFilter
 from opendbc.car.interfaces import CarStateBase
-from opendbc.car.toyota.values import ToyotaFlags, ToyotaFrogPilotFlags, CAR, DBC, STEER_THRESHOLD, NO_STOP_TIMER_CAR, \
+from opendbc.car.toyota.values import ToyotaFlags, ToyotaStarPilotFlags, CAR, DBC, STEER_THRESHOLD, NO_STOP_TIMER_CAR, \
                                                   TSS2_CAR, RADAR_ACC_CAR, EPS_SCALE, UNSUPPORTED_DSU_CAR, \
                                                   SECOC_CAR
 
@@ -67,17 +67,17 @@ class CarState(CarStateBase):
     self.gvc = 0.0
     self.secoc_synchronization = None
 
-    # FrogPilot variables
+    # StarPilot variables
     self.latActive_previous = False
     self.needs_angle_offset_zss = False
 
     self.angle_offset_zss = 0
 
-    self.has_can_filter = self.FPCP.flags & ToyotaFrogPilotFlags.RADAR_CAN_FILTER.value
-    self.has_SDSU = self.FPCP.flags & ToyotaFrogPilotFlags.SMART_DSU.value
-    self.has_ZSS = self.FPCP.flags & ToyotaFrogPilotFlags.ZSS.value
+    self.has_can_filter = self.FPCP.flags & ToyotaStarPilotFlags.RADAR_CAN_FILTER.value
+    self.has_SDSU = self.FPCP.flags & ToyotaStarPilotFlags.SMART_DSU.value
+    self.has_ZSS = self.FPCP.flags & ToyotaStarPilotFlags.ZSS.value
 
-  def update(self, can_parsers, frogpilot_toggles) -> structs.CarState:
+  def update(self, can_parsers, starpilot_toggles) -> structs.CarState:
     cp = can_parsers[Bus.pt]
     cp_cam = can_parsers[Bus.cam]
 
@@ -111,7 +111,7 @@ class CarState(CarStateBase):
       cp.vl["WHEEL_SPEEDS"]["WHEEL_SPEED_RL"],
       cp.vl["WHEEL_SPEEDS"]["WHEEL_SPEED_RR"],
     )
-    ret.vEgoCluster = ret.vEgo * frogpilot_toggles.cluster_offset
+    ret.vEgoCluster = ret.vEgo * starpilot_toggles.cluster_offset
 
     ret.standstill = abs(ret.vEgoRaw) < 1e-3
 
@@ -222,8 +222,8 @@ class CarState(CarStateBase):
 
         buttonEvents += create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise})
 
-    # FrogPilot variables
-    fp_ret = custom.FrogPilotCarState.new_message()
+    # StarPilot variables
+    fp_ret = custom.StarPilotCarState.new_message()
 
     if self.has_SDSU and not self.has_can_filter:
       prev_distance_button = self.distance_button

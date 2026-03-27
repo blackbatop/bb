@@ -148,7 +148,7 @@ class LongitudinalPlanner:
     return 0.0
 
   @staticmethod
-  def parse_model(model_msg, model_error, v_ego, frogpilot_toggles):
+  def parse_model(model_msg, model_error, v_ego, starpilot_toggles):
     if (len(model_msg.position.x) == ModelConstants.IDX_N and
       len(model_msg.velocity.x) == ModelConstants.IDX_N and
       len(model_msg.acceleration.x) == ModelConstants.IDX_N):
@@ -162,7 +162,7 @@ class LongitudinalPlanner:
       a = np.zeros(len(T_IDXS_MPC))
       j = np.zeros(len(T_IDXS_MPC))
 
-    if frogpilot_toggles.taco_tune:
+    if starpilot_toggles.taco_tune:
       max_lat_accel = np.interp(v_ego, [5, 10, 20], [1.5, 2.0, 3.0])
       curvatures = np.interp(T_IDXS_MPC, ModelConstants.T_IDXS, model_msg.orientationRate.z) / np.clip(v, 0.3, 100.0)
       max_v = np.sqrt(max_lat_accel / (np.abs(curvatures) + 1e-3)) - 2.0
@@ -174,8 +174,8 @@ class LongitudinalPlanner:
       throttle_prob = 1.0
     return x, v, a, j, throttle_prob
 
-  def update(self, sm, frogpilot_toggles):
-    self.generation = getattr(frogpilot_toggles, "model_version", None)
+  def update(self, sm, starpilot_toggles):
+    self.generation = getattr(starpilot_toggles, "model_version", None)
     self.mode = 'blended' if sm['selfdriveState'].experimentalMode else 'acc'
     self.mpc.mode = 'acc'
     if not self.mlsim:
@@ -187,7 +187,7 @@ class LongitudinalPlanner:
       accel_coast = ACCEL_MAX
 
     v_ego = max(sm['carState'].vEgo, sm['carState'].vEgoCluster)
-    v_cruise = sm['frogpilotPlan'].vCruise
+    v_cruise = sm['starpilotPlan'].vCruise
     v_cruise_initialized = sm['carState'].vCruise != V_CRUISE_UNSET
 
     long_control_off = sm['controlsState'].longControlState == LongCtrlState.off
@@ -202,7 +202,7 @@ class LongitudinalPlanner:
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
     if self.mpc.mode == 'acc':
-      accel_limits = [sm['frogpilotPlan'].minAcceleration, sm['frogpilotPlan'].maxAcceleration]
+      accel_limits = [sm['starpilotPlan'].minAcceleration, sm['starpilotPlan'].maxAcceleration]
       steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
       accel_limits_turns = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_limits, self.CP)
     else:
@@ -218,10 +218,10 @@ class LongitudinalPlanner:
     self.v_desired_filter.x = max(0.0, self.v_desired_filter.update(v_ego))
     # Compute model v_ego error
     self.v_model_error = self.get_model_speed_error(sm['modelV2'], v_ego)
-    x, v, a, j, throttle_prob = self.parse_model(sm['modelV2'], self.v_model_error, v_ego, frogpilot_toggles)
+    x, v, a, j, throttle_prob = self.parse_model(sm['modelV2'], self.v_model_error, v_ego, starpilot_toggles)
     # Don't clip at low speeds since throttle_prob doesn't account for creep
     self.allow_throttle = throttle_prob > ALLOW_THROTTLE_THRESHOLD or v_ego <= MIN_ALLOW_THROTTLE_SPEED
-    self.allow_throttle &= not sm['frogpilotPlan'].disableThrottle
+    self.allow_throttle &= not sm['starpilotPlan'].disableThrottle
 
     if not self.allow_throttle:
       clipped_accel_coast = max(accel_coast, accel_limits_turns[0])
@@ -335,9 +335,9 @@ class LongitudinalPlanner:
       except Exception:
         pass
 
-    self.mpc.set_weights(sm['frogpilotPlan'].accelerationJerk,
-                         sm['frogpilotPlan'].dangerJerk,
-                         sm['frogpilotPlan'].speedJerk,
+    self.mpc.set_weights(sm['starpilotPlan'].accelerationJerk,
+                         sm['starpilotPlan'].dangerJerk,
+                         sm['starpilotPlan'].speedJerk,
                          prev_accel_constraint,
                          personality=sm['selfdriveState'].personality,
                          v_ego=v_ego,
@@ -350,9 +350,9 @@ class LongitudinalPlanner:
     dec_mpc_mode = self.get_mpc_mode()
     if not self.mlsim:
       self.mpc.mode = dec_mpc_mode
-    tracking_lead = bool(sm['frogpilotPlan'].trackingLead)
+    tracking_lead = bool(sm['starpilotPlan'].trackingLead)
     self.mpc.update(sm['radarState'], v_cruise, x, v, a, j,
-                    sm['frogpilotPlan'].dangerFactor, sm['frogpilotPlan'].tFollow,
+                    sm['starpilotPlan'].dangerFactor, sm['starpilotPlan'].tFollow,
                     personality=sm['selfdriveState'].personality, tracking_lead=tracking_lead)
 
     self.a_desired_trajectory_full = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
@@ -395,17 +395,17 @@ class LongitudinalPlanner:
     if -0.05 < self.a_desired < 0.05:
       self.a_desired = 0.0
 
-    classic_model = bool(getattr(frogpilot_toggles, "classic_model", False))
-    tinygrad_model = bool(getattr(frogpilot_toggles, "tinygrad_model", False))
+    classic_model = bool(getattr(starpilot_toggles, "classic_model", False))
+    tinygrad_model = bool(getattr(starpilot_toggles, "tinygrad_model", False))
     action_t = self.CP.longitudinalActuatorDelay + DT_MDL
 
     if classic_model:
       output_a_target, output_should_stop = get_accel_from_plan_classic(
-        self.CP, self.v_desired_trajectory, self.a_desired_trajectory, frogpilot_toggles.vEgoStopping)
+        self.CP, self.v_desired_trajectory, self.a_desired_trajectory, starpilot_toggles.vEgoStopping)
     elif tinygrad_model:
       output_a_target_mpc, output_should_stop_mpc = get_accel_from_plan(
         self.v_desired_trajectory, self.a_desired_trajectory,
-        action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
+        action_t=action_t, vEgoStopping=starpilot_toggles.vEgoStopping)
       output_a_target_e2e = sm['modelV2'].action.desiredAcceleration
       output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
@@ -418,7 +418,7 @@ class LongitudinalPlanner:
     else:
       output_a_target, output_should_stop = get_accel_from_plan(
         self.v_desired_trajectory, self.a_desired_trajectory,
-        action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
+        action_t=action_t, vEgoStopping=starpilot_toggles.vEgoStopping)
 
     self.output_a_target = float(output_a_target)
     self.output_should_stop = bool(output_should_stop)
@@ -442,7 +442,7 @@ class LongitudinalPlanner:
     longitudinalPlan.fcw = self.fcw
 
     longitudinalPlan.aTarget = float(self.output_a_target)
-    longitudinalPlan.shouldStop = bool(self.output_should_stop) or sm['frogpilotPlan'].forcingStopLength < 1
+    longitudinalPlan.shouldStop = bool(self.output_should_stop) or sm['starpilotPlan'].forcingStopLength < 1
     longitudinalPlan.allowBrake = True
     longitudinalPlan.allowThrottle = bool(self.allow_throttle)
 

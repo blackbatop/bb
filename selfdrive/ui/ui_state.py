@@ -56,7 +56,7 @@ class UIState:
         "carControl",
         "liveParameters",
         "rawAudioData",
-        "frogpilotCarState",
+        "starpilotCarState",
       ]
     )
 
@@ -148,11 +148,11 @@ class UIState:
 
     self.is_metric = self.params.get_bool("IsMetric")
     self.always_on_dm = self.params.get_bool("AlwaysOnDM")
-    if self.sm.valid.get("frogpilotCarState", False):
-      frogpilot_car_state = self.sm["frogpilotCarState"]
+    if self.sm.valid.get("starpilotCarState", False):
+      starpilot_car_state = self.sm["starpilotCarState"]
       self.always_on_lateral_active = (not self.sm["selfdriveState"].enabled and
-                                       frogpilot_car_state.alwaysOnLateralEnabled)
-      self.traffic_mode_enabled = frogpilot_car_state.trafficModeEnabled
+                                       starpilot_car_state.alwaysOnLateralEnabled)
+      self.traffic_mode_enabled = starpilot_car_state.trafficModeEnabled
     else:
       self.always_on_lateral_active = False
       self.traffic_mode_enabled = False

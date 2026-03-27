@@ -22,8 +22,8 @@ from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
 from openpilot.selfdrive.car.car_specific import MockCarState
 
-from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles, update_frogpilot_toggles
-from openpilot.frogpilot.controls.frogpilot_card import FrogPilotCard
+from openpilot.starpilot.common.starpilot_variables import get_starpilot_toggles, update_starpilot_toggles
+from openpilot.starpilot.controls.starpilot_card import StarPilotCard
 
 REPLAY = "REPLAY" in os.environ
 
@@ -67,8 +67,8 @@ class Car:
   RI: RadarInterfaceBase
   CP: car.CarParams
 
-  # FrogPilot variables
-  FPCP: custom.FrogPilotCarParams
+  # StarPilot variables
+  FPCP: custom.StarPilotCarParams
 
   def __init__(self, CI=None, RI=None) -> None:
     self.can_sock = messaging.sub_sock('can', timeout=20)
@@ -106,14 +106,14 @@ class Car:
         with car.CarParams.from_bytes(cached_params_raw) as _cached_params:
           cached_params = _cached_params
 
-      self.CI = get_car(*self.can_callbacks, obd_callback(self.params), alpha_long_allowed, is_release, self.params, num_pandas, cached_params, get_frogpilot_toggles())
+      self.CI = get_car(*self.can_callbacks, obd_callback(self.params), alpha_long_allowed, is_release, self.params, num_pandas, cached_params, get_starpilot_toggles())
       self.RI = interfaces[self.CI.CP.carFingerprint].RadarInterface(self.CI.CP)
       self.CP = self.CI.CP
 
       # continue onto next fingerprinting step in pandad
       self.params.put_bool("FirmwareQueryDone", True)
 
-      # FrogPilot variables
+      # StarPilot variables
       self.FPCP = self.CI.FPCP
     else:
       self.CI, self.CP, self.FPCP = CI, CI.CP, CI.FPCP
@@ -172,24 +172,24 @@ class Car:
     # OPGM variables
     self.resume_prev_button = False
 
-    # FrogPilot variables
-    self.frogpilot_toggles = get_frogpilot_toggles()
+    # StarPilot variables
+    self.starpilot_toggles = get_starpilot_toggles()
 
-    if self.frogpilot_toggles.always_on_lateral:
+    if self.starpilot_toggles.always_on_lateral:
       self.FPCP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL
-    if getattr(self.frogpilot_toggles, "remap_cancel_to_distance", False):
+    if getattr(self.starpilot_toggles, "remap_cancel_to_distance", False):
       self.FPCP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.GM_REMAP_CANCEL_TO_DISTANCE
 
     fpcp_bytes = self.FPCP.to_bytes()
-    self.params.put("FrogPilotCarParams", fpcp_bytes)
-    self.params.put_nonblocking("FrogPilotCarParamsPersistent", fpcp_bytes)
+    self.params.put("StarPilotCarParams", fpcp_bytes)
+    self.params.put_nonblocking("StarPilotCarParamsPersistent", fpcp_bytes)
 
-    update_frogpilot_toggles()
+    update_starpilot_toggles()
 
-    self.frogpilot_card = FrogPilotCard(self.CP, self.FPCP)
+    self.starpilot_card = StarPilotCard(self.CP, self.FPCP)
 
-    self.sm = self.sm.extend(['frogpilotOnroadEvents', 'frogpilotPlan', 'frogpilotSelfdriveState', 'liveCalibration', 'selfdriveState'])
-    self.pm = self.pm.extend(['frogpilotCarState'])
+    self.sm = self.sm.extend(['starpilotOnroadEvents', 'starpilotPlan', 'starpilotSelfdriveState', 'liveCalibration', 'selfdriveState'])
+    self.pm = self.pm.extend(['starpilotCarState'])
 
   def state_update(self) -> tuple[car.CarState, structs.RadarDataT | None]:
     """carState update loop, driven by can"""
@@ -198,7 +198,7 @@ class Car:
     can_list = can_capnp_to_list(can_strs)
 
     # Update carState from CAN
-    CS, FPCS = self.CI.update(can_list, self.frogpilot_toggles)
+    CS, FPCS = self.CI.update(can_list, self.starpilot_toggles)
     if self.CP.brand == 'mock':
       CS, FPCS = self.mock_carstate.update(CS, FPCS)
 
@@ -216,10 +216,10 @@ class Car:
     if can_rcv_valid and REPLAY:
       self.can_log_mono_time = messaging.log_from_bytes(can_strs[0]).logMonoTime
 
-    self.v_cruise_helper.update_v_cruise(CS, self.sm['carControl'].enabled, self.is_metric, self.frogpilot_toggles)
+    self.v_cruise_helper.update_v_cruise(CS, self.sm['carControl'].enabled, self.is_metric, self.starpilot_toggles)
     if self.sm['carControl'].enabled and not self.CC_prev.enabled:
       # Use CarState w/ buttons from the step selfdrived enables on
-      self.v_cruise_helper.initialize_v_cruise(self.CS_prev, self.experimental_mode, self.resume_prev_button, self.frogpilot_toggles)
+      self.v_cruise_helper.initialize_v_cruise(self.CS_prev, self.experimental_mode, self.resume_prev_button, self.starpilot_toggles)
 
     # TODO: mirror the carState.cruiseState struct?
     CS.vCruise = float(self.v_cruise_helper.v_cruise_kph)
@@ -231,12 +231,12 @@ class Car:
     elif any(be.type in (ButtonType.decelCruise, ButtonType.setCruise) for be in CS.buttonEvents):
       self.resume_prev_button = False
 
-    # FrogPilot variables
-    FPCS = self.frogpilot_card.update(CS, FPCS, self.sm, self.frogpilot_toggles)
+    # StarPilot variables
+    FPCS = self.starpilot_card.update(CS, FPCS, self.sm, self.starpilot_toggles)
 
     return CS, RD, FPCS
 
-  def state_publish(self, CS: car.CarState, RD: structs.RadarDataT | None, FPCS: custom.FrogPilotCarState):
+  def state_publish(self, CS: car.CarState, RD: structs.RadarDataT | None, FPCS: custom.StarPilotCarState):
     """carState and carParams publish loop"""
 
     # carParams - logged every 50 seconds (> 1 per segment)
@@ -266,11 +266,11 @@ class Car:
       tracks_msg.liveTracks = RD
       self.pm.send('liveTracks', tracks_msg)
 
-    # FrogPilot variables
-    fpcs_send = messaging.new_message('frogpilotCarState')
+    # StarPilot variables
+    fpcs_send = messaging.new_message('starpilotCarState')
     fpcs_send.valid = CS.canValid
-    fpcs_send.frogpilotCarState = FPCS
-    self.pm.send('frogpilotCarState', fpcs_send)
+    fpcs_send.starpilotCarState = FPCS
+    self.pm.send('starpilotCarState', fpcs_send)
 
   def controls_update(self, CS: car.CarState, CC: car.CarControl):
     """control update loop, driven by carControl"""
@@ -285,7 +285,7 @@ class Car:
     if self.sm.all_alive(['carControl']):
       # send car controls over can
       now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
-      self.last_actuators_output, can_sends = self.CI.apply(CC, now_nanos, self.frogpilot_toggles)
+      self.last_actuators_output, can_sends = self.CI.apply(CC, now_nanos, self.starpilot_toggles)
       self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
 
       self.CC_prev = CC
@@ -303,10 +303,10 @@ class Car:
     self.initialized_prev = initialized
     self.CS_prev = CS
 
-    # FrogPilot variables
+    # StarPilot variables
     self.CI.CS.CC = self.sm['carControl']
 
-    self.frogpilot_toggles = get_frogpilot_toggles(self.sm)
+    self.starpilot_toggles = get_starpilot_toggles(self.sm)
 
   def params_thread(self, evt):
     while not evt.is_set():

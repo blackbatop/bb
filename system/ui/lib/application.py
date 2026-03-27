@@ -420,13 +420,13 @@ class GuiApplication:
     return texture_obj
 
   def starpilot_texture(self, asset_path: str, width: int | None = None, height: int | None = None, alpha_premultiply=False, keep_aspect_ratio=True):
-    """Load a texture from the FrogPilot assets folder."""
+    """Load a texture from the StarPilot assets folder."""
     cache_key = f"starpilot_{asset_path}_{width}_{height}_{alpha_premultiply}{keep_aspect_ratio}"
     if cache_key in self._textures:
       return self._textures[cache_key]
 
-    frogpilot_assets = files("openpilot.frogpilot").joinpath("assets")
-    with as_file(frogpilot_assets.joinpath(asset_path)) as fspath:
+    starpilot_assets = files("openpilot.starpilot").joinpath("assets")
+    with as_file(starpilot_assets.joinpath(asset_path)) as fspath:
       image_obj = self._load_image_from_path(fspath.as_posix(), width, height, alpha_premultiply, keep_aspect_ratio)
       texture_obj = self._load_texture_from_image(image_obj)
     self._textures[cache_key] = texture_obj

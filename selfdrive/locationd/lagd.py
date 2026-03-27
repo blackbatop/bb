@@ -13,7 +13,7 @@ from openpilot.common.realtime import config_realtime_process
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose, fft_next_good_size, parabolic_peak_interp
 
-from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
+from openpilot.starpilot.common.starpilot_variables import get_starpilot_toggles
 
 BLOCK_SIZE = 100
 BLOCK_NUM = 50
@@ -216,8 +216,8 @@ class LateralLagEstimator:
     else:
       liveDelay.status = log.LiveDelayData.Status.unestimated
 
-    if self.frogpilot_toggles.use_custom_steerActuatorDelay:
-      liveDelay.lateralDelay = self.frogpilot_toggles.steerActuatorDelay
+    if self.starpilot_toggles.use_custom_steerActuatorDelay:
+      liveDelay.lateralDelay = self.starpilot_toggles.steerActuatorDelay
     elif liveDelay.status == log.LiveDelayData.Status.estimated:
       liveDelay.lateralDelay = valid_mean_lag
     else:
@@ -378,10 +378,10 @@ def main():
     lag, valid_blocks = initial_lag_params
     lag_learner.reset(lag, valid_blocks)
 
-  # FrogPilot variables
-  sm = sm.extend(['frogpilotPlan'])
+  # StarPilot variables
+  sm = sm.extend(['starpilotPlan'])
 
-  lag_learner.frogpilot_toggles = get_frogpilot_toggles()
+  lag_learner.starpilot_toggles = get_starpilot_toggles()
 
   while True:
     sm.update()
@@ -402,5 +402,5 @@ def main():
       if sm.frame % 1200 == 0: # cache every 60 seconds
         params.put_nonblocking("LiveDelay", lag_msg_dat)
 
-    # FrogPilot variables
-    lag_learner.frogpilot_toggles = get_frogpilot_toggles(sm)
+    # StarPilot variables
+    lag_learner.starpilot_toggles = get_starpilot_toggles(sm)

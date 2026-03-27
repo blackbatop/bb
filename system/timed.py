@@ -31,7 +31,7 @@ def set_time(new_time):
     cloudlog.exception("timed.failed_setting_time")
 
 
-# FrogPilot variables
+# StarPilot variables
 def set_timezone(timezone):
   valid_timezones = subprocess.check_output("timedatectl list-timezones", shell=True, encoding="utf8").strip().split("\n")
   if timezone not in valid_timezones:
@@ -65,7 +65,7 @@ def main() -> NoReturn:
   pm = messaging.PubMaster(['clocks'])
   sm = messaging.SubMaster([gps_location_service])
 
-  # FrogPilot variables
+  # StarPilot variables
   tf = TimezoneFinder() if TimezoneFinder is not None else None
   timezonefinder_logged = False
 
@@ -92,7 +92,7 @@ def main() -> NoReturn:
 
     set_time(gps_time)
 
-    # FrogPilot variables
+    # StarPilot variables
     if tf is not None:
       timezone = tf.timezone_at(lng=gps.longitude, lat=gps.latitude)
       if timezone is not None and timezone != last_timezone:

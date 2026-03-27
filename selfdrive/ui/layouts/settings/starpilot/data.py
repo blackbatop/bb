@@ -14,6 +14,14 @@ from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.system.ui.widgets.input_dialog import InputDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 
+LEGACY_STARPILOT_PARAM_RENAMES = {
+  "FrogPilotApiToken": "StarPilotApiToken",
+  "FrogPilotCarParams": "StarPilotCarParams",
+  "FrogPilotCarParamsPersistent": "StarPilotCarParamsPersistent",
+  "FrogPilotDongleId": "StarPilotDongleId",
+  "FrogPilotStats": "StarPilotStats",
+}
+
 
 class StarPilotDataLayout(StarPilotPanel):
   def __init__(self):
@@ -190,7 +198,16 @@ class StarPilotToggleBackupsLayout(StarPilotPanel):
         def on_confirm(r2):
           if r2 == DialogResult.CONFIRM:
             src = Path(f"/data/toggle_backups/{val}")
+            params_dir = Path("/data/params/d")
+            for old_key, new_key in LEGACY_STARPILOT_PARAM_RENAMES.items():
+              if (src / old_key).exists():
+                (params_dir / new_key).unlink(missing_ok=True)
             shutil.copytree(str(src), "/data/params/d", dirs_exist_ok=True)
+            for old_key, new_key in LEGACY_STARPILOT_PARAM_RENAMES.items():
+              old_path = params_dir / old_key
+              new_path = params_dir / new_key
+              if old_path.exists():
+                old_path.replace(new_path)
             gui_app.set_modal_overlay(alert_dialog(tr("Toggles restored.")))
             self._rebuild_grid()
 

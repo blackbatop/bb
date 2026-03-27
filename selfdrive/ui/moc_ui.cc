@@ -35,7 +35,7 @@ QT_MOC_LITERAL(0, 0, 7), // "UIState"
 QT_MOC_LITERAL(1, 8, 8), // "uiUpdate"
 QT_MOC_LITERAL(2, 17, 0), // ""
 QT_MOC_LITERAL(3, 18, 1), // "s"
-QT_MOC_LITERAL(4, 20, 16), // "FrogPilotUIState"
+QT_MOC_LITERAL(4, 20, 16), // "StarPilotUIState"
 QT_MOC_LITERAL(5, 37, 2), // "fs"
 QT_MOC_LITERAL(6, 40, 17), // "offroadTransition"
 QT_MOC_LITERAL(7, 58, 7), // "offroad"
@@ -44,7 +44,7 @@ QT_MOC_LITERAL(9, 81, 7), // "engaged"
 QT_MOC_LITERAL(10, 89, 6) // "update"
 
     },
-    "UIState\0uiUpdate\0\0s\0FrogPilotUIState\0"
+    "UIState\0uiUpdate\0\0s\0StarPilotUIState\0"
     "fs\0offroadTransition\0offroad\0"
     "engagedChanged\0engaged\0update"
 };
@@ -88,7 +88,7 @@ void UIState::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
         auto *_t = static_cast<UIState *>(_o);
         Q_UNUSED(_t)
         switch (_id) {
-        case 0: _t->uiUpdate((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const FrogPilotUIState(*)>(_a[2]))); break;
+        case 0: _t->uiUpdate((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const StarPilotUIState(*)>(_a[2]))); break;
         case 1: _t->offroadTransition((*reinterpret_cast< bool(*)>(_a[1]))); break;
         case 2: _t->engagedChanged((*reinterpret_cast< bool(*)>(_a[1]))); break;
         case 3: _t->update(); break;
@@ -97,7 +97,7 @@ void UIState::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
     } else if (_c == QMetaObject::IndexOfMethod) {
         int *result = reinterpret_cast<int *>(_a[0]);
         {
-            using _t = void (UIState::*)(const UIState & , const FrogPilotUIState & );
+            using _t = void (UIState::*)(const UIState & , const StarPilotUIState & );
             if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&UIState::uiUpdate)) {
                 *result = 0;
                 return;
@@ -161,7 +161,7 @@ int UIState::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 
 // SIGNAL 0
-void UIState::uiUpdate(const UIState & _t1, const FrogPilotUIState & _t2)
+void UIState::uiUpdate(const UIState & _t1, const StarPilotUIState & _t2)
 {
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&_t1)), const_cast<void*>(reinterpret_cast<const void*>(&_t2)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
@@ -202,14 +202,14 @@ QT_MOC_LITERAL(7, 82, 14), // "timeout_onroad"
 QT_MOC_LITERAL(8, 97, 6), // "update"
 QT_MOC_LITERAL(9, 104, 7), // "UIState"
 QT_MOC_LITERAL(10, 112, 1), // "s"
-QT_MOC_LITERAL(11, 114, 16), // "FrogPilotUIState"
+QT_MOC_LITERAL(11, 114, 16), // "StarPilotUIState"
 QT_MOC_LITERAL(12, 131, 2) // "fs"
 
     },
     "Device\0displayPowerChanged\0\0on\0"
     "interactiveTimeout\0resetInteractiveTimeout\0"
     "timeout\0timeout_onroad\0update\0UIState\0"
-    "s\0FrogPilotUIState\0fs"
+    "s\0StarPilotUIState\0fs"
 };
 #undef QT_MOC_LITERAL
 
@@ -260,7 +260,7 @@ void Device::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void
         case 2: _t->resetInteractiveTimeout((*reinterpret_cast< int(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
         case 3: _t->resetInteractiveTimeout((*reinterpret_cast< int(*)>(_a[1]))); break;
         case 4: _t->resetInteractiveTimeout(); break;
-        case 5: _t->update((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const FrogPilotUIState(*)>(_a[2]))); break;
+        case 5: _t->update((*reinterpret_cast< const UIState(*)>(_a[1])),(*reinterpret_cast< const StarPilotUIState(*)>(_a[2]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
