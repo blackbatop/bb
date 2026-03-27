@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import numpy as np
 
-from openpilot.selfdrive.controls.lib.longitudinal_planner import A_CRUISE_MIN, get_max_accel
+from opendbc.car.interfaces import ACCEL_MIN
+from openpilot.selfdrive.controls.lib.longitudinal_planner import get_max_accel
 
 from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT
 
@@ -42,15 +43,15 @@ def akima_interp(x, xp, fp):
      return (fp[i]*(1 - 10*t3 + 15*t4 - 6*t3*t2)
              + fp[i+1]*(10*t3 - 15*t4 + 6*t3*t2))
 
-A_CRUISE_MIN_ECO = A_CRUISE_MIN / 2
-A_CRUISE_MIN_SPORT = A_CRUISE_MIN * 2
+A_CRUISE_MIN_ECO = ACCEL_MIN / 2
+A_CRUISE_MIN_SPORT = ACCEL_MIN * 2
 
                        # MPH = [0.0,  11,  22,  34,  45,  56,  89]
 A_CRUISE_MAX_BP_CUSTOM =       [0.0,  5., 10., 15., 20., 25., 40.]
-A_CRUISE_MAX_VALS_ECO_EV =      [1.15, 1.15, 1.15, 1.15, 1.30, 1.30, 1.72]
-A_CRUISE_MAX_VALS_STANDARD_EV = [1.25, 1.25, 1.25, 1.25, 1.45, 1.50, 2.00]
-A_CRUISE_MAX_VALS_SPORT_EV =    [1.35, 1.35, 1.35, 1.35, 1.60, 1.60, 2.10]
-A_CRUISE_MAX_VALS_SPORT_PLUS_EV = [1.55, 1.55, 1.55, 1.55, 1.84, 1.84, 2.42]
+A_CRUISE_MAX_VALS_ECO_EV =      [1.25, 1.25, 1.25, 1.25, 1.45, 1.50, 2.00]
+A_CRUISE_MAX_VALS_STANDARD_EV = [1.35, 1.35, 1.35, 1.35, 1.60, 1.60, 2.10]
+A_CRUISE_MAX_VALS_SPORT_EV =    [1.55, 1.55, 1.55, 1.55, 1.84, 1.84, 2.42]
+A_CRUISE_MAX_VALS_SPORT_PLUS_EV = [1.7825, 1.7825, 1.7825, 1.7825, 2.116, 2.116, 2.783]
 A_CRUISE_MAX_VALS_ECO_GAS =    [2.0, 1.5, 1.0, 0.8, 0.6, 0.4, 0.2]
 A_CRUISE_MAX_VALS_SPORT_GAS =  [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6]
 A_CRUISE_MAX_VALS_ECO_TRUCK =       [3.00, 1.05, 0.60, 0.50, 0.50, 0.45, 0.35]
@@ -162,4 +163,4 @@ class FrogPilotAcceleration:
       elif frogpilot_toggles.deceleration_profile == DECELERATION_PROFILES["SPORT"]:
         self.min_accel = A_CRUISE_MIN_SPORT
       else:
-        self.min_accel = A_CRUISE_MIN
+        self.min_accel = ACCEL_MIN
