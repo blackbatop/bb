@@ -37,7 +37,8 @@ installation guides, and software configuration.
 * Galaxy: StarPilot's portal to configure your comma device using your phone from anywhere.
 Download models, change settings, update software, visualize live model outputs for tuning.
 * Always On Lateral (full time steering assist)*
-* Learning Speed Limit Controller*
+* Speed Limit Controller*
+* Learning Curve Speed Controller*
 * Conditional Experimental Mode (CEM)*
 * Driving Profiles*
 * Custom themes*
