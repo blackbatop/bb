@@ -96,8 +96,7 @@ class FrogPilotPlanner:
     self.gps_valid = self.gps_position["latitude"] != 0 or self.gps_position["longitude"] != 0
     self.params_memory.put("LastGPSPosition", json.dumps(self.gps_position))
 
-    check_lane_width = frogpilot_toggles.adjacent_paths or frogpilot_toggles.adjacent_path_metrics or frogpilot_toggles.blind_spot_path or frogpilot_toggles.lane_detection
-    if check_lane_width and v_ego >= frogpilot_toggles.minimum_lane_change_speed:
+    if v_ego >= frogpilot_toggles.minimum_lane_change_speed:
       self.lane_width_left = calculate_lane_width(sm["modelV2"].laneLines[0], sm["modelV2"].laneLines[1], sm["modelV2"].roadEdges[0])
       self.lane_width_right = calculate_lane_width(sm["modelV2"].laneLines[3], sm["modelV2"].laneLines[2], sm["modelV2"].roadEdges[1])
     else:
