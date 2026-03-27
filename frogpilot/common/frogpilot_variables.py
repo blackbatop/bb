@@ -752,9 +752,9 @@ class FrogPilotVariables:
     toggle.stop_distance = self.get_value("StopDistance", cast=float, condition=longitudinal_tuning, default=6.0)
     toggle.taco_tune = self.get_value("TacoTune", condition=longitudinal_tuning)
 
-    toggle.model = self.get_value("Model", cast=None, default="sc")
+    toggle.model = self.get_value("Model", cast=None, default="sc2")
     if not toggle.model:
-      toggle.model = self.get_value("DrivingModel", cast=None, default="sc")
+      toggle.model = self.get_value("DrivingModel", cast=None, default="sc2")
     toggle.model_name = self.get_value("DrivingModelName", cast=None, default="South Carolina")
     toggle.model_version = self.get_value("ModelVersion", cast=None, default="v11")
     if not toggle.model_version:

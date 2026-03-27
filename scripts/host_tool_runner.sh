@@ -14,7 +14,7 @@ HOST_LOCK_DIR=""
 HOST_LOCK_PID_FILE=""
 HOST_LOCK_CMD_FILE=""
 HOST_LOCK_HELD=0
-HOST_BUCKETS=(shared cabana plotjuggler)
+HOST_BUCKETS=(shared cabana)
 
 usage() {
   cat <<'EOF'
@@ -37,7 +37,7 @@ Commands:
 
 Notes:
   - Host-tool builds happen under ./.host_runtime/ and do not touch the main tree.
-  - `cabana` and `plotjuggler` use their own host-runtime buckets and can run together.
+  - `cabana` uses its own host-runtime bucket, so it can run together with `plotjuggler`.
   - Other commands that share a bucket still wait on that bucket's lock.
   - `./build` remains the device-target flow.
   - For c3/c4/raybig, pass the jobs count first to preserve existing shorthand:
@@ -68,7 +68,7 @@ resolve_host_bucket() {
       echo "cabana"
       ;;
     plotjuggler|juggle)
-      echo "plotjuggler"
+      echo "shared"
       ;;
     *)
       return 1
@@ -305,9 +305,14 @@ setup_build_env() {
     export PATH="/opt/homebrew/bin:${PATH}"
   fi
 
+  mkdir -p "${HOST_ROOT}/scons_cache"
+  export SP_SCONS_CACHE_DIR="${HOST_ROOT}/scons_cache"
+
   if [[ "$(uname -s)" == "Darwin" ]]; then
     export CC="/usr/bin/clang"
     export CXX="/usr/bin/clang++"
+    export AR="/usr/bin/ar"
+    export RANLIB="/usr/bin/ranlib"
   fi
 
   unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
@@ -477,14 +482,14 @@ main() {
       acquire_host_lock "${command} $*"
       ;;
     plotjuggler|juggle)
-      set_host_bucket "plotjuggler"
+      set_host_bucket "shared"
       acquire_host_lock "${command} $*"
       ;;
     sync)
       if [[ $# -gt 0 ]]; then
         bucket="$(resolve_host_bucket "${1}")" || {
           echo "Unknown host bucket for sync: ${1}" >&2
-          echo "Valid sync buckets: shared, cabana, plotjuggler" >&2
+          echo "Valid sync buckets: shared, cabana" >&2
           exit 1
         }
         shift || true

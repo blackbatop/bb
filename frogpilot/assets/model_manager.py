@@ -18,9 +18,9 @@ from openpilot.frogpilot.common.frogpilot_variables import MODELS_PATH
 
 MANIFEST_CANDIDATES = ("v21",)
 TINYGRAD_VERSIONS = {"v8", "v9", "v10", "v11", "v12"}
-DEFAULT_MODEL_KEY = "sc"
+DEFAULT_MODEL_KEY = "sc2"
 MODEL_KEY_CANONICAL_MAP = {
-  "sc2": "sc",
+  "sc": DEFAULT_MODEL_KEY,
 }
 
 CANCEL_DOWNLOAD_PARAM = "CancelModelDownload"
@@ -32,6 +32,32 @@ UPDATE_TINYGRAD_PARAM = "UpdateTinygrad"
 
 def _clean_model_name(name: str) -> str:
   return re.sub(r"[🗺️👀📡]", "", str(name or "")).strip()
+
+
+def canonical_model_key(model_key: str) -> str:
+  key = (model_key or "").strip()
+  return MODEL_KEY_CANONICAL_MAP.get(key, key)
+
+
+def is_builtin_model_key(model_key: str) -> bool:
+  return canonical_model_key(model_key) == DEFAULT_MODEL_KEY
+
+
+def model_key_aliases(model_key: str) -> list[str]:
+  canonical_key = canonical_model_key(model_key)
+  aliases = [canonical_key]
+
+  for alias, canonical in MODEL_KEY_CANONICAL_MAP.items():
+    if canonical == canonical_key:
+      aliases.append(alias)
+
+  if model_key.endswith("_default"):
+    aliases.append(model_key[:-8])
+
+  if model_key and not model_key.endswith("2"):
+    aliases.append(f"{model_key}2")
+
+  return [alias for alias in dict.fromkeys(alias for alias in aliases if alias)]
 
 
 class ModelManager:
@@ -51,8 +77,7 @@ class ModelManager:
 
   @staticmethod
   def _canonical_model_key(model_key: str) -> str:
-    key = (model_key or "").strip()
-    return MODEL_KEY_CANONICAL_MAP.get(key, key)
+    return canonical_model_key(model_key)
 
   def _param_text(self, key: str) -> str:
     raw = self.params.get(key)
@@ -99,18 +124,7 @@ class ModelManager:
     self._set_model_param_keys(selected_model, selected_name, current_version)
 
   def _model_key_aliases(self, model_key: str) -> list[str]:
-    canonical_key = self._canonical_model_key(model_key)
-    aliases = [canonical_key]
-    # Preserve legacy alias lookups (e.g. sc2) even when canonicalized to sc.
-    for alias, canonical in MODEL_KEY_CANONICAL_MAP.items():
-      if canonical == canonical_key:
-        aliases.append(alias)
-    if model_key.endswith("_default"):
-      aliases.append(model_key[:-8])
-    # v21 manifest uses legacy IDs with a trailing "2" (e.g. sc -> sc2).
-    if model_key and not model_key.endswith("2"):
-      aliases.append(f"{model_key}2")
-    return [alias for alias in dict.fromkeys(aliases) if alias]
+    return model_key_aliases(model_key)
 
   def _model_version_map(self) -> dict[str, str]:
     return {
@@ -148,6 +162,9 @@ class ModelManager:
     return filenames
 
   def _is_model_downloaded(self, model_key: str, model_version: str) -> bool:
+    if is_builtin_model_key(model_key):
+      return True
+
     required_files = self._required_files(model_key, model_version)
     if not required_files:
       return False
@@ -283,6 +300,12 @@ class ModelManager:
 
   def download_model(self, model_to_download: str):
     self.downloading_model = True
+
+    if is_builtin_model_key(model_to_download):
+      self.params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Built-in model already downloaded.")
+      self.params_memory.remove(MODEL_DOWNLOAD_PARAM)
+      self.downloading_model = False
+      return
 
     repo_url = get_repository_url()
     if not repo_url:

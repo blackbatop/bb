@@ -109,9 +109,8 @@ Host-native artifacts live under:
 
 That host area contains:
 
-- `worktree/` and `venv/` for the shared bucket used by UI/replay commands
+- `worktree/` and `venv/` for the shared bucket used by UI, replay, and PlotJuggler
 - `cabana/worktree/` and `cabana/venv/` for Cabana
-- `plotjuggler/worktree/` and `plotjuggler/venv/` for PlotJuggler
 - host-built binaries, static libs, objects, and Python extensions for each bucket
 
 Because `.host_runtime/` is git-ignored, running host tools no longer churns tracked files in the main repo.
@@ -141,9 +140,8 @@ That means:
 
 Current bucket split:
 
-- shared bucket: `./c3`, `./c4`, `./raybig`, `./dev replay`, `./dev shell`
+- shared bucket: `./c3`, `./c4`, `./raybig`, `./dev replay`, `./dev plotjuggler`, `./dev juggle`, `./dev shell`
 - cabana bucket: `./dev cabana`
-- plotjuggler bucket: `./dev plotjuggler`, `./dev juggle`
 
 This prevents one command from syncing or rebuilding over another live host session while still allowing the common Cabana + PlotJuggler pairing.
 
@@ -197,7 +195,6 @@ To refresh one bucket only:
 
 ```bash
 ./dev sync cabana
-./dev sync plotjuggler
 ./dev sync shared
 ```
 

@@ -136,6 +136,8 @@ assert arch in ["larch64", "aarch64", "x86_64", "Darwin"]
 # Use the system toolchain explicitly on macOS for reliable local builds.
 cc = '/usr/bin/clang' if arch == "Darwin" else 'clang'
 cxx = '/usr/bin/clang++' if arch == "Darwin" else 'clang++'
+ar = '/usr/bin/ar' if arch == "Darwin" else 'ar'
+ranlib = '/usr/bin/ranlib' if arch == "Darwin" else 'ranlib'
 
 lenv = {
   "PATH": os.environ['PATH'],
@@ -215,12 +217,8 @@ else:
       "/System/Library/Frameworks/OpenGL.framework/Libraries",
     ]
 
-    # cereal headers in this tree were generated with capnp 1.0.1, while
-    # Homebrew currently ships newer capnp headers (1.3.x). For mac host
-    # tooling builds (desktop UI/runtime .so), force the expected version
-    # macro so generated headers remain buildable.
-    cflags += ["-DGL_SILENCE_DEPRECATION", "-DCAPNP_VERSION=1000001"]
-    cxxflags += ["-DGL_SILENCE_DEPRECATION", "-DCAPNP_VERSION=1000001"]
+    cflags += ["-DGL_SILENCE_DEPRECATION"]
+    cxxflags += ["-DGL_SILENCE_DEPRECATION"]
     cpppath += [
       f"{brew_prefix}/include",
       f"{brew_prefix}/opt/openssl@3.0/include",
@@ -290,6 +288,8 @@ env = Environment(
 
   CC=cc,
   CXX=cxx,
+  AR=ar,
+  RANLIB=ranlib,
   LINKFLAGS=ldflags,
 
   RPATH=rpath,
@@ -318,7 +318,9 @@ if arch == "Darwin":
 env.CompilationDatabase('compile_commands.json')
 
 # Setup cache dir
-cache_dir = '/data/scons_cache' if AGNOS else '/tmp/scons_cache'
+cache_dir = os.environ.get("SP_SCONS_CACHE_DIR", "").strip()
+if not cache_dir:
+  cache_dir = '/data/scons_cache' if AGNOS else '/tmp/scons_cache'
 CacheDir(cache_dir)
 Clean(["."], cache_dir)
 

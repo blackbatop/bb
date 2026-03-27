@@ -37,6 +37,9 @@ from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
 PROCESS_NAME = "frogpilot.tinygrad_modeld.tinygrad_modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 
+BUILTIN_MODEL_KEY = "sc2"
+BUILTIN_MODEL_ALIASES = {BUILTIN_MODEL_KEY, "sc"}
+
 
 LAT_SMOOTH_SECONDS = 0.0
 LONG_SMOOTH_SECONDS = 0.3
@@ -58,6 +61,11 @@ def _get_param_str(params: Params, key: str, default: str = "") -> str:
   if isinstance(val, (dict, list)):
     return default
   return str(val)
+
+
+def _canonical_model_id(model_id: str) -> str:
+  key = (model_id or "").strip().lower()
+  return BUILTIN_MODEL_KEY if key in BUILTIN_MODEL_ALIASES else key
 
 
 def get_action_from_model(model_output: dict[str, np.ndarray], prev_action: log.ModelDataV2.Action,
@@ -138,17 +146,18 @@ class ModelState:
     params = Params()
     model_id_raw = _get_param_str(params, "Model")
     if not model_id_raw:
-      model_id_raw = _get_param_str(params, "DrivingModel", "sc")
-    model_id = (model_id_raw.strip() or "sc").lower()
+      model_id_raw = _get_param_str(params, "DrivingModel", BUILTIN_MODEL_KEY)
+    model_id = _canonical_model_id(model_id_raw)
 
     model_version = _get_param_str(params, "ModelVersion")
     if not model_version:
       model_version = _get_param_str(params, "DrivingModelVersion")
 
     model_dir = MODELS_PATH
-    use_builtin_model = model_id == "sc"
+    use_builtin_model = model_id == BUILTIN_MODEL_KEY
     model_download_id = model_id
-    if use_builtin_model and (model_id_raw != model_id or _get_param_str(params, "DrivingModel") != model_id):
+    if use_builtin_model and (_canonical_model_id(_get_param_str(params, "Model")) != model_id or
+                              _canonical_model_id(_get_param_str(params, "DrivingModel")) != model_id):
       params.put("Model", model_id)
       params.put("DrivingModel", model_id)
 
