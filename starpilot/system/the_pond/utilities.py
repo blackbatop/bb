@@ -26,9 +26,12 @@ from openpilot.starpilot.assets.theme_manager import HOLIDAY_THEME_PATH
 
 LOG_CANDIDATES = [
   "qlog",
+  "qlog.zst",
   "qlog.bz2",
   "rlog",
+  "rlog.zst",
   "rlog.bz2",
+  "raw_log.zst",
   "raw_log.bz2",
 ]
 
