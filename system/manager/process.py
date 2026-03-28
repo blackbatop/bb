@@ -103,17 +103,15 @@ class ManagerProcess(ABC):
       fn = WATCHDOG_FN + str(self.proc.pid)
       with open(fn, "rb") as f:
         self.last_watchdog_time = struct.unpack('Q', f.read())[0]
+      self.watchdog_seen = True
     except Exception:
-      pass
+      if not self.watchdog_seen:
+        return
 
     dt = time.monotonic() - self.last_watchdog_time / 1e9
-
-    if dt > self.watchdog_max_dt:
-      if self.watchdog_seen and ENABLE_WATCHDOG:
-        cloudlog.error(f"Watchdog timeout for {self.name} (exitcode {self.proc.exitcode}) restarting ({started=})")
-        self.restart()
-    else:
-      self.watchdog_seen = True
+    if dt > self.watchdog_max_dt and ENABLE_WATCHDOG:
+      cloudlog.error(f"Watchdog timeout for {self.name} (exitcode {self.proc.exitcode}) restarting ({started=})")
+      self.restart()
 
   def stop(self, retry: bool = True, block: bool = True, sig: signal.Signals = None) -> int | None:
     if self.proc is None:
@@ -200,6 +198,7 @@ class NativeProcess(ManagerProcess):
     cloudlog.info(f"starting process {self.name}")
     self.proc = Process(name=self.name, target=self.launcher, args=(self.cmdline, cwd, self.name, self.nice))
     self.proc.start()
+    self.last_watchdog_time = 0
     self.watchdog_seen = False
     self.shutting_down = False
 
@@ -235,6 +234,7 @@ class PythonProcess(ManagerProcess):
     cloudlog.info(f"starting python {self.module}")
     self.proc = Process(name=name, target=self.launcher, args=(self.module, self.name, self.nice))
     self.proc.start()
+    self.last_watchdog_time = 0
     self.watchdog_seen = False
     self.shutting_down = False
 
