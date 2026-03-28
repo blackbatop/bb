@@ -305,6 +305,11 @@ StarPilotVehiclesPanel::StarPilotVehiclesPanel(StarPilotSettingsWindow *parent, 
   QSet<QString> rebootKeys = {"RemapCancelToDistance", "TacoTuneHacks"};
   for (const QString &key : rebootKeys) {
     QObject::connect(static_cast<ToggleControl*>(toggles[key]), &ToggleControl::toggleFlipped, [key, this](bool state) {
+      if (key == "RemapCancelToDistance" && state && params.getInt("LKASButtonControl") != 0) {
+        params.putInt("LKASButtonControl", 0);
+        updateStarPilotToggles();
+      }
+
       if (started) {
         if (key == "TacoTuneHacks" && state) {
           if (StarPilotConfirmationDialog::toggleReboot(this)) {

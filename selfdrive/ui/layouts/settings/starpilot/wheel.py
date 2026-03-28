@@ -29,7 +29,7 @@ class StarPilotWheelLayout(StarPilotPanel):
         "title": tr_noop("Remap Cancel Button"),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("RemapCancelToDistance"),
-        "set_state": lambda s: self._params.put_bool("RemapCancelToDistance", s),
+        "set_state": self._set_cancel_remap_state,
         "color": "#FFC40D",
       },
       {
@@ -58,17 +58,39 @@ class StarPilotWheelLayout(StarPilotPanel):
         "type": "value",
         "get_value": lambda: self._get_action_name("LKASButtonControl"),
         "on_click": lambda: self._show_action_picker("LKASButtonControl"),
+        "is_enabled": lambda: not self._lkas_locked(),
         "key": "LKASButtonControl",
         "color": "#FFC40D",
       },
     ]
     self._rebuild_grid()
 
+  def _lkas_locked(self):
+    return self._params.get_bool("RemapCancelToDistance")
+
+  def _force_lkas_no_action(self):
+    if self._params.get_int("LKASButtonControl") != 0:
+      self._params.put_int("LKASButtonControl", 0)
+      self._params_memory.put_bool("StarPilotTogglesUpdated", True)
+
+  def _set_cancel_remap_state(self, state):
+    self._params.put_bool("RemapCancelToDistance", state)
+    if state:
+      self._force_lkas_no_action()
+    self._rebuild_grid()
+
   def _get_action_name(self, key):
+    if key == "LKASButtonControl" and self._lkas_locked():
+      self._force_lkas_no_action()
+      return ACTION_NAME_BY_ID[0]
+
     idx = self._params.get_int(key)
     return ACTION_NAME_BY_ID.get(idx, ACTION_NAMES[0])
 
-  def _get_available_actions(self):
+  def _get_available_actions(self, key=None):
+    if key == "LKASButtonControl" and self._lkas_locked():
+      return [ACTION_NAME_BY_ID[0]]
+
     cs = starpilot_state.car_state
     return [
       option["name"] for option in ACTION_OPTIONS
@@ -76,7 +98,12 @@ class StarPilotWheelLayout(StarPilotPanel):
     ]
 
   def _show_action_picker(self, key):
-    actions = self._get_available_actions()
+    if key == "LKASButtonControl" and self._lkas_locked():
+      self._force_lkas_no_action()
+      self._rebuild_grid()
+      return
+
+    actions = self._get_available_actions(key)
     current = self._get_action_name(key)
     if current not in actions:
       current = actions[0]
@@ -84,6 +111,7 @@ class StarPilotWheelLayout(StarPilotPanel):
     def on_select(res, val):
       if res == DialogResult.CONFIRM:
         self._params.put_int(key, ACTION_IDS.get(val, 0))
+        self._params_memory.put_bool("StarPilotTogglesUpdated", True)
         self._rebuild_grid()
 
     gui_app.set_modal_overlay(SelectionDialog(tr(key), actions, current, on_close=on_select))
@@ -91,6 +119,8 @@ class StarPilotWheelLayout(StarPilotPanel):
   def _rebuild_grid(self):
     if not self.CATEGORIES:
       return
+    if self._lkas_locked():
+      self._force_lkas_no_action()
     if self._tile_grid is None:
       self._tile_grid = __import__('openpilot.selfdrive.ui.layouts.settings.starpilot.metro', fromlist=['TileGrid']).TileGrid(columns=None, padding=20)
     self._tile_grid.clear()
@@ -110,7 +140,7 @@ class StarPilotWheelLayout(StarPilotPanel):
       elif tile_type == "value":
         from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import ValueTile
 
-        tile = ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], bg_color=cat.get("color"))
+        tile = ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], bg_color=cat.get("color"), is_enabled=cat.get("is_enabled"))
       else:
         continue
       self._tile_grid.add_tile(tile)

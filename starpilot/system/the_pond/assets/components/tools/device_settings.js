@@ -565,6 +565,13 @@ function clearSearchFilter() {
   scheduleSyncInputs()
 }
 
+function getSettingLockReason(param) {
+  if (param?.key === "LKASButtonControl" && !!state.values.RemapCancelToDistance) {
+    return "Cancel remap requires the LKAS button to stay on No Action."
+  }
+  return ""
+}
+
 function handleSectionTabClick(sectionSlug, event) {
   if (!sectionSlug || sectionSlug === state.activeSectionSlug) return
 
@@ -590,6 +597,8 @@ function renderSettingRow(p) {
 
   const isNumeric = p.ui_type === "numeric"
   const isChild = p.parent_key ? "ds-child-modifier" : ""
+  const lockReason = getSettingLockReason(p)
+  const isLocked = lockReason !== ""
 
   return html`
     <div class="ds-row ${isNumeric ? "ds-row-numeric" : ""} ${isChild}">
@@ -597,6 +606,7 @@ function renderSettingRow(p) {
         <div class="ds-row-text">
           <span class="ds-row-label">${p.label}</span>
           ${p.description ? html`<div class="ds-row-desc">${p.description}</div>` : ""}
+          ${lockReason ? html`<div class="ds-row-desc"><strong>Locked:</strong> ${lockReason}</div>` : ""}
 
           ${() => p.is_parent_toggle && state.values[p.key] ? html`
             <div class="ds-manage-btn" @click="${() => toggleManage(p.key)}">
@@ -675,6 +685,7 @@ function renderSettingRow(p) {
           class="ds-select"
           id="ds-${p.key}"
           data-endpoint="${p.options_endpoint || ""}"
+          ?disabled="${isLocked}"
           @change="${() => updateParam(p.key, "dropdown")}">
           <option value="">Loading...</option>
         </select>

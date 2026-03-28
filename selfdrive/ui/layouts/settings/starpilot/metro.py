@@ -128,17 +128,38 @@ class ToggleTile(MetroTile):
 
 
 class ValueTile(MetroTile):
-  def __init__(self, title: str, get_value: Callable[[], str], on_click: Callable, icon_path: str | None = None, bg_color: rl.Color | str | None = None):
+  def __init__(self, title: str, get_value: Callable[[], str], on_click: Callable, icon_path: str | None = None,
+               bg_color: rl.Color | str | None = None, is_enabled: Callable[[], bool] | None = None):
     super().__init__(bg_color=bg_color, on_click=on_click)
     self.title = title
     self.get_value = get_value
+    self.is_enabled = is_enabled or (lambda: True)
     self._icon = gui_app.starpilot_texture(icon_path, 80, 80) if icon_path else None
     self._font = gui_app.font(FontWeight.BOLD)
+    self._active_color = self.bg_color
+    self._disabled_color = rl.Color(120, 120, 120, 255)
+
+  def _enabled(self) -> bool:
+    return self.is_enabled() if callable(self.is_enabled) else bool(self.is_enabled)
+
+  def _handle_mouse_press(self, mouse_pos: MousePos):
+    if not self._enabled():
+      self._is_pressed = False
+      return
+    super()._handle_mouse_press(mouse_pos)
+
+  def _handle_mouse_release(self, mouse_pos: MousePos):
+    if not self._enabled():
+      self._is_pressed = False
+      return
+    super()._handle_mouse_release(mouse_pos)
 
   def _render(self, rect: rl.Rectangle):
     self.set_rect(rect)
-    r, g, b = max(0, self.bg_color.r - 20), max(0, self.bg_color.g - 20), max(0, self.bg_color.b - 20)
-    color = rl.Color(r, g, b, 255) if self._is_pressed else self.bg_color
+    enabled = self._enabled()
+    base_color = self._active_color if enabled else self._disabled_color
+    r, g, b = max(0, base_color.r - 20), max(0, base_color.g - 20), max(0, base_color.b - 20)
+    color = rl.Color(r, g, b, 255) if self._is_pressed and enabled else base_color
     rl.draw_rectangle_rounded(rect, 0.15, 10, color)
     self._draw_watermark(rect, self._icon)
     padding = 25

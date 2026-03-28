@@ -20,16 +20,16 @@ const SVG_WIDTH = 1000
 const SVG_HEIGHT = 260
 const ADVANCED_TERMS_KEY = "plotsShowAdvancedTerms"
 const QUALITY_WINDOW_SECONDS = 30
-const QUALITY_MIN_SAMPLES = 12
+const QUALITY_MIN_SAMPLES = 8
 
 const LATERAL_QUALITY_CONFIG = {
   desiredKey: "desiredLateralAccel",
   actualKey: "actualLateralAccel",
   minSpeedMps: 0.5,
-  minDemand: 0.015,
+  minDemand: 0.008,
   allowLowDemandFallback: true,
-  fallbackMinSpeedMps: 1.0,
-  fallbackMinPeakDemand: 0.03,
+  fallbackMinSpeedMps: 0.5,
+  fallbackMinPeakDemand: 0.01,
   great: 0.15,
   good: 0.30,
   fair: 0.50,
@@ -39,8 +39,10 @@ const LONGITUDINAL_QUALITY_CONFIG = {
   desiredKey: "desiredLongitudinalAccel",
   actualKey: "actualLongitudinalAccel",
   minSpeedMps: 0.0,
-  minDemand: 0.08,
-  allowLowDemandFallback: false,
+  minDemand: 0.05,
+  allowLowDemandFallback: true,
+  fallbackMinSpeedMps: 1.5,
+  fallbackMinPeakDemand: 0.04,
   applyPersistenceRules: true,
   warnError: 0.50,
   severeError: 0.90,
@@ -114,6 +116,12 @@ function formatQualityLabel(label) {
   return text || "N/A"
 }
 
+function signalMagnitude(sample, config) {
+  const desired = Math.abs(toNumber(sample?.[config.desiredKey], 0))
+  const actual = Math.abs(toNumber(sample?.[config.actualKey], 0))
+  return Math.max(desired, actual)
+}
+
 function computeMatchQuality(samples, config) {
   const safeSamples = Array.isArray(samples) ? samples : []
   if (safeSamples.length < 2) {
@@ -124,25 +132,22 @@ function computeMatchQuality(samples, config) {
   const cutoffTs = latestTs > 0 ? latestTs - QUALITY_WINDOW_SECONDS : 0
   const recentSamples = safeSamples.filter((sample) => toNumber(sample?.timestamp, 0) >= cutoffTs)
 
-  const demandEligibleSamples = recentSamples.filter((sample) => {
+  const eligibleSignalSamples = recentSamples.filter((sample) => {
     const speed = Math.abs(toNumber(sample?.speed, 0))
-    const desired = Math.abs(toNumber(sample?.[config.desiredKey], 0))
+    const signal = signalMagnitude(sample, config)
 
     const speedOk = config.minSpeedMps <= 0 ? true : speed >= config.minSpeedMps
-    const demandOk = config.minDemand <= 0 ? true : desired >= config.minDemand
+    const demandOk = config.minDemand <= 0 ? true : signal >= config.minDemand
     return speedOk && demandOk
   })
 
-  let eligibleSamples = demandEligibleSamples
+  let eligibleSamples = eligibleSignalSamples
   let usedLowDemandFallback = false
   const allowLowDemandFallback = config.allowLowDemandFallback !== false
   if (allowLowDemandFallback && eligibleSamples.length < QUALITY_MIN_SAMPLES && recentSamples.length >= QUALITY_MIN_SAMPLES) {
     const totalSpeed = recentSamples.reduce((sum, sample) => sum + Math.abs(toNumber(sample?.speed, 0)), 0)
     const avgSpeed = recentSamples.length > 0 ? (totalSpeed / recentSamples.length) : 0
-    const peakDemand = recentSamples.reduce((peak, sample) => {
-      const desired = Math.abs(toNumber(sample?.[config.desiredKey], 0))
-      return Math.max(peak, desired)
-    }, 0)
+    const peakDemand = recentSamples.reduce((peak, sample) => Math.max(peak, signalMagnitude(sample, config)), 0)
 
     const fallbackMinSpeed = Math.max(0, toNumber(config.fallbackMinSpeedMps, 0))
     const fallbackMinPeakDemand = Math.max(0, toNumber(config.fallbackMinPeakDemand, 0))
@@ -164,7 +169,7 @@ function computeMatchQuality(samples, config) {
     return {
       label: "N/A",
       value: null,
-      detail: `Need ${QUALITY_MIN_SAMPLES} demand samples (${eligibleSamples.length} demand / ${recentSamples.length} total)`,
+      detail: `Need ${QUALITY_MIN_SAMPLES} signal samples (${eligibleSamples.length} signal / ${recentSamples.length} total)`,
     }
   }
 
@@ -622,7 +627,7 @@ export function LivePlots() {
         ${state.error ? html`<p class="plotError"><strong>Error:</strong> ${state.error}</p>` : ""}
         ${state.live?.lastError ? html`<p class="plotError"><strong>Source Error:</strong> ${state.live.lastError}</p>` : ""}
         <p class="qualityMethodNote">
-          Match rating uses a 30-second rolling window. Lateral prefers true steering-demand moments, and longitudinal also checks how much of the window stays above error limits so brief spikes are less likely to mark "Poor."
+          Match rating uses a 30-second rolling window. Strong steering or accel moments are preferred, but gentler windows can still earn a rating so normal driving does not sit at N/A. Longitudinal also checks how much of the window stays above error limits so brief spikes are less likely to mark "Poor."
         </p>
       </section>
 

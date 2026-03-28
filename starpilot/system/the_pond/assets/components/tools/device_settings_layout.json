@@ -1725,13 +1725,6 @@
         "ui_type": "toggle"
       },
       {
-        "key": "RemapCancelToDistance",
-        "label": "Remap Cancel To Distance",
-        "description": "On pedal-interceptor Bolts, remap the steering-wheel CANCEL button to distance/personality input.",
-        "data_type": "bool",
-        "ui_type": "toggle"
-      },
-      {
         "key": "VoltSNG",
         "label": "Stop-and-Go Hack",
         "description": "Force stop-and-go on the 2017 Chevy Volt.",
@@ -1768,6 +1761,183 @@
         "description": "Force stop-and-go on Lexus/Toyota vehicles without stock stop-and-go functionality.",
         "data_type": "bool",
         "ui_type": "toggle"
+      }
+    ]
+  },
+  {
+    "name": "Wheel Controls",
+    "icon": "bi-controller",
+    "params": [
+      {
+        "key": "RemapCancelToDistance",
+        "label": "Remap Cancel To Distance",
+        "description": "On pedal-interceptor Bolts, remap the steering-wheel CANCEL button to distance/personality input.",
+        "data_type": "bool",
+        "ui_type": "toggle"
+      },
+      {
+        "key": "DistanceButtonControl",
+        "label": "Distance Button (Short Press)",
+        "description": "Action performed when the \"Distance\" button is pressed.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          }
+        ]
+      },
+      {
+        "key": "LongDistanceButtonControl",
+        "label": "Distance Button (Long Press)",
+        "description": "Action performed when the \"Distance\" button is pressed for more than 0.5 seconds.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          }
+        ]
+      },
+      {
+        "key": "VeryLongDistanceButtonControl",
+        "label": "Distance Button (Extra Long Press)",
+        "description": "Action performed when the \"Distance\" button is pressed for more than 2.5 seconds.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          }
+        ]
+      },
+      {
+        "key": "LKASButtonControl",
+        "label": "LKAS Button",
+        "description": "Action performed when the \"LKAS\" button is pressed.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          }
+        ]
       }
     ]
   },

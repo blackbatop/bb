@@ -674,6 +674,26 @@ def _safe_float(value, default=0.0):
   except Exception:
     return float(default)
 
+def _get_param_int_value(key, default=0):
+  try:
+    raw_value = params.get(key)
+    if isinstance(raw_value, bytes):
+      raw_value = raw_value.decode("utf-8", errors="replace")
+    return int(float(str(raw_value or default)))
+  except Exception:
+    return int(default)
+
+def _enforce_cancel_remap_lkas_lock():
+  if not params.get_bool("RemapCancelToDistance"):
+    return False
+
+  if _get_param_int_value("LKASButtonControl", 0) == 0:
+    return False
+
+  params.put("LKASButtonControl", "0")
+  update_starpilot_toggles()
+  return True
+
 def _get_system_uptime_seconds():
   try:
     with open("/proc/uptime", "r", encoding="utf-8") as uptime_file:
@@ -2803,15 +2823,30 @@ def setup(app):
         metered_enabled = str_val.strip() in ("1", "true", "True")
         gsm_metered_apply_result = _apply_cellular_metered_setting(metered_enabled)
 
+      locked_lkas = _enforce_cancel_remap_lkas_lock()
       update_starpilot_toggles()
 
       response = {"message": f"Parameter '{key}' updated successfully."}
+      updated = {}
+      if key == "RemapCancelToDistance" and params.get_bool("RemapCancelToDistance"):
+        updated["RemapCancelToDistance"] = True
+        updated["LKASButtonControl"] = 0
+        response["message"] = "Remap Cancel To Distance enabled. LKAS Button has been locked to No Action."
+      elif key == "LKASButtonControl" and params.get_bool("RemapCancelToDistance"):
+        updated["LKASButtonControl"] = 0
+        updated["RemapCancelToDistance"] = True
+        response["message"] = "LKAS Button is locked to No Action while Remap Cancel To Distance is enabled."
+      elif locked_lkas:
+        updated["LKASButtonControl"] = 0
+
       if gsm_metered_apply_result is not None:
-        response["updated"] = {"GsmMetered": str_val.strip() in ("1", "true", "True")}
+        updated["GsmMetered"] = str_val.strip() in ("1", "true", "True")
         response["networkProfilesUpdated"] = gsm_metered_apply_result.get("profiles", [])
         warnings = gsm_metered_apply_result.get("warnings", [])
         if warnings:
           response["warning"] = " ".join(warnings)
+      if updated:
+        response["updated"] = updated
 
       return jsonify(response), 200
 
@@ -2819,6 +2854,7 @@ def setup(app):
 
   @app.route("/api/params/all", methods=["GET"])
   def get_all_params():
+    _enforce_cancel_remap_lkas_lock()
     allowed_keys, types = _get_param_type_info()
 
     result = {}
