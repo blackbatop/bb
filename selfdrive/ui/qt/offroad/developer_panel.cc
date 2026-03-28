@@ -22,6 +22,14 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
             tr("When enabled (default), the device skips source compilation on boot if a prebuilt artifact exists. Disable this if you plan to edit code and rebuild on-device."), "");
   mainList->addItem(usePrebuiltToggle);
 
+  auto *showAllToggles = new ParamControl("ShowAllToggles", tr("Show All Toggles"),
+            tr("<b>Show every toggle</b> in Settings and StarPilot, even when it would normally be hidden by tuning level, car support, or related feature gating."), "");
+  QObject::connect(showAllToggles, &ParamControl::toggleFlipped, [this](bool) {
+    updateToggles(offroad);
+    emit showAllTogglesChanged();
+  });
+  mainList->addItem(showAllToggles);
+
   // SSH keys
   mainList->addItem(new SshToggle());
   mainList->addItem(new SshControl());
@@ -260,8 +268,10 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
 }
 
 void DeveloperPanel::updateToggles(bool _offroad) {
+  const bool showAllToggles = params.getBool("ShowAllToggles");
+
   for (auto btn : findChildren<ParamControl *>()) {
-    btn->setVisible(!is_release);
+    btn->setVisible(showAllToggles || !is_release);
 
     /*
      * experimentalLongitudinalToggle should be toggelable when:
@@ -291,9 +301,11 @@ void DeveloperPanel::updateToggles(bool _offroad) {
     capnp::FlatArrayMessageReader cmsg(aligned_buf.align(cp_bytes.data(), cp_bytes.size()));
     cereal::CarParams::Reader CP = cmsg.getRoot<cereal::CarParams>();
 
-    if (!CP.getAlphaLongitudinalAvailable() || is_release) {
+    if ((!CP.getAlphaLongitudinalAvailable() || is_release) && !showAllToggles) {
       params.remove("AlphaLongitudinalEnabled");
       experimentalLongitudinalToggle->setEnabled(false);
+    } else {
+      experimentalLongitudinalToggle->setEnabled(true);
     }
 
     /*
@@ -301,18 +313,19 @@ void DeveloperPanel::updateToggles(bool _offroad) {
      * - is not a release branch, and
      * - the car supports experimental longitudinal control (alpha)
      */
-    experimentalLongitudinalToggle->setVisible(CP.getAlphaLongitudinalAvailable() && !is_release);
+    experimentalLongitudinalToggle->setVisible(showAllToggles || (CP.getAlphaLongitudinalAvailable() && !is_release));
 
-    longManeuverToggle->setEnabled(hasLongitudinalControl(CP) && _offroad);
+    longManeuverToggle->setEnabled((showAllToggles || hasLongitudinalControl(CP)) && _offroad);
 
     // StarPilot variables
     hasOpenpilotLongitudinal = hasLongitudinalControl(CP);
     hasRadar = !CP.getRadarUnavailable();
 
-    borderMetricsButton->setVisibleButton(0, CP.getEnableBsm());
+    borderMetricsButton->setVisibleButton(0, showAllToggles || CP.getEnableBsm());
   } else {
-    longManeuverToggle->setEnabled(false);
-    experimentalLongitudinalToggle->setVisible(false);
+    longManeuverToggle->setEnabled(showAllToggles && _offroad);
+    experimentalLongitudinalToggle->setEnabled(showAllToggles);
+    experimentalLongitudinalToggle->setVisible(showAllToggles);
   }
   experimentalLongitudinalToggle->refresh();
 
@@ -323,7 +336,7 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -332,18 +345,20 @@ void DeveloperPanel::updateToggles(bool _offroad) {
       continue;
     }
 
-    bool setVisible = tuningLevel >= starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || tuningLevel >= starpilotToggleLevels[key].toDouble();
 
-    if (key == "AdjacentLeadsUI") {
-      setVisible &= hasRadar && !(params.getBool("AdvancedCustomUI") && params.getBool("HideLeadMarker"));
-    }
+    if (!showAllToggles) {
+      if (key == "AdjacentLeadsUI") {
+        setVisible &= hasRadar && !(params.getBool("AdvancedCustomUI") && params.getBool("HideLeadMarker"));
+      }
 
-    else if (key == "RadarTracksUI") {
-      setVisible &= hasRadar;
-    }
+      else if (key == "RadarTracksUI") {
+        setVisible &= hasRadar;
+      }
 
-    else if (key == "ShowStoppingPoint") {
-      setVisible &= hasOpenpilotLongitudinal;
+      else if (key == "ShowStoppingPoint") {
+        setVisible &= hasOpenpilotLongitudinal;
+      }
     }
 
     toggle->setVisible(setVisible);
@@ -361,9 +376,9 @@ void DeveloperPanel::updateToggles(bool _offroad) {
     }
   }
 
-  borderMetricsButton->setVisibleButton(0, hasBSM);
+  borderMetricsButton->setVisibleButton(0, showAllToggles || hasBSM);
 
-  developerUIToggle->setVisible(tuningLevel >= starpilotToggleLevels["DeveloperUI"].toDouble());
+  developerUIToggle->setVisible(showAllToggles || tuningLevel >= starpilotToggleLevels["DeveloperUI"].toDouble());
 
   openDescriptions(forceOpenDescriptions, toggles);
 

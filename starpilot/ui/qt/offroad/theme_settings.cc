@@ -899,9 +899,11 @@ void StarPilotThemesPanel::updateState(const UIState &s, const StarPilotUIState 
 }
 
 void StarPilotThemesPanel::updateToggles() {
+  const bool showAllToggles = parent->showAllTogglesEnabled();
+
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -910,14 +912,16 @@ void StarPilotThemesPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
 
-    if (key == "DistanceIconPack") {
-      setVisible &= params.getBool("QOLVisuals") && params.getBool("OnroadDistanceButton");
-    }
+    if (!showAllToggles) {
+      if (key == "DistanceIconPack") {
+        setVisible &= params.getBool("QOLVisuals") && params.getBool("OnroadDistanceButton");
+      }
 
-    else if (key == "RandomThemes") {
-      setVisible &= params.getBool("CustomThemes");
+      else if (key == "RandomThemes") {
+        setVisible &= params.getBool("CustomThemes");
+      }
     }
 
     toggle->setVisible(setVisible);

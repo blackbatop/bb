@@ -249,6 +249,10 @@ void StarPilotSettingsWindow::updateTuningLevel() {
   emit tuningLevelChanged(tuningLevel);
 }
 
+bool StarPilotSettingsWindow::showAllTogglesEnabled() {
+  return params.getBool("ShowAllToggles");
+}
+
 void StarPilotSettingsWindow::showEvent(QShowEvent *event) {
   static bool alertShown = false;
 
@@ -307,6 +311,7 @@ void StarPilotSettingsWindow::updateVariables() {
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
+  const bool showAllToggles = showAllTogglesEnabled();
 
   auto applyDesktopVehicleFallback = [&]() {
     QString fallbackMake = starpilot_toggles.value("car_make").toString();
@@ -497,12 +502,12 @@ void StarPilotSettingsWindow::updateVariables() {
     hasAutoTune = LTP.getUseParams();
   }
 
-  drivingPanelButtons->setVisibleButton(0, tuningLevel >= starpilotToggleLevels.value("DrivingModel").toDouble());
-  drivingPanelButtons->setVisibleButton(1, hasOpenpilotLongitudinal);
+  drivingPanelButtons->setVisibleButton(0, showAllToggles || tuningLevel >= starpilotToggleLevels.value("DrivingModel").toDouble());
+  drivingPanelButtons->setVisibleButton(1, showAllToggles || hasOpenpilotLongitudinal);
 
-  systemPanelButtons->setVisibleButton(1, tuningLevel >= starpilotToggleLevels.value("DeviceManagement").toDouble() || tuningLevel >= starpilotToggleLevels.value("ScreenManagement").toDouble());
+  systemPanelButtons->setVisibleButton(1, showAllToggles || tuningLevel >= starpilotToggleLevels.value("DeviceManagement").toDouble() || tuningLevel >= starpilotToggleLevels.value("ScreenManagement").toDouble());
 
-  vehiclePanelButtons->setVisibleButton(1, tuningLevel >= starpilotToggleLevels.value("WheelControls").toDouble());
+  vehiclePanelButtons->setVisibleButton(1, showAllToggles || tuningLevel >= starpilotToggleLevels.value("WheelControls").toDouble());
 
   update();
 }

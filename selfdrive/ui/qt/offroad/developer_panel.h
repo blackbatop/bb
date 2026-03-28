@@ -14,6 +14,7 @@ public:
 signals:
   void openSubPanel();
   void openSubSubPanel();
+  void showAllTogglesChanged();
 
 private:
   Params params;

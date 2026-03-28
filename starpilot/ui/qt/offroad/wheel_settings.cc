@@ -67,10 +67,12 @@ void StarPilotWheelPanel::showEvent(QShowEvent *event) {
 }
 
 void StarPilotWheelPanel::updateToggles() {
-  for (auto &[key, toggle] : toggles) {
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+  const bool showAllToggles = parent->showAllTogglesEnabled();
 
-    if (key == "LKASButtonControl") {
+  for (auto &[key, toggle] : toggles) {
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+
+    if (!showAllToggles && key == "LKASButtonControl") {
       setVisible &= !parent->isSubaru;
       setVisible &= !parent->lkasAllowedForAOL || !(params.getBool("AlwaysOnLateral") && params.getBool("AlwaysOnLateralLKAS"));
     }

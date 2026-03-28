@@ -321,9 +321,11 @@ void StarPilotLateralPanel::updateMetric(bool metric, bool bootRun) {
 }
 
 void StarPilotLateralPanel::updateToggles() {
+  const bool showAllToggles = parent->showAllTogglesEnabled();
+
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -337,72 +339,74 @@ void StarPilotLateralPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
 
-    if (key == "AlwaysOnLateralLKAS") {
-      setVisible &= parent->lkasAllowedForAOL;
-    }
+    if (!showAllToggles) {
+      if (key == "AlwaysOnLateralLKAS") {
+        setVisible &= parent->lkasAllowedForAOL;
+      }
 
-    else if (key == "ForceAutoTune") {
-      setVisible &= !parent->hasAutoTune;
-      setVisible &= !parent->isAngleCar;
-      setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
-    }
+      else if (key == "ForceAutoTune") {
+        setVisible &= !parent->hasAutoTune;
+        setVisible &= !parent->isAngleCar;
+        setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
+      }
 
-    else if (key == "ForceAutoTuneOff") {
-      setVisible &= parent->hasAutoTune;
-    }
+      else if (key == "ForceAutoTuneOff") {
+        setVisible &= parent->hasAutoTune;
+      }
 
-    else if (key == "ForceTorqueController") {
-      setVisible &= !parent->isAngleCar;
-      setVisible &= !parent->isTorqueCar;
-    }
+      else if (key == "ForceTorqueController") {
+        setVisible &= !parent->isAngleCar;
+        setVisible &= !parent->isTorqueCar;
+      }
 
-    else if (key == "LaneChangeTime") {
-      setVisible &= params.getBool("LaneChanges") && params.getBool("NudgelessLaneChange");
-    }
+      else if (key == "LaneChangeTime") {
+        setVisible &= params.getBool("LaneChanges") && params.getBool("NudgelessLaneChange");
+      }
 
-    else if (key == "LaneDetectionWidth") {
-      setVisible &= params.getBool("LaneChanges") && params.getBool("NudgelessLaneChange");
-    }
+      else if (key == "LaneDetectionWidth") {
+        setVisible &= params.getBool("LaneChanges") && params.getBool("NudgelessLaneChange");
+      }
 
-    else if (key == "NNFF") {
-      setVisible &= parent->hasNNFFLog;
-      setVisible &= !parent->isAngleCar;
-    }
+      else if (key == "NNFF") {
+        setVisible &= parent->hasNNFFLog;
+        setVisible &= !parent->isAngleCar;
+      }
 
-    else if (key == "NNFFLite") {
-      setVisible &= !usingNNFF;
-      setVisible &= !parent->isAngleCar;
-    }
+      else if (key == "NNFFLite") {
+        setVisible &= !usingNNFF;
+        setVisible &= !parent->isAngleCar;
+      }
 
-    else if (key == "SteerDelay") {
-      setVisible &= parent->steerActuatorDelay != 0;
-    }
+      else if (key == "SteerDelay") {
+        setVisible &= parent->steerActuatorDelay != 0;
+      }
 
-    else if (key == "SteerFriction") {
-      setVisible &= parent->friction != 0;
-      setVisible &= parent->hasAutoTune ? forcingAutoTuneOff : !forcingAutoTune;
-      setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
-      setVisible &= !usingNNFF;
-    }
+      else if (key == "SteerFriction") {
+        setVisible &= parent->friction != 0;
+        setVisible &= parent->hasAutoTune ? forcingAutoTuneOff : !forcingAutoTune;
+        setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
+        setVisible &= !usingNNFF;
+      }
 
-    else if (key == "SteerKP") {
-      setVisible &= parent->steerKp != 0;
-      setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
-      setVisible &= !parent->isAngleCar;
-    }
+      else if (key == "SteerKP") {
+        setVisible &= parent->steerKp != 0;
+        setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
+        setVisible &= !parent->isAngleCar;
+      }
 
-    else if (key == "SteerLatAccel") {
-      setVisible &= parent->latAccelFactor != 0;
-      setVisible &= parent->hasAutoTune ? forcingAutoTuneOff : !forcingAutoTune;
-      setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
-      setVisible &= !usingNNFF;
-    }
+      else if (key == "SteerLatAccel") {
+        setVisible &= parent->latAccelFactor != 0;
+        setVisible &= parent->hasAutoTune ? forcingAutoTuneOff : !forcingAutoTune;
+        setVisible &= parent->isTorqueCar || forcingTorqueController || usingNNFF;
+        setVisible &= !usingNNFF;
+      }
 
-    else if (key == "SteerRatio") {
-      setVisible &= parent->steerRatio != 0;
-      setVisible &= parent->hasAutoTune ? forcingAutoTuneOff : !forcingAutoTune;
+      else if (key == "SteerRatio") {
+        setVisible &= parent->steerRatio != 0;
+        setVisible &= parent->hasAutoTune ? forcingAutoTuneOff : !forcingAutoTune;
+      }
     }
 
     toggle->setVisible(setVisible);

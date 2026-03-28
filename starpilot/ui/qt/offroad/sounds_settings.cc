@@ -163,9 +163,11 @@ void StarPilotSoundsPanel::updateState(const UIState &s) {
 }
 
 void StarPilotSoundsPanel::updateToggles() {
+  const bool showAllToggles = parent->showAllTogglesEnabled();
+
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -174,14 +176,16 @@ void StarPilotSoundsPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
 
-    if (key == "LoudBlindspotAlert") {
-      setVisible &= parent->hasBSM;
-    }
+    if (!showAllToggles) {
+      if (key == "LoudBlindspotAlert") {
+        setVisible &= parent->hasBSM;
+      }
 
-    else if (key == "SpeedLimitChangedAlert") {
-      setVisible &= params.getBool("ShowSpeedLimits") || (parent->hasOpenpilotLongitudinal && params.getBool("SpeedLimitController"));
+      else if (key == "SpeedLimitChangedAlert") {
+        setVisible &= params.getBool("ShowSpeedLimits") || (parent->hasOpenpilotLongitudinal && params.getBool("SpeedLimitController"));
+      }
     }
 
     toggle->setVisible(setVisible);

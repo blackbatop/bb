@@ -254,9 +254,11 @@ void StarPilotVisualsPanel::updateMetric(bool metric, bool bootRun) {
 }
 
 void StarPilotVisualsPanel::updateToggles() {
+  const bool showAllToggles = parent->showAllTogglesEnabled();
+
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -265,44 +267,46 @@ void StarPilotVisualsPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
 
-    if (key == "AccelerationPath") {
-      setVisible &= parent->hasOpenpilotLongitudinal;
-    }
+    if (!showAllToggles) {
+      if (key == "AccelerationPath") {
+        setVisible &= parent->hasOpenpilotLongitudinal;
+      }
 
-    else if (key == "BlindSpotPath") {
-      setVisible &= parent->hasBSM;
-    }
+      else if (key == "BlindSpotPath") {
+        setVisible &= parent->hasBSM;
+      }
 
-    else if (key == "HideLeadMarker") {
-      setVisible &= parent->hasOpenpilotLongitudinal;
-    }
+      else if (key == "HideLeadMarker") {
+        setVisible &= parent->hasOpenpilotLongitudinal;
+      }
 
-    else if (key == "HideSpeedLimit") {
-      setVisible &= parent->hasOpenpilotLongitudinal && params.getBool("SpeedLimitController");
-    }
+      else if (key == "HideSpeedLimit") {
+        setVisible &= parent->hasOpenpilotLongitudinal && params.getBool("SpeedLimitController");
+      }
 
-    else if (key == "OnroadDistanceButton") {
-      setVisible &= parent->hasOpenpilotLongitudinal;
-    }
+      else if (key == "OnroadDistanceButton") {
+        setVisible &= parent->hasOpenpilotLongitudinal;
+      }
 
-    else if (key == "PedalsOnUI") {
-      setVisible &= parent->hasOpenpilotLongitudinal;
-    }
+      else if (key == "PedalsOnUI") {
+        setVisible &= parent->hasOpenpilotLongitudinal;
+      }
 
-    else if (key == "ShowSpeedLimits") {
-      setVisible &= !params.getBool("SpeedLimitController") || !parent->hasOpenpilotLongitudinal;
-    }
+      else if (key == "ShowSpeedLimits") {
+        setVisible &= !params.getBool("SpeedLimitController") || !parent->hasOpenpilotLongitudinal;
+      }
 
-    else if (key == "SLCMapboxFiller") {
-      setVisible &= params.getBool("ShowSpeedLimits");
-      setVisible &= !params.getBool("SpeedLimitController") || !parent->hasOpenpilotLongitudinal;
-      setVisible &= !params.get("MapboxSecretKey").empty();
-    }
+      else if (key == "SLCMapboxFiller") {
+        setVisible &= params.getBool("ShowSpeedLimits");
+        setVisible &= !params.getBool("SpeedLimitController") || !parent->hasOpenpilotLongitudinal;
+        setVisible &= !params.get("MapboxSecretKey").empty();
+      }
 
-    else if (key == "UseVienna") {
-      setVisible &= params.getBool("ShowSpeedLimits") || params.getBool("SpeedLimitController");
+      else if (key == "UseVienna") {
+        setVisible &= params.getBool("ShowSpeedLimits") || params.getBool("SpeedLimitController");
+      }
     }
 
     toggle->setVisible(setVisible);

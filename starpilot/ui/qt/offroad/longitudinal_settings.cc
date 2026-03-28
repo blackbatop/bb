@@ -1025,9 +1025,11 @@ void StarPilotLongitudinalPanel::updateMetric(bool metric, bool bootRun) {
 }
 
 void StarPilotLongitudinalPanel::updateToggles() {
+  const bool showAllToggles = parent->showAllTogglesEnabled();
+
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -1036,40 +1038,42 @@ void StarPilotLongitudinalPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
 
-    if (key == "CEStopLights") {
-      setVisible &= parent->tuningLevel < parent->starpilotToggleLevels["CEModelStopTime"].toDouble();
-    }
+    if (!showAllToggles) {
+      if (key == "CEStopLights") {
+        setVisible &= parent->tuningLevel < parent->starpilotToggleLevels["CEModelStopTime"].toDouble();
+      }
 
-    else if (key == "CustomCruise" || key == "CustomCruiseLong" || key == "SetSpeedLimit" || key == "SetSpeedOffset") {
-      setVisible &= !parent->hasPCMCruise;
-    }
+      else if (key == "CustomCruise" || key == "CustomCruiseLong" || key == "SetSpeedLimit" || key == "SetSpeedOffset") {
+        setVisible &= !parent->hasPCMCruise;
+      }
 
-    else if (key == "HumanLaneChanges") {
-      setVisible &= parent->hasRadar;
-    }
+      else if (key == "HumanLaneChanges") {
+        setVisible &= parent->hasRadar;
+      }
 
-    else if (key == "MapGears") {
-      setVisible &= parent->isToyota;
-      setVisible &= !parent->isTSK;
-    }
+      else if (key == "MapGears") {
+        setVisible &= parent->isToyota;
+        setVisible &= !parent->isTSK;
+      }
 
-    else if (key == "ReverseCruise") {
-      setVisible &= parent->isToyota;
-    }
+      else if (key == "ReverseCruise") {
+        setVisible &= parent->isToyota;
+      }
 
-    else if (key == "SLCMapboxFiller") {
-      setVisible &= !params.get("MapboxSecretKey").empty();
-    }
+      else if (key == "SLCMapboxFiller") {
+        setVisible &= !params.get("MapboxSecretKey").empty();
+      }
 
-    else if (key == "StartAccel") {
-      setVisible &= !(params.getBool("LongitudinalTune") && params.getBool("HumanAcceleration"));
-    }
+      else if (key == "StartAccel") {
+        setVisible &= !(params.getBool("LongitudinalTune") && params.getBool("HumanAcceleration"));
+      }
 
-    else if (key == "StoppingDecelRate" || key == "VEgoStarting" || key == "VEgoStopping") {
-      setVisible &= !parent->isGM || !params.getBool("ExperimentalGMTune");
-      setVisible &= !parent->isToyota || !params.getBool("FrogsGoMoosTweak");
+      else if (key == "StoppingDecelRate" || key == "VEgoStarting" || key == "VEgoStopping") {
+        setVisible &= !parent->isGM || !params.getBool("ExperimentalGMTune");
+        setVisible &= !parent->isToyota || !params.getBool("FrogsGoMoosTweak");
+      }
     }
 
     if (key == "EVTuning") {

@@ -15,6 +15,7 @@ public:
   explicit StarPilotSettingsWindow(SettingsWindow *parent);
 
   void updateVariables();
+  bool showAllTogglesEnabled();
 
   bool canUsePedal = false;
   bool canUseSDSU = false;

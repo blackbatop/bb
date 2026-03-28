@@ -794,17 +794,21 @@ void StarPilotModelPanel::updateModelLabels(StarPilotListWidget *labelsList) {
 }
 
 void StarPilotModelPanel::updateToggles() {
-  for (auto &[key, toggle] : toggles) {
-    bool setVisible = tuningLevel >= starpilotToggleLevels[key].toDouble();
+  const bool showAllToggles = parent->showAllTogglesEnabled();
 
-    if (key == "ManageBlacklistedModels" || key == "ManageScores") {
-      setVisible &= params.getBool("ModelRandomizer");
-    } else if (key == "SelectModel") {
-      setVisible &= !params.getBool("ModelRandomizer");
-    } else if (key == "RecoveryPower") {
-      setVisible &= (tuningLevel == 3); // Only visible in developer tuning level
-    } else if (key == "StopDistance") {
-      setVisible &= (tuningLevel == 3); // Only visible in developer tuning level
+  for (auto &[key, toggle] : toggles) {
+    bool setVisible = showAllToggles || tuningLevel >= starpilotToggleLevels[key].toDouble();
+
+    if (!showAllToggles) {
+      if (key == "ManageBlacklistedModels" || key == "ManageScores") {
+        setVisible &= params.getBool("ModelRandomizer");
+      } else if (key == "SelectModel") {
+        setVisible &= !params.getBool("ModelRandomizer");
+      } else if (key == "RecoveryPower") {
+        setVisible &= (tuningLevel == 3); // Only visible in developer tuning level
+      } else if (key == "StopDistance") {
+        setVisible &= (tuningLevel == 3); // Only visible in developer tuning level
+      }
     }
 
     toggle->setVisible(setVisible);

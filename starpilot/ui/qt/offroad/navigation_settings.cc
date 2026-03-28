@@ -241,7 +241,7 @@ void StarPilotNavigationPanel::showEvent(QShowEvent *event) {
   } else {
     updateSpeedLimitsToggle->setEnabledButton(1, starpilot_scene.online && util::system_time_valid() && parked);
     updateSpeedLimitsToggle->setValue(starpilot_scene.online ? (parked ? "" : "Not parked") : tr("Offline..."));
-    updateSpeedLimitsToggle->setVisible(parent->tuningLevel >= parent->starpilotToggleLevels["SpeedLimitFiller"].toDouble());
+    updateSpeedLimitsToggle->setVisible(parent->showAllTogglesEnabled() || parent->tuningLevel >= parent->starpilotToggleLevels["SpeedLimitFiller"].toDouble());
   }
 }
 

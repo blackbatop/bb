@@ -389,9 +389,11 @@ void StarPilotVehiclesPanel::updateState(const UIState &s) {
 }
 
 void StarPilotVehiclesPanel::updateToggles() {
+  const bool showAllToggles = parent->showAllTogglesEnabled();
+
   for (auto &[key, toggle] : toggles) {
     if (parentKeys.contains(key)) {
-      toggle->setVisible(false);
+      toggle->setVisible(showAllToggles);
     }
   }
 
@@ -400,46 +402,48 @@ void StarPilotVehiclesPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
+    bool setVisible = showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels[key].toDouble();
 
-    if (gmKeys.contains(key)) {
-      setVisible &= parent->isGM;
-    } else if (hkgKeys.contains(key)) {
-      setVisible &= parent->isHKG;
-    } else if (subaruKeys.contains(key)) {
-      setVisible &= parent->isSubaru;
-    } else if (toyotaKeys.contains(key)) {
-      setVisible &= parent->isToyota;
-    } else if (vehicleInfoKeys.contains(key)) {
-      setVisible = true;
-    }
+    if (!showAllToggles) {
+      if (gmKeys.contains(key)) {
+        setVisible &= parent->isGM;
+      } else if (hkgKeys.contains(key)) {
+        setVisible &= parent->isHKG;
+      } else if (subaruKeys.contains(key)) {
+        setVisible &= parent->isSubaru;
+      } else if (toyotaKeys.contains(key)) {
+        setVisible &= parent->isToyota;
+      } else if (vehicleInfoKeys.contains(key)) {
+        setVisible = true;
+      }
 
-    if (longitudinalKeys.contains(key)) {
-      setVisible &= parent->hasOpenpilotLongitudinal;
-    }
+      if (longitudinalKeys.contains(key)) {
+        setVisible &= parent->hasOpenpilotLongitudinal;
+      }
 
-    if (key == "SNGHack") {
-      setVisible &= !parent->hasSNG;
-    }
+      if (key == "SNGHack") {
+        setVisible &= !parent->hasSNG;
+      }
 
-    else if (key == "GMPedalLongitudinal") {
-      setVisible &= parent->hasPedal || (Hardware::PC() && parent->canUsePedal);
-    }
+      else if (key == "GMPedalLongitudinal") {
+        setVisible &= parent->hasPedal || (Hardware::PC() && parent->canUsePedal);
+      }
 
-    else if (key == "RemapCancelToDistance") {
-      setVisible &= parent->isBolt && (parent->hasPedal || (Hardware::PC() && parent->canUsePedal));
-    }
+      else if (key == "RemapCancelToDistance") {
+        setVisible &= parent->isBolt && (parent->hasPedal || (Hardware::PC() && parent->canUsePedal));
+      }
 
-    else if (key == "SubaruSNG") {
-      setVisible &= parent->hasSNG;
-    }
+      else if (key == "SubaruSNG") {
+        setVisible &= parent->hasSNG;
+      }
 
-    else if (key == "TacoTuneHacks") {
-      setVisible &= parent->isHKGCanFd;
-    }
+      else if (key == "TacoTuneHacks") {
+        setVisible &= parent->isHKGCanFd;
+      }
 
-    else if (key == "VoltSNG") {
-      setVisible &= parent->isVolt && !parent->hasSNG;
+      else if (key == "VoltSNG") {
+        setVisible &= parent->isVolt && !parent->hasSNG;
+      }
     }
 
     toggle->setVisible(setVisible);
@@ -459,8 +463,8 @@ void StarPilotVehiclesPanel::updateToggles() {
     }
   }
 
-  disableOpenpilotLong->setVisible((parent->hasOpenpilotLongitudinal || parent->openpilotLongitudinalControlDisabled) && !parent->hasAlphaLongitudinal && parent->tuningLevel >= parent->starpilotToggleLevels["DisableOpenpilotLongitudinal"].toBool());
-  forceFingerprint->setVisible(parent->tuningLevel >= parent->starpilotToggleLevels["ForceFingerprint"].toBool());
+  disableOpenpilotLong->setVisible(showAllToggles || ((parent->hasOpenpilotLongitudinal || parent->openpilotLongitudinalControlDisabled) && !parent->hasAlphaLongitudinal && parent->tuningLevel >= parent->starpilotToggleLevels["DisableOpenpilotLongitudinal"].toDouble()));
+  forceFingerprint->setVisible(showAllToggles || parent->tuningLevel >= parent->starpilotToggleLevels["ForceFingerprint"].toDouble());
 
   openDescriptions(forceOpenDescriptions, toggles);
 

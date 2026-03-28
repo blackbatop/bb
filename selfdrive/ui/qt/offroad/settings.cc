@@ -164,6 +164,7 @@ void TogglesPanel::showEvent(QShowEvent *event) {
 }
 
 void TogglesPanel::updateToggles() {
+  const bool showAllToggles = params.getBool("ShowAllToggles");
   auto experimental_mode_toggle = toggles["ExperimentalMode"];
   const QString e2e_description = QString("%1<br>"
                                           "<h4>%2</h4><br>"
@@ -185,7 +186,7 @@ void TogglesPanel::updateToggles() {
     capnp::FlatArrayMessageReader cmsg(aligned_buf.align(cp_bytes.data(), cp_bytes.size()));
     cereal::CarParams::Reader CP = cmsg.getRoot<cereal::CarParams>();
 
-    if (hasLongitudinalControl(CP)) {
+    if (hasLongitudinalControl(CP) || showAllToggles) {
       // normal description and toggle
       experimental_mode_toggle->setEnabled(true);
       experimental_mode_toggle->setDescription(e2e_description);
@@ -221,12 +222,12 @@ void TogglesPanel::updateToggles() {
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
   auto disengage_on_accelerator_toggle = toggles["DisengageOnAccelerator"];
-  disengage_on_accelerator_toggle->setVisible(!starpilot_toggles.value("always_on_lateral").toBool());
+  disengage_on_accelerator_toggle->setVisible(showAllToggles || !starpilot_toggles.value("always_on_lateral").toBool());
   auto driver_camera_toggle = toggles["RecordFront"];
-  driver_camera_toggle->setVisible(!starpilot_toggles.value("no_logging").toBool());
-  experimental_mode_toggle->setVisible(!starpilot_toggles.value("conditional_experimental_mode").toBool());
+  driver_camera_toggle->setVisible(showAllToggles || !starpilot_toggles.value("no_logging").toBool());
+  experimental_mode_toggle->setVisible(showAllToggles || !starpilot_toggles.value("conditional_experimental_mode").toBool());
   auto record_audio_toggle = toggles["RecordAudio"];
-  record_audio_toggle->setVisible(!starpilot_toggles.value("no_logging").toBool());
+  record_audio_toggle->setVisible(showAllToggles || !starpilot_toggles.value("no_logging").toBool());
 }
 
 GalaxyQRPopup::GalaxyQRPopup(const QString &url, QWidget *parent) : DialogBase(parent) {
@@ -670,6 +671,9 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
   DeveloperPanel *developerPanel = new DeveloperPanel(this);
   QObject::connect(developerPanel, &DeveloperPanel::openSubPanel, [this]() {subPanelOpen=true;});
   QObject::connect(developerPanel, &DeveloperPanel::openSubSubPanel, [this]() {subSubPanelOpen=true;});
+  QObject::connect(developerPanel, &DeveloperPanel::showAllTogglesChanged, [this]() {
+    updateDeveloperToggle(params.getInt("TuningLevel"));
+  });
 
   QList<QPair<QString, QWidget *>> panels = {
     {tr("Device"), device},
@@ -809,7 +813,7 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
 void SettingsWindow::updateDeveloperToggle(int tuningLevel) {
   for (QAbstractButton *btn : nav_btns->buttons()) {
     if (btn->text() == tr("Developer")) {
-      btn->setVisible(tuningLevel >= 3);
+      btn->setVisible(tuningLevel >= 3 || params.getBool("ShowAllToggles"));
       break;
     }
   }
