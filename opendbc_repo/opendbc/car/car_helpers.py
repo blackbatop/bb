@@ -52,10 +52,16 @@ LEGACY_FORCED_CANDIDATE_MAP = {
   "CHEVROLET_BOLT_CC_2019_2021": "CHEVROLET_BOLT_CC_2018_2021",
 }
 
+GM_CANDIDATE_PREFIXES = ("CHEVROLET_", "GMC_", "CADILLAC_", "BUICK_", "HOLDEN_")
+GM_CORE_FINGERPRINT_MSGS = frozenset((190, 201, 209, 211, 241))
+
 
 def _normalize_forced_candidate(candidate: str | None) -> str | None:
   if candidate is None:
     return None
+  if isinstance(candidate, (bytes, bytearray)):
+    candidate = candidate.decode("utf-8", errors="ignore")
+  candidate = str(candidate)
   return LEGACY_FORCED_CANDIDATE_MAP.get(candidate, candidate)
 
 
@@ -100,6 +106,25 @@ def _normalize_gm_bolt_candidate(candidate: str | None, fingerprints: dict[int, 
     return "CHEVROLET_BOLT_ACC_2022_2023"
 
   return candidate
+
+
+def _is_gm_candidate(candidate: str | None) -> bool:
+  return isinstance(candidate, str) and candidate.startswith(GM_CANDIDATE_PREFIXES)
+
+
+def _get_gm_stored_candidate_fallback(fingerprints: dict[int, dict], stored_candidate: str | None,
+                                      cached_candidate: str | None) -> str | None:
+  pt = fingerprints.get(0, {})
+  # Several GM variants intentionally share FPv1 signatures. If live matching
+  # can't resolve them, reuse the last known GM platform instead of dropping to MOCK.
+  if len(GM_CORE_FINGERPRINT_MSGS.intersection(pt.keys())) < 4:
+    return None
+
+  for candidate in (_normalize_forced_candidate(stored_candidate), _normalize_forced_candidate(cached_candidate)):
+    if _is_gm_candidate(candidate) and candidate != MOCK.MOCK and candidate in interfaces:
+      return candidate
+
+  return None
 
 
 def can_fingerprint(can_recv: CanRecvCallable) -> tuple[str | None, dict[int, dict]]:
@@ -217,6 +242,19 @@ def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multip
   candidate = _normalize_gm_bolt_candidate(candidate, fingerprints)
   candidate = _normalize_forced_candidate(candidate)
   fingerprinted_candidate = candidate
+  stored_candidate = _normalize_forced_candidate(params.get("CarModel"))
+  cached_candidate = _normalize_forced_candidate(getattr(cached_params, "carFingerprint", None))
+
+  if candidate is None:
+    gm_fallback_candidate = _get_gm_stored_candidate_fallback(fingerprints, stored_candidate, cached_candidate)
+    if gm_fallback_candidate is not None:
+      carlog.error({
+        "event": "using stored GM candidate after ambiguous live fingerprint",
+        "candidate": gm_fallback_candidate,
+        "stored_candidate": stored_candidate,
+        "cached_candidate": cached_candidate,
+      })
+      candidate = gm_fallback_candidate
 
   if candidate is None or starpilot_toggles.force_fingerprint:
     if starpilot_toggles.force_fingerprint:

@@ -136,6 +136,15 @@ def _load_first_available_param_value(params: Params, params_cache: Params, sour
   return None
 
 
+def _has_persisted_param_file(params: Params, key: str | bytes) -> bool:
+  try:
+    path = params.get_param_path(key)
+  except Exception:
+    return False
+
+  return bool(path) and os.path.isfile(path)
+
+
 def migrate_starpilot_param_renames(params: Params, params_cache: Params) -> None:
   if STARPILOT_PARAM_RENAME_MIGRATION_FLAG.exists():
     return
@@ -320,6 +329,7 @@ def migrate_starpilot_default_parity(params: Params, params_cache: Params) -> No
   if STARPILOT_DEFAULTS_PARITY_MIGRATION_FLAG.exists():
     return
 
+  seeded_keys: list[str] = []
   desired_bool_values = {
     "AdvancedLateralTune": True,
     "ForceAutoTuneOff": True,
@@ -330,27 +340,34 @@ def migrate_starpilot_default_parity(params: Params, params_cache: Params) -> No
   }
 
   for key, value in desired_bool_values.items():
+    if _has_persisted_param_file(params, key) or _has_persisted_param_file(params_cache, key):
+      continue
     params.put_bool(key, value)
     params_cache.put_bool(key, value)
+    seeded_keys.append(key)
 
-  params.put_float("CEModelStopTime", 7.0)
-  params_cache.put_float("CEModelStopTime", 7.0)
+  if not _has_persisted_param_file(params, "CEModelStopTime") and not _has_persisted_param_file(params_cache, "CEModelStopTime"):
+    params.put_float("CEModelStopTime", 7.0)
+    params_cache.put_float("CEModelStopTime", 7.0)
+    seeded_keys.append("CEModelStopTime")
 
   # Rebase default regression fix:
   # EVTuning must default to enabled on EV/direct-drive platforms to preserve
-  # StarPilot acceleration profile behavior.
+  # StarPilot acceleration profile behavior, but existing user overrides win.
   carparams_blob = params.get("CarParamsPersistent") or params.get("CarParams")
   if carparams_blob is not None:
     try:
       with car.CarParams.from_bytes(carparams_blob) as cp:
         is_ev_platform = cp.transmissionType == car.CarParams.TransmissionType.direct
-      if is_ev_platform and not params.get_bool("TruckTuning"):
+      if is_ev_platform and not params.get_bool("TruckTuning") and not _has_persisted_param_file(params, "EVTuning") and not _has_persisted_param_file(params_cache, "EVTuning"):
         params.put_bool("EVTuning", True)
         params_cache.put_bool("EVTuning", True)
+        seeded_keys.append("EVTuning")
     except Exception:
       cloudlog.exception("Failed EVTuning EV default parity migration")
 
-  cloudlog.warning("Applied one-time StarPilot default parity migration for lateral/longitudinal toggles")
+  if seeded_keys:
+    cloudlog.warning(f"Applied one-time StarPilot default parity migration for {seeded_keys}")
 
   try:
     STARPILOT_DEFAULTS_PARITY_MIGRATION_FLAG.parent.mkdir(parents=True, exist_ok=True)
@@ -524,6 +541,7 @@ def manager_init() -> None:
   # Canonicalize legacy string encodings (e.g. INT params stored as "26.000000")
   # before bulk reads below to avoid repeated cast warnings and UI-side churn.
   migrate_param_type_canonicalization(params)
+  migrate_starpilot_default_parity(params, params_cache)
 
   # set unset params to their default value
   for k in params.all_keys():
@@ -558,7 +576,6 @@ def manager_init() -> None:
 
   # Branch migration: rename legacy Bolt fingerprint persisted in CarParams.
   migrate_legacy_bolt_fingerprint(params)
-  migrate_starpilot_default_parity(params, params_cache)
 
   # set dongle id
   reg_res = register(show_spinner=True)

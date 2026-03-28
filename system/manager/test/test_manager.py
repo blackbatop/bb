@@ -2,6 +2,8 @@ import os
 import pytest
 import signal
 import time
+from pathlib import Path
+import json
 
 from cereal import car
 from openpilot.common.params import Params
@@ -14,6 +16,59 @@ os.environ['FAKEUPLOAD'] = "1"
 
 MAX_STARTUP_TIME = 3
 BLACKLIST_PROCS = ['manage_athenad', 'pandad', 'pigeond']
+
+
+class FileBackedFakeParams:
+  def __init__(self, root: Path, values: dict[str, object] | None = None):
+    self.root = root
+    self.root.mkdir(parents=True, exist_ok=True)
+    for key, value in (values or {}).items():
+      self.put(key, value)
+
+  def get_param_path(self, key):
+    return str(self.root / (key.decode() if isinstance(key, bytes) else str(key)))
+
+  def get(self, key):
+    path = Path(self.get_param_path(key))
+    if not path.is_file():
+      return None
+
+    raw = path.read_bytes()
+    try:
+      return raw.decode("utf-8")
+    except UnicodeDecodeError:
+      return raw
+
+  def get_bool(self, key):
+    value = self.get(key)
+    if value is None:
+      return False
+    if isinstance(value, bytes):
+      value = value.decode("utf-8", errors="ignore")
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+  def put(self, key, value):
+    path = Path(self.get_param_path(key))
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(value, bytes):
+      raw = value
+    elif isinstance(value, bool):
+      raw = b"1" if value else b"0"
+    elif isinstance(value, float):
+      raw = str(float(value)).encode("utf-8")
+    elif isinstance(value, (dict, list)):
+      raw = json.dumps(value, separators=(",", ":")).encode("utf-8")
+    else:
+      raw = str(value).encode("utf-8")
+
+    path.write_bytes(raw)
+
+  def put_bool(self, key, value):
+    self.put(key, bool(value))
+
+  def put_float(self, key, value):
+    self.put(key, float(value))
 
 
 class TestManager:
@@ -84,6 +139,30 @@ class TestManager:
     assert params_cache.get_bool("AlphaLongitudinalEnabled")
     assert params.get("ExperimentalLongitudinalEnabled") is None
     assert params_cache.get("ExperimentalLongitudinalEnabled") is None
+
+  def test_migrate_starpilot_default_parity_preserves_existing_values(self, tmp_path, monkeypatch):
+    monkeypatch.setattr(manager, "STARPILOT_DEFAULTS_PARITY_MIGRATION_FLAG", tmp_path / "starpilot_defaults_parity_v1")
+
+    params = FileBackedFakeParams(tmp_path / "params", {
+      "AdvancedLateralTune": False,
+      "ForceAutoTuneOff": False,
+      "HumanAcceleration": True,
+      "CEModelStopTime": 3.5,
+    })
+    params_cache = FileBackedFakeParams(tmp_path / "cache", {
+      "NNFF": True,
+    })
+
+    manager.migrate_starpilot_default_parity(params, params_cache)
+
+    assert not params.get_bool("AdvancedLateralTune")
+    assert not params.get_bool("ForceAutoTuneOff")
+    assert params.get_bool("HumanAcceleration")
+    assert params.get("CEModelStopTime") == "3.5"
+    assert params_cache.get_bool("NNFF")
+
+    assert Path(params.get_param_path("HumanFollowing")).is_file()
+    assert not params.get_bool("HumanFollowing")
 
   @pytest.mark.skip("this test is flaky the way it's currently written, should be moved to test_onroad")
   def test_clean_exit(self, subtests):

@@ -172,7 +172,15 @@ StarPilotSettingsWindow::StarPilotSettingsWindow(SettingsWindow *parent) : QFram
   shownDescriptions = QJsonDocument::fromJson(QString::fromStdString(params.get("ShownToggleDescriptions")).toUtf8()).object();
 
   QString className = this->metaObject()->className();
-  if (!shownDescriptions.value(className).toBool(false)) {
+  QString legacyClassName = className;
+  legacyClassName.replace("StarPilot", "FrogPilot");
+
+  bool alreadyShown = shownDescriptions.value(className).toBool(false);
+  bool legacyShown = legacyClassName != className && shownDescriptions.value(legacyClassName).toBool(false);
+  if (legacyShown && !alreadyShown) {
+    shownDescriptions.insert(className, true);
+    params.putNonBlocking("ShownToggleDescriptions", QJsonDocument(shownDescriptions).toJson(QJsonDocument::Compact).toStdString());
+  } else if (!alreadyShown) {
     forceOpenDescriptions = true;
   }
 

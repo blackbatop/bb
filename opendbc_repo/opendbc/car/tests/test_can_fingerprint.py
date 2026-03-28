@@ -1,6 +1,6 @@
 import pytest
 from opendbc.car.can_definitions import CanData
-from opendbc.car.car_helpers import FRAME_FINGERPRINT, can_fingerprint
+from opendbc.car.car_helpers import FRAME_FINGERPRINT, _get_gm_stored_candidate_fallback, can_fingerprint
 from opendbc.car.fingerprints import _FINGERPRINTS as FINGERPRINTS
 
 
@@ -53,3 +53,24 @@ class TestCanFingerprint:
         car_fingerprint, _ = can_fingerprint(can_recv)
         assert car_fingerprint == car_model
         assert frames == expected_frames + 2  # TODO: fix extra frames
+
+  def test_gm_stored_candidate_fallback_prefers_persisted_model(self):
+    fingerprints = {0: {190: 6, 201: 8, 209: 7, 211: 2, 241: 6}}
+
+    candidate = _get_gm_stored_candidate_fallback(fingerprints, "CHEVROLET_VOLT_CC", None)
+
+    assert candidate == "CHEVROLET_VOLT_CC"
+
+  def test_gm_stored_candidate_fallback_uses_cached_model(self):
+    fingerprints = {0: {190: 6, 201: 8, 209: 7, 211: 2, 241: 6}}
+
+    candidate = _get_gm_stored_candidate_fallback(fingerprints, "MOCK", "CHEVROLET_VOLT_CC")
+
+    assert candidate == "CHEVROLET_VOLT_CC"
+
+  def test_gm_stored_candidate_fallback_ignores_non_gm_fingerprint(self):
+    fingerprints = {0: {1: 1, 2: 2, 3: 3, 4: 4}}
+
+    candidate = _get_gm_stored_candidate_fallback(fingerprints, "CHEVROLET_VOLT_CC", "CHEVROLET_VOLT_CC")
+
+    assert candidate is None
