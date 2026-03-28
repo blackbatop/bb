@@ -378,7 +378,6 @@ def main():
     lag, valid_blocks = initial_lag_params
     lag_learner.reset(lag, valid_blocks)
 
-  # StarPilot variables
   sm = sm.extend(['starpilotPlan'])
 
   lag_learner.starpilot_toggles = get_starpilot_toggles()
@@ -402,5 +401,4 @@ def main():
       if sm.frame % 1200 == 0: # cache every 60 seconds
         params.put_nonblocking("LiveDelay", lag_msg_dat)
 
-    # StarPilot variables
     lag_learner.starpilot_toggles = get_starpilot_toggles(sm)

@@ -56,7 +56,7 @@ class SettingsLayout(Widget):
     self._current_panel = PanelType.DEVICE
 
     # Panel depth tracking for hierarchical back navigation
-    # 0 = top level (settings main), 1+ = sub-panels (StarPilot categories)
+    # 0 = top level (settings main), 1+ = nested custom panels
     self._panel_depth = 0
 
     # Panel configuration
@@ -73,7 +73,7 @@ class SettingsLayout(Widget):
       PanelType.STARPILOT: PanelInfo(tr_noop("StarPilot"), StarPilotLayout()),
     }
 
-    # Connect StarPilot depth callback for hierarchical back navigation
+    # Connect the custom-panel depth callback for hierarchical back navigation
     self._panels[PanelType.STARPILOT].instance.set_depth_callback(self.set_panel_depth)
     self._panels[PanelType.STARPILOT].instance.set_settings_layout(self)
 

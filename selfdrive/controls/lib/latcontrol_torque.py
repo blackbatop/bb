@@ -59,7 +59,7 @@ BOLT_CARS = BOLT_2022_2023_CARS + BOLT_2018_2021_CARS + BOLT_2017_CARS
 
 
 def get_friction_threshold(v_ego: float) -> float:
-  # Keep StarPilot's speed-scaled friction threshold behavior.
+  # Keep the speed-scaled friction threshold behavior.
   return float(np.interp(v_ego, [1 * CV.MPH_TO_MS, 20 * CV.MPH_TO_MS, 75 * CV.MPH_TO_MS], [0.16, 0.19, 0.27]))
 
 

@@ -247,7 +247,6 @@ void speed_mismatch_check(const float speed_2);
 
 void safety_tick(const safety_config *safety_config);
 
-// OPGM variables
 bool longitudinal_interceptor_checks(const CANPacket_t *to_send);
 
 // This can be set by the safety hooks
@@ -268,7 +267,6 @@ extern bool acc_main_on; // referred to as "ACC off" in ISO 15622:2018
 extern int cruise_button_prev;
 extern bool safety_rx_checks_invalid;
 
-// StarPilot variables
 extern bool aol_allowed;
 extern bool lkas_button_prev;
 extern bool lkas_on;
@@ -294,7 +292,6 @@ extern uint32_t ts_angle_check_last;
 extern int desired_angle_last;
 extern struct sample_t angle_meas;         // last 6 steer angles/curvatures
 
-// OPGM variables
 extern bool enable_gas_interceptor;
 extern int gas_interceptor_prev;
 extern bool gm_remote_start_boots_comma;
@@ -317,7 +314,6 @@ extern bool gm_remote_start_boots_comma;
 // This flag allows AEB to be commanded from openpilot.
 #define ALT_EXP_ALLOW_AEB 16
 
-// StarPilot variables
 #define ALT_EXP_ALWAYS_ON_LATERAL 32
 #define ALT_EXP_GM_REMAP_CANCEL_TO_DISTANCE 64
 

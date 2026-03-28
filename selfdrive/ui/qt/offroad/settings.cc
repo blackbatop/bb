@@ -128,7 +128,6 @@ TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
   toggles["ExperimentalMode"]->setActiveIcon("../assets/icons/experimental.svg");
   toggles["ExperimentalMode"]->setConfirmation(true, true);
 
-  // StarPilot variables
   connect(toggles["IsMetric"], &ToggleControl::toggleFlipped, [=](bool isMetric) {
     updateMetric(isMetric);
   });
@@ -216,7 +215,6 @@ void TogglesPanel::updateToggles() {
     experimental_mode_toggle->setDescription(e2e_description);
   }
 
-  // StarPilot variables
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
@@ -567,7 +565,6 @@ void SettingsWindow::showEvent(QShowEvent *event) {
   setCurrentPanel(0);
 }
 
-// StarPilot variables
 void SettingsWindow::hideEvent(QHideEvent *event) {
   closePanel();
   closeSubPanel();
@@ -628,7 +625,6 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
   sidebar_layout->addSpacing(10);
   sidebar_layout->addWidget(close_btn, 0, Qt::AlignRight);
   QObject::connect(close_btn, &QPushButton::clicked, [this]() {
-    // StarPilot variables
     if (subSubSubPanelOpen) {
       closeSubSubSubPanel();
       subSubSubPanelOpen = false;
@@ -658,7 +654,6 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
   auto networking = new Networking(this);
   QObject::connect(uiState()->prime_state, &PrimeState::changed, networking, &Networking::setPrimeType);
 
-  // StarPilot variables
   QObject::connect(toggles, &TogglesPanel::updateMetric, this, &SettingsWindow::updateMetric);
 
   StarPilotSettingsWindow *starpilotSettingsWindow = new StarPilotSettingsWindow(this);
@@ -715,7 +710,6 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     panel_widget->addWidget(panel_frame);
 
     QObject::connect(btn, &QPushButton::clicked, [=, w = panel_frame]() {
-      // StarPilot variables
       if (w->widget() == starpilotSettingsWindow) {
         bool tuningLevelConfirmed = params.getBool("TuningLevelConfirmed");
 
@@ -805,11 +799,9 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     }
   )");
 
-  // StarPilot variables
   updateDeveloperToggle(params.getInt("TuningLevel"));
 }
 
-// StarPilot variables
 void SettingsWindow::updateDeveloperToggle(int tuningLevel) {
   for (QAbstractButton *btn : nav_btns->buttons()) {
     if (btn->text() == tr("Developer")) {

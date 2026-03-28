@@ -67,7 +67,6 @@ public slots:
 signals:
   void showDescriptionEvent();
 
-  // StarPilot variables
   void hideDescriptionEvent();
 
 protected:
@@ -135,7 +134,6 @@ public:
     toggle.update();
   }
 
-  // StarPilot variables
   void forceOn(bool force) {
     toggle.setEnabled(!force);
     if (force && !toggle.on) {

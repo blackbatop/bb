@@ -24,7 +24,6 @@ def main():
   sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'liveParameters', 'radarState', 'modelV2', 'selfdriveState'],
                            poll='modelV2')
 
-  # StarPilot variables
   sm = sm.extend(['starpilotCarState', 'starpilotPlan'])
 
   starpilot_toggles = get_starpilot_toggles()
@@ -42,7 +41,6 @@ def main():
       msg.driverAssistance.rightLaneDeparture = ldw.right
       pm.send('driverAssistance', msg)
 
-    # StarPilot variables
     starpilot_toggles = get_starpilot_toggles(sm)
 
 

@@ -13,7 +13,6 @@ public:
   void updateState(const UIState &s);
   void draw(QPainter &p, const QRect &surface_rect);
 
-  // StarPilot variables
   StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
   QJsonObject starpilot_toggles;

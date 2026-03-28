@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# PFEIFER - SLC - Modified by FrogAi for StarPilot
+# PFEIFER - SLC - Modified by FrogAi
 import calendar
 import json
 import numpy as np
@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
 
-from openpilot.starpilot.common.starpilot_utilities import calculate_bearing_offset, is_url_pingable
+from openpilot.starpilot.common.starpilot_utilities import calculate_bearing_offset, calculate_distance_to_point, is_url_pingable
 
 FREE_MAPBOX_REQUESTS = 100_000
 
@@ -84,6 +84,15 @@ class SpeedLimitController:
       return 0
     offset_map = OFFSET_MAP_METRIC if self.starpilot_toggles.is_metric else OFFSET_MAP_IMPERIAL
     return next((getattr(self.starpilot_toggles, offset) for low, high, offset in offset_map if low < self.target < high), 0)
+
+  def _read_next_map_speed_limit(self):
+    next_map_speed_limit = self.starpilot_planner.params_memory.get("NextMapSpeedLimit") or {}
+    if isinstance(next_map_speed_limit, (bytes, str)):
+      try:
+        next_map_speed_limit = json.loads(next_map_speed_limit)
+      except (TypeError, ValueError):
+        next_map_speed_limit = {}
+    return next_map_speed_limit if isinstance(next_map_speed_limit, dict) else {}
 
   def get_mapbox_speed_limit(self, now, time_validated, v_ego, sm):
     if not self.starpilot_planner.gps_valid or not self.mapbox_token or (sm["carState"].steeringAngleDeg - sm["liveParameters"].angleOffsetDeg) >= 45:
@@ -311,8 +320,30 @@ class SpeedLimitController:
       self.unconfirmed_speed_limit = 0
 
   def update_map_speed_limit(self, v_ego, sm):
-    self.map_speed_limit = sm["mapdOut"].speedLimit
-    self.next_speed_limit = sm["mapdOut"].nextSpeedLimit
+    next_speed_limit_distance = sm["mapdOut"].nextSpeedLimitDistance
+
+    if self.starpilot_toggles.speed_limit_filler:
+      next_map_speed_limit = self._read_next_map_speed_limit()
+      filler_map_speed_limit = self.starpilot_planner.params_memory.get_float("MapSpeedLimit")
+      filler_next_speed_limit = next_map_speed_limit.get("speedlimit", 0)
+
+      if filler_map_speed_limit > 0 or filler_next_speed_limit > 0:
+        self.map_speed_limit = filler_map_speed_limit
+        self.next_speed_limit = filler_next_speed_limit
+        next_speed_limit_distance = next_map_speed_limit.get("distance", 0)
+
+        next_latitude = next_map_speed_limit.get("latitude")
+        next_longitude = next_map_speed_limit.get("longitude")
+        if self.starpilot_planner.gps_valid and next_latitude is not None and next_longitude is not None:
+          current_latitude = self.starpilot_planner.gps_position.get("latitude")
+          current_longitude = self.starpilot_planner.gps_position.get("longitude")
+          next_speed_limit_distance = calculate_distance_to_point(current_latitude, current_longitude, next_latitude, next_longitude)
+      else:
+        self.map_speed_limit = sm["mapdOut"].speedLimit
+        self.next_speed_limit = sm["mapdOut"].nextSpeedLimit
+    else:
+      self.map_speed_limit = sm["mapdOut"].speedLimit
+      self.next_speed_limit = sm["mapdOut"].nextSpeedLimit
 
     if self.next_speed_limit > 0:
       if self.map_speed_limit < self.next_speed_limit:
@@ -322,7 +353,7 @@ class SpeedLimitController:
       else:
         max_lookahead = 0
 
-      if sm["mapdOut"].nextSpeedLimitDistance < max_lookahead:
+      if next_speed_limit_distance < max_lookahead:
         self.map_speed_limit = self.next_speed_limit
 
   def update_override(self, v_cruise, v_cruise_diff, v_ego, v_ego_diff, sm):

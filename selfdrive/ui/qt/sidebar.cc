@@ -44,12 +44,10 @@ Sidebar::Sidebar(QWidget *parent) : QFrame(parent), onroad(false), flag_pressed(
 
   pm = std::make_unique<PubMaster>(std::vector<const char*>{"bookmarkButton"});
 
-  // StarPilot variables
   QObject::connect(starpilotUIState(), &StarPilotUIState::themeUpdated, this, &Sidebar::updateTheme);
 }
 
 void Sidebar::mousePressEvent(QMouseEvent *event) {
-  // StarPilot variables
   QPoint pos = event->pos();
 
   static constexpr QRect cpuRect = {30, 496, 240, 126};
@@ -118,7 +116,6 @@ void Sidebar::offroadTransition(bool offroad) {
 void Sidebar::updateState(const UIState &s, const StarPilotUIState &fs) {
   if (!isVisible()) return;
 
-  // StarPilot variables
   const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
@@ -172,7 +169,6 @@ void Sidebar::updateState(const UIState &s, const StarPilotUIState &fs) {
 
   setProperty("recordingAudio", s.scene.recording_audio);
 
-  // StarPilot variables
   if (starpilot_toggles.value("cpu_metrics").toBool() || starpilot_toggles.value("gpu_metrics").toBool()) {
     capnp::List<int8_t>::Reader cpu_loads = deviceState.getCpuUsagePercent();
     int cpu_usage = cpu_loads.size() != 0 ? std::accumulate(cpu_loads.begin(), cpu_loads.end(), 0) / cpu_loads.size() : 0;
@@ -241,7 +237,6 @@ void Sidebar::paintEvent(QPaintEvent *event) {
   }
   p.setOpacity(1.0);
 
-  // StarPilot variables
   StarPilotUIState *fs = starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
@@ -289,7 +284,6 @@ void Sidebar::paintEvent(QPaintEvent *event) {
   }
 }
 
-// StarPilot variables
 void Sidebar::showEvent(QShowEvent *event) {
   updateTheme();
 }

@@ -101,6 +101,8 @@ def terminate_child(proc: subprocess.Popen[str]) -> None:
 
 
 def run_mapd_once() -> int:
+  OFFLINE_ROOT.mkdir(parents=True, exist_ok=True)
+
   proc = subprocess.Popen(
     [MAPD_BIN.as_posix()],
     cwd=MAPD_DIR,

@@ -24,7 +24,6 @@ VisualAlert = car.CarControl.HUDControl.VisualAlert
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 EventName = log.OnroadEvent.EventName
 
-# StarPilot variables
 StarPilotAlertStatus = custom.StarPilotSelfdriveState.AlertStatus
 StarPilotAudibleAlert = custom.StarPilotCarControl.HUDControl.AudibleAlert
 StarPilotEventName = custom.StarPilotOnroadEvent.EventName
@@ -57,7 +56,6 @@ class ET:
 # get event name from enum
 EVENT_NAME = {v: k for k, v in EventName.schema.enumerants.items()}
 
-# StarPilot variables
 STARPILOT_EVENT_NAME = {v: k for k, v in StarPilotEventName.schema.enumerants.items()}
 
 
@@ -67,7 +65,6 @@ class Events:
     self.static_events: list[int] = []
     self.event_counters = dict.fromkeys((STARPILOT_EVENTS if starpilot else EVENTS).keys(), 0)
 
-    # StarPilot variables
     self.starpilot = starpilot
 
   @property
@@ -406,7 +403,6 @@ def invalid_lkas_setting_alert(CP: car.CarParams, CS: car.CarState, sm: messagin
   return NormalPermanentAlert("Invalid LKAS setting", text)
 
 
-# StarPilot variables
 def custom_startup_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, metric: bool, soft_disable_time: int, personality, starpilot_toggles: SimpleNamespace) -> Alert:
   return StartupAlert(starpilot_toggles.startup_alert_top, starpilot_toggles.startup_alert_bottom, alert_status=StarPilotAlertStatus.starpilot)
 
@@ -1104,7 +1100,6 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
   },
 }
 
-# StarPilot variables
 STARPILOT_EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
   StarPilotEventName.blockUser: {
     ET.PERMANENT: Alert(
@@ -1199,6 +1194,22 @@ STARPILOT_EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
   StarPilotEventName.trafficModeInactive: {
     ET.WARNING: Alert(
       "Traffic Mode Disabled",
+      "",
+      StarPilotAlertStatus.starpilot, AlertSize.small,
+      Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 3.),
+  },
+
+  StarPilotEventName.switchbackModeActive: {
+    ET.WARNING: Alert(
+      "Switchback Mode",
+      "",
+      StarPilotAlertStatus.starpilot, AlertSize.small,
+      Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 3.),
+  },
+
+  StarPilotEventName.switchbackModeInactive: {
+    ET.WARNING: Alert(
+      "Switchback Mode Disabled",
       "",
       StarPilotAlertStatus.starpilot, AlertSize.small,
       Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 3.),

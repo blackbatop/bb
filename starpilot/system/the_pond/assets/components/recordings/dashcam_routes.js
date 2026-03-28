@@ -26,6 +26,10 @@ let flushTimerId = null
 let seenRouteNames = new Set()
 
 function formatRouteDate(dateString) {
+  if (!dateString) {
+    return "Unknown Date"
+  }
+
   const date = new Date(dateString)
   if (isNaN(date.getTime())) {
     return dateString

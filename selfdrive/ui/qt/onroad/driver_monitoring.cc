@@ -73,7 +73,6 @@ void DriverMonitorRenderer::draw(QPainter &painter, const QRect &surface_rect) {
   float y = surface_rect.height() - offset;
   float opacity = is_active ? 0.65f : 0.2f;
 
-  // StarPilot variables
   if (onroad_distance_btn_enabled) {
     if (is_rhd) {
       x -= UI_BORDER_SIZE + (btn_size + UI_BORDER_SIZE) + UI_BORDER_SIZE;
@@ -118,7 +117,6 @@ void DriverMonitorRenderer::draw(QPainter &painter, const QRect &surface_rect) {
 
   painter.restore();
 
-  // StarPilot variables
   if (starpilot_nvg) {
     starpilot_nvg->dmIconPosition.setX(x);
     starpilot_nvg->dmIconPosition.setY(y);

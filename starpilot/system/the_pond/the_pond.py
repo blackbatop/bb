@@ -3348,7 +3348,7 @@ def setup(app):
           "name": name,
           "segment_urls": segment_urls,
           "total_duration": round(total_duration),
-          "date": utilities.get_route_start_time(footage_path),
+          "date": utilities.get_route_start_time(base_path),
           "available_cameras": utilities.get_available_cameras(base_path),
         }, 200
     return {"error": "Route not found"}, 404
@@ -3382,8 +3382,7 @@ def setup(app):
               pass
 
         if cleared:
-          rlog_path = f"{segment_dir}/rlog"
-          route_timestamp_dt = utilities.get_route_start_time(rlog_path)
+          route_timestamp_dt = utilities.get_route_start_time(segment_dir)
           original_timestamp = route_timestamp_dt.isoformat() if route_timestamp_dt else None
 
     if cleared:

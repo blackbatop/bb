@@ -83,6 +83,7 @@ class UIState:
     self.light_sensor: float = -1.0
     self._param_update_time: float = 0.0
     self.always_on_lateral_active: bool = False
+    self.switchback_mode_enabled: bool = False
     self.traffic_mode_enabled: bool = False
     self.conditional_status: int = 0
 
@@ -148,6 +149,7 @@ class UIState:
 
     self.is_metric = self.params.get_bool("IsMetric")
     self.always_on_dm = self.params.get_bool("AlwaysOnDM")
+    self.switchback_mode_enabled = self.params_memory.get_bool("SwitchbackModeEnabled") if self.started else False
     if self.sm.valid.get("starpilotCarState", False):
       starpilot_car_state = self.sm["starpilotCarState"]
       self.always_on_lateral_active = (not self.sm["selfdriveState"].enabled and

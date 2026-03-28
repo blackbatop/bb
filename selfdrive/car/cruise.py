@@ -40,20 +40,30 @@ class VCruiseHelper:
     self.button_timers = {ButtonType.decelCruise: 0, ButtonType.accelCruise: 0}
     self.button_change_states = {btn: {"standstill": False, "enabled": False} for btn in self.button_timers}
 
-    # OPGM variables
     self.gm_cc_only = self.CP.carFingerprint in CC_ONLY_CAR and self.CP.flags & GMFlags.CC_LONG.value
+
+  def _get_short_press_delta(self, is_metric, starpilot_toggles: SimpleNamespace) -> float:
+    base_delta = 1. if is_metric else IMPERIAL_INCREMENT
+    return base_delta * starpilot_toggles.cruise_increase
+
+  def _normalize_initialized_v_cruise(self, v_cruise_kph: float, starpilot_toggles: SimpleNamespace) -> float:
+    if starpilot_toggles.cruise_increase % 5 != 0:
+      return v_cruise_kph
+
+    v_cruise_delta = self._get_short_press_delta(starpilot_toggles.is_metric, starpilot_toggles)
+    return round(round(v_cruise_kph / v_cruise_delta) * v_cruise_delta, 1)
 
   @property
   def v_cruise_initialized(self):
     return self.v_cruise_kph != V_CRUISE_UNSET
 
-  def update_v_cruise(self, CS, enabled, is_metric, starpilot_toggles):
+  def update_v_cruise(self, CS, enabled, is_metric, speed_limit_changed, starpilot_toggles):
     self.v_cruise_kph_last = self.v_cruise_kph
 
     if CS.cruiseState.available:
       if self.gm_cc_only or not self.CP.pcmCruise:
         # if stock cruise is completely disabled, then we can use our own set speed logic
-        self._update_v_cruise_non_pcm(CS, enabled, is_metric, starpilot_toggles)
+        self._update_v_cruise_non_pcm(CS, enabled, is_metric, speed_limit_changed, starpilot_toggles)
         self.v_cruise_cluster_kph = self.v_cruise_kph
         self.update_button_timers(CS, enabled)
       else:
@@ -69,7 +79,7 @@ class VCruiseHelper:
       self.v_cruise_kph = V_CRUISE_UNSET
       self.v_cruise_cluster_kph = V_CRUISE_UNSET
 
-  def _update_v_cruise_non_pcm(self, CS, enabled, is_metric, starpilot_toggles):
+  def _update_v_cruise_non_pcm(self, CS, enabled, is_metric, speed_limit_changed, starpilot_toggles):
     # handle button presses. TODO: this should be in state_control, but a decelCruise press
     # would have the effect of both enabling and changing speed is checked after the state transition
     if not enabled:
@@ -94,6 +104,10 @@ class VCruiseHelper:
           break
 
     if button_type is None:
+      return
+
+    # Don't adjust speed when pressing to confirm or deny speed limit changes
+    if speed_limit_changed:
       return
 
     # Don't adjust speed when pressing resume to exit standstill
@@ -130,7 +144,8 @@ class VCruiseHelper:
         self.button_timers[b.type.raw] = 1 if b.pressed else 0
         self.button_change_states[b.type.raw] = {"standstill": CS.cruiseState.standstill, "enabled": enabled}
 
-  def initialize_v_cruise(self, CS, experimental_mode: bool, resume_prev_button: bool, starpilot_toggles: SimpleNamespace) -> None:
+  def initialize_v_cruise(self, CS, experimental_mode: bool, resume_prev_button: bool,
+                          starpilot_toggles: SimpleNamespace, desired_speed_limit: float = 0.0) -> None:
     # initializing is handled by the PCM
     if self.CP.pcmCruise and not self.gm_cc_only:
       return
@@ -140,6 +155,9 @@ class VCruiseHelper:
     if (any(b.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for b in CS.buttonEvents)
       and self.v_cruise_initialized or (self.gm_cc_only and resume_prev_button)):
       self.v_cruise_kph = self.v_cruise_kph_last
+    elif desired_speed_limit > 0 and getattr(starpilot_toggles, "set_speed_limit", False):
+      initialized_speed_limit_kph = self._normalize_initialized_v_cruise(desired_speed_limit * CV.MS_TO_KPH, starpilot_toggles)
+      self.v_cruise_kph = float(np.clip(initialized_speed_limit_kph, V_CRUISE_MIN, V_CRUISE_MAX))
     else:
       self.v_cruise_kph = int(round(np.clip(CS.vEgo * CV.MS_TO_KPH, engage_floor_kph, V_CRUISE_MAX)))
 

@@ -1528,6 +1528,28 @@
         "is_parent_toggle": true
       },
       {
+        "key": "SwitchbackModeCooldown",
+        "label": "Switchback Mode Cooldown",
+        "description": "Set the minimum time between repeated steering-limit and minimum-steer-speed alerts while \"Switchback Mode\" is active. Useful on winding roads where \"Turn Exceeds Steering Limit\" and \"Steer Unavailable Under\" can repeat frequently. Set to Off to disable the cooldown even when the mode is on.",
+        "data_type": "int",
+        "ui_type": "numeric",
+        "min": 0.0,
+        "max": 60.0,
+        "step": 1.0,
+        "parent_key": "AlertVolumeControl"
+      },
+      {
+        "key": "BelowSteerSpeedVolume",
+        "label": "Min Steer Speed Alert Volume",
+        "description": "Set the volume for the \"Steer Unavailable Under\" alert shown below the car's minimum steering speed. Set to Muted to silence only this alert.",
+        "data_type": "int",
+        "ui_type": "numeric",
+        "min": 0.0,
+        "max": 101.0,
+        "step": 1.0,
+        "parent_key": "AlertVolumeControl"
+      },
+      {
         "key": "DisengageVolume",
         "label": "Disengage Volume",
         "description": "Set the volume for alerts when openpilot disengages.\n\nExamples include: \"Cruise Fault: Restart the Car\", \"Parking Brake Engaged\", \"Pedal Pressed\".",

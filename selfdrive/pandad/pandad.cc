@@ -43,7 +43,6 @@
 
 ExitHandler do_exit;
 
-// StarPilot variables
 static uint64_t last_door_lock_command_time = 0;
 
 bool check_all_connected(const std::vector<Panda *> &pandas) {
@@ -111,7 +110,6 @@ void can_send_thread(std::vector<Panda *> pandas, bool fake_send) {
       LOGE("sendcan too old to send: %" PRIu64 ", %" PRIu64, nanos_since_boot(), event.getLogMonoTime());
     }
 
-    // StarPilot variables
     for (const cereal::CanData::Reader &can : event.getSendcan()) {
       if (can.getAddress() == 0x750) {
         last_door_lock_command_time = nanos_since_boot();

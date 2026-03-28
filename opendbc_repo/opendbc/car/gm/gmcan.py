@@ -136,7 +136,7 @@ def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop, 
 
     return packer.make_can_msg("ASCMGasRegenCmd", bus, values)
 
-  # Keep GM Global A camera-long GasRegen bytes aligned with StarPilot's legacy layout.
+  # Use the legacy GM Global A camera-long GasRegen byte layout.
   # The regenerated DBC shape does not expose the same wire-format helper fields.
   throttle = int(throttle)
   dat = bytearray(8)

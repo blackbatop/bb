@@ -71,7 +71,6 @@ class TestChryslerSafety(common.CarSafetyTest, common.MotorTorqueSteeringSafetyT
       self.assertFalse(self._tx(self._button_msg(cancel=True, resume=True)))
       self.assertFalse(self._tx(self._button_msg(cancel=False, resume=False)))
 
-  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # DAS_3, bit 20 is ACC_AVAILABLE
     values = {"ACC_AVAILABLE": 1 if toggle_on else 0}

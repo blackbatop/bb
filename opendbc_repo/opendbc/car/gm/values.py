@@ -159,14 +159,13 @@ class GMSafetyFlags(IntFlag):
   HW_CAM_LONG = 2
   EV = 4
 
-  # OPGM variables
   FLAG_GM_CC_LONG = 8
   FLAG_GM_GAS_INTERCEPTOR = 16
   FLAG_GM_NO_ACC = 32
   FLAG_GM_PEDAL_LONG = 64
   HW_ASCM_LONG = 128
 
-  # StarPilot parity variables
+  # Additional GM hardware and flag values
   HW_ASCM_INT = 256
   FLAG_GM_FORCE_BRAKE_C9 = 512
   HW_SDGM = 1024
@@ -437,7 +436,6 @@ class CanBus:
   DROPPED = 192
 
 
-# OPGM variables
 class GMFlags(IntFlag):
   PEDAL_LONG = 1
   CC_LONG = 2
@@ -567,5 +565,4 @@ STEER_THRESHOLD = 1.0
 
 DBC = CAR.create_dbc_map()
 
-# StarPilot variables
 CAMERA_ACC_CAR.update({CAR.CHEVROLET_TRAX})

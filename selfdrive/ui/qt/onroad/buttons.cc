@@ -27,7 +27,6 @@ ExperimentalButton::ExperimentalButton(QWidget *parent) : experimental_mode(fals
   experimental_img = loadPixmap("../assets/icons/experimental.svg", {img_size, img_size});
   QObject::connect(this, &QPushButton::clicked, this, &ExperimentalButton::changeMode);
 
-  // StarPilot variables
   QObject::connect(starpilotUIState(), &StarPilotUIState::themeUpdated, this, &ExperimentalButton::updateTheme);
 }
 
@@ -35,7 +34,6 @@ void ExperimentalButton::changeMode() {
   const auto cp = (*uiState()->sm)["carParams"].getCarParams();
   bool can_change = hasLongitudinalControl(cp) && params.getBool("ExperimentalModeConfirmed");
   if (can_change) {
-    // StarPilot variables
     if (starpilot_toggles.value("conditional_experimental_mode").toBool()) {
       int override_value = (starpilot_scene.conditional_status == 1 || starpilot_scene.conditional_status == 2) ? 0 : experimental_mode ? 1 : 2;
       params_memory.putInt("CEStatus", override_value);
@@ -54,7 +52,6 @@ void ExperimentalButton::updateState(const UIState &s, const StarPilotUIState &f
     update();
   }
 
-  // StarPilot variables
   const cereal::CarState::Reader &carState = (*s.sm)["carState"].getCarState();
 
   updateBackgroundColor();
@@ -88,7 +85,6 @@ void ExperimentalButton::paintEvent(QPaintEvent *event) {
   }
 }
 
-// StarPilot variables
 void ExperimentalButton::showEvent(QShowEvent *event) {
   updateTheme();
 }
@@ -102,6 +98,8 @@ void ExperimentalButton::updateBackgroundColor() {
     background_color = bg_colors[STATUS_CEM_DISABLED];
   } else if (experimental_mode) {
     background_color = bg_colors[STATUS_EXPERIMENTAL_MODE_ENABLED];
+  } else if (starpilot_scene.switchback_mode_enabled) {
+    background_color = bg_colors[STATUS_SWITCHBACK_MODE_ENABLED];
   } else if (starpilot_scene.traffic_mode_enabled) {
     background_color = bg_colors[STATUS_TRAFFIC_MODE_ENABLED];
   } else {

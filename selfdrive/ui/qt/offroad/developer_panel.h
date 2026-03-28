@@ -10,7 +10,6 @@ public:
   explicit DeveloperPanel(SettingsWindow *parent);
   void showEvent(QShowEvent *event) override;
 
-// StarPilot variables
 signals:
   void openSubPanel();
   void openSubSubPanel();
@@ -25,7 +24,6 @@ private:
   bool is_release;
   bool offroad = false;
 
-  // StarPilot variables
   bool forceOpenDescriptions = false;
   bool hasBSM = true;
   bool hasOpenpilotLongitudinal = true;

@@ -4,7 +4,6 @@ Import('env', 'qt_env', 'arch', 'common', 'messaging', 'visionipc', 'transformat
 base_libs = [common, messaging, visionipc, transformations,
              'm', 'OpenCL', 'ssl', 'crypto', 'pthread'] + qt_env["LIBS"]
 
-# StarPilot variables
 base_libs += ['avcodec', 'avformat', 'avutil', 'swresample', 'yuv', 'OmxCore']
 
 if arch == 'larch64':
@@ -26,7 +25,6 @@ widgets_src = ["qt/widgets/input.cc", "qt/widgets/wifi.cc", "qt/prime_state.cc",
                "qt/widgets/scrollview.cc", "qt/widgets/cameraview.cc", "#third_party/qrcode/QrCode.cc",
                "qt/request_repeater.cc", "qt/qt_window.cc", "qt/network/networking.cc", "qt/network/wifi_manager.cc"]
 
-# StarPilot variables
 starpilot_widgets_src = ["../../starpilot/ui/qt/widgets/starpilot_controls.cc"]
 widgets_src += starpilot_widgets_src
 
@@ -41,7 +39,6 @@ qt_src = ["main.cc", "ui.cc", "qt/sidebar.cc", "qt/body.cc",
           "qt/onroad/onroad_home.cc", "qt/onroad/annotated_camera.cc", "qt/onroad/model.cc",
           "qt/onroad/buttons.cc", "qt/onroad/alerts.cc", "qt/onroad/driver_monitoring.cc", "qt/onroad/hud.cc"]
 
-# StarPilot variables
 qt_env['CPPPATH'] += ["../../starpilot/ui/screenrecorder/openmax/include/"]
 
 starpilot_src = ["../../starpilot/ui/starpilot_ui.cc", "../../starpilot/ui/qt/offroad/data_settings.cc",

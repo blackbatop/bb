@@ -51,7 +51,6 @@ static void nissan_rx_hook(const CANPacket_t *msg) {
     pcm_cruise_check(cruise_engaged);
   }
 
-  // StarPilot variables
   if ((msg->addr == 0x1B6U) && (msg->bus == (nissan_alt_eps ? 2U : 1U))) {
     acc_main_on = GET_BIT(msg, 36U);
   }

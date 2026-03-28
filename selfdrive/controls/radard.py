@@ -59,7 +59,6 @@ class Track:
     self.K_K = kalman_params.K
     self.kf = KF1D([[v_lead], [0.0]], self.K_A, self.K_C, self.K_K)
 
-    # StarPilot variables
     self.leadTrackID = 0
     self.radarfulFilter = FirstOrderFilter(0, 0.5, self.K_A[0][1])
 
@@ -223,7 +222,6 @@ def get_lead(v_ego: float, ready: bool, tracks: dict[int, Track], lead_msg: capn
         closest_track = min(far_lead_tracks, key=lambda c: c.dRel)
         lead_dict = closest_track.get_RadarState()
 
-  # StarPilot variables
   for track in tracks.values():
     track.leadTrackID = lead_dict.get('radarTrackId', -1)
 
@@ -260,7 +258,6 @@ class RadarD:
 
     self.ready = False
 
-    # StarPilot variables
     self.starpilot_radar_state = custom.StarPilotRadarState.new_message()
     self.starpilot_toggles = get_starpilot_toggles()
 
@@ -311,7 +308,6 @@ class RadarD:
       self.radar_state.leadTwo = get_lead(self.v_ego, self.ready, self.tracks, leads_v3[1], model_v_ego, sm['modelV2'],
                                           sm['carState'].standstill, sm['starpilotPlan'], self.starpilot_toggles, low_speed_override=False)
 
-    # StarPilot variables
     if self.ready and (self.starpilot_toggles.adjacent_lead_tracking or self.starpilot_toggles.human_lane_changes):
       self.starpilot_radar_state.leadLeft = get_adjacent_lead(self.tracks, sm['carState'].standstill, sm['modelV2'], left=True)
       self.starpilot_radar_state.leadRight = get_adjacent_lead(self.tracks, sm['carState'].standstill, sm['modelV2'], left=False)
@@ -326,7 +322,6 @@ class RadarD:
     radar_msg.radarState = self.radar_state
     pm.send("radarState", radar_msg)
 
-    # StarPilot variables
     starpilot_radar_msg = messaging.new_message("starpilotRadarState")
     starpilot_radar_msg.valid = self.radar_state_valid
     starpilot_radar_msg.starpilotRadarState = self.starpilot_radar_state
@@ -349,7 +344,6 @@ def main() -> None:
 
   RD = RadarD(CP.radarDelay)
 
-  # StarPilot variables
   sm = sm.extend(['starpilotPlan'])
   pm = pm.extend(['starpilotRadarState'])
 

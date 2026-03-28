@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import json
-
 import numpy as np
 
 from openpilot.common.realtime import DT_MDL
@@ -9,10 +7,11 @@ from openpilot.starpilot.common.starpilot_variables import CRUISING_SPEED, DEFAU
 
 CALIBRATION_PROGRESS_THRESHOLD = 10 / DT_MDL
 MAX_CURVATURE = 0.1
-MIN_CURVATURE = 0.01
+MIN_CURVATURE = 0.001
 PERCENTILE = 90
-ROUNDING_PRECISION = 3
+ROUNDING_PRECISION = 5
 STEP = 0.001
+
 
 class CurveSpeedController:
   def __init__(self, StarPilotVCruise):
@@ -23,29 +22,17 @@ class CurveSpeedController:
 
     self.training_timer = 0
 
-    curvature_data_raw = self.starpilot_planner.params.get("CurvatureData", encoding="utf-8")
-    try:
-      self.curvature_data = json.loads(curvature_data_raw or "{}")
-    except (TypeError, ValueError):
-      self.curvature_data = {}
+    curvature_data = self.starpilot_planner.params.get("CurvatureData")
+    self.curvature_data = curvature_data if isinstance(curvature_data, dict) else {}
 
-    self.calculate_weights()
+    self.required_curvatures = [str(round(road_curvature, ROUNDING_PRECISION)) for road_curvature in np.arange(MIN_CURVATURE, MAX_CURVATURE + STEP, STEP)]
+
     self.update_lateral_acceleration()
 
-  def calculate_weights(self):
-    curvatures = np.arange(MIN_CURVATURE, MAX_CURVATURE + STEP, STEP)
-    mid_point = (MIN_CURVATURE + MAX_CURVATURE) / 2
-
-    self.curvature_weights = {}
-    for curvature in curvatures:
-      distance = abs(curvature - mid_point) / (MAX_CURVATURE - MIN_CURVATURE)
-      weight = 1.0 + (4.0 * (1 - distance))
-      self.curvature_weights[str(round(curvature, ROUNDING_PRECISION))] = weight
-
-  def log_data(self, long_control_active, v_ego, sm):
+  def log_data(self, v_ego, sm):
     self.enable_training = v_ego > CRUISING_SPEED
     self.enable_training &= not self.starpilot_planner.tracking_lead
-    self.enable_training &= not long_control_active
+    self.enable_training &= not sm["carControl"].longActive
 
     if self.enable_training:
       self.training_timer += DT_MDL
@@ -70,26 +57,25 @@ class CurveSpeedController:
             "average": lateral_acceleration,
             "count": 1
           }
+
+        self.update_lateral_acceleration()
       else:
         self.enable_training = False
 
     elif self.training_timer >= PLANNER_TIME:
       progress = 0.0
-      total_weight = 0.0
-
-      for key in list(self.curvature_weights.keys()):
+      for key in self.required_curvatures:
         if key in self.curvature_data:
-          progress += min(self.curvature_data[key]["count"] / CALIBRATION_PROGRESS_THRESHOLD, 1.0) * self.curvature_weights[key]
+          progress += min(self.curvature_data[key]["count"] / CALIBRATION_PROGRESS_THRESHOLD, 1.0)
 
-        total_weight += self.curvature_weights[key]
-
-      self.starpilot_planner.params.put_nonblocking("CalibrationProgress", float(min((progress / total_weight) * 100, 100.0)))
+      self.starpilot_planner.params.put_nonblocking("CalibrationProgress", (progress / len(self.required_curvatures)) * 100)
       self.starpilot_planner.params.put_nonblocking("CurvatureData", self.curvature_data)
-      self.update_lateral_acceleration()
 
+      self.enable_training = False
       self.training_timer = 0
 
     else:
+      self.enable_training = False
       self.training_timer = 0
 
   def update_lateral_acceleration(self):
@@ -111,7 +97,7 @@ class CurveSpeedController:
       decel_rate = (v_ego - csc_speed) / self.starpilot_planner.time_to_curve
 
       self.target -= decel_rate * DT_MDL
-      self.target = np.clip(self.target, CRUISING_SPEED, csc_speed)
+      self.target = float(np.clip(self.target, CRUISING_SPEED, csc_speed))
     else:
       self.target_set = True
       self.target = v_ego

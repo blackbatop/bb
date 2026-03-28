@@ -22,6 +22,7 @@ class StarPilotCard:
     self.force_coast = False
     self.pause_lateral = False
     self.pause_longitudinal = False
+    self.switchback_mode_enabled = self.params_memory.get_bool("SwitchbackModeEnabled")
     self.traffic_mode_enabled = False
 
     self.gap_counter = 0
@@ -43,6 +44,9 @@ class StarPilotCard:
       self.pause_lateral = not self.pause_lateral
     elif getattr(starpilot_toggles, f"pause_longitudinal_via_{key}"):
       self.pause_longitudinal = not self.pause_longitudinal
+    elif getattr(starpilot_toggles, f"switchback_mode_via_{key}"):
+      self.switchback_mode_enabled = not self.switchback_mode_enabled
+      self.params_memory.put_bool("SwitchbackModeEnabled", self.switchback_mode_enabled)
     elif sm["carControl"].longActive and getattr(starpilot_toggles, f"traffic_mode_via_{key}"):
       self.traffic_mode_enabled = not self.traffic_mode_enabled
 
@@ -60,6 +64,8 @@ class StarPilotCard:
       self.params.put_bool_nonblocking("ExperimentalMode", not sm["selfdriveState"].experimentalMode)
 
   def update(self, carState, starpilotCarState, sm, starpilot_toggles):
+    self.switchback_mode_enabled = self.params_memory.get_bool("SwitchbackModeEnabled")
+
     if self.CP.brand == "hyundai":
       for be in carState.buttonEvents:
         if be.type == ButtonType.lkas and be.pressed and starpilot_toggles.always_on_lateral_lkas:

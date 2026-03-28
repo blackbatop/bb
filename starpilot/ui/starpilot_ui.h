@@ -15,6 +15,7 @@ struct StarPilotUIScene {
   bool reverse;
   bool sidebars_open;
   bool standstill;
+  bool switchback_mode_enabled;
   bool traffic_mode_enabled;
   bool wake_up_screen;
 

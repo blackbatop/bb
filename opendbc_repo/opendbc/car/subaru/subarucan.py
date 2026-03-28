@@ -336,7 +336,6 @@ def subaru_checksum(address: int, sig, d: bytearray) -> int:
   return s & 0xFF
 
 
-# StarPilot variables
 def create_brake_pedal(packer, frame, brake_pedal_msg, speed_cmd, brake_cmd):
   values = {s: brake_pedal_msg[s] for s in sorted([
     "Brake_Lights",

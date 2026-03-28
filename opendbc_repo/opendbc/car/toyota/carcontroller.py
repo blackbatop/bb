@@ -35,7 +35,6 @@ MAX_STEER_RATE_FRAMES = 18  # tx control frames needed before torque can be cut
 # EPS allows user torque above threshold for 50 frames before permanently faulting
 MAX_USER_TORQUE = 500
 
-# StarPilot variables
 PARK = structs.CarState.GearShifter.park
 
 # Lock / unlock door commands - Credit goes to AlexandreSato!
@@ -86,7 +85,6 @@ class CarController(CarControllerBase):
     self.secoc_acc_message_counter = 0
     self.secoc_prev_reset_counter = 0
 
-    # StarPilot variables
     self.doors_locked = False
 
   def update(self, CC, CS, now_nanos, starpilot_toggles):
@@ -334,7 +332,6 @@ class CarController(CarControllerBase):
 
     self.frame += 1
 
-    # StarPilot variables
     if not self.doors_locked and CS.out.gearShifter != PARK:
       if starpilot_toggles.lock_doors:
         can_sends.append(CanData(0x750, LOCK_CMD, 0))

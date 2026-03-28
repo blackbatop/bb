@@ -79,7 +79,6 @@ void MainWindow::closeSettings() {
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
-  // StarPilot variables
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;

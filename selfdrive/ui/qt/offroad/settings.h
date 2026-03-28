@@ -26,7 +26,6 @@ public:
 protected:
   void showEvent(QShowEvent *event) override;
 
-  // StarPilot variables
   void hideEvent(QHideEvent *event) override;
 
 signals:
@@ -36,7 +35,6 @@ signals:
   void expandToggleDescription(const QString &param);
   void scrollToToggle(const QString &param);
 
-  // StarPilot variables
   void closePanel();
   void closeSubPanel();
   void closeSubSubPanel();
@@ -50,7 +48,6 @@ private:
   QButtonGroup *nav_btns;
   QStackedWidget *panel_widget;
 
-  // StarPilot variables
   void updateDeveloperToggle(int tuningLevel);
 
   bool panelOpen;
@@ -104,7 +101,6 @@ public:
   void showEvent(QShowEvent *event) override;
 
 signals:
-  // StarPilot variables
   void updateMetric(bool metric, bool bootRun=false);
 
 public slots:

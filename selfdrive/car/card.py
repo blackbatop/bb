@@ -67,7 +67,6 @@ class Car:
   RI: RadarInterfaceBase
   CP: car.CarParams
 
-  # StarPilot variables
   FPCP: custom.StarPilotCarParams
 
   def __init__(self, CI=None, RI=None) -> None:
@@ -113,7 +112,6 @@ class Car:
       # continue onto next fingerprinting step in pandad
       self.params.put_bool("FirmwareQueryDone", True)
 
-      # StarPilot variables
       self.FPCP = self.CI.FPCP
     else:
       self.CI, self.CP, self.FPCP = CI, CI.CP, CI.FPCP
@@ -169,10 +167,8 @@ class Car:
     # card is driven by can recv, expected at 100Hz
     self.rk = Ratekeeper(100, print_delay_threshold=None)
 
-    # OPGM variables
     self.resume_prev_button = False
 
-    # StarPilot variables
     self.starpilot_toggles = get_starpilot_toggles()
 
     if self.starpilot_toggles.always_on_lateral:
@@ -216,22 +212,33 @@ class Car:
     if can_rcv_valid and REPLAY:
       self.can_log_mono_time = messaging.log_from_bytes(can_strs[0]).logMonoTime
 
-    self.v_cruise_helper.update_v_cruise(CS, self.sm['carControl'].enabled, self.is_metric, self.starpilot_toggles)
+    self.v_cruise_helper.update_v_cruise(
+      CS,
+      self.sm['carControl'].enabled,
+      self.is_metric,
+      self.sm['starpilotPlan'].speedLimitChanged,
+      self.starpilot_toggles,
+    )
     if self.sm['carControl'].enabled and not self.CC_prev.enabled:
       # Use CarState w/ buttons from the step selfdrived enables on
-      self.v_cruise_helper.initialize_v_cruise(self.CS_prev, self.experimental_mode, self.resume_prev_button, self.starpilot_toggles)
+      desired_speed_limit = self.sm['starpilotPlan'].slcSpeedLimit + self.sm['starpilotPlan'].slcSpeedLimitOffset
+      self.v_cruise_helper.initialize_v_cruise(
+        self.CS_prev,
+        self.experimental_mode,
+        self.resume_prev_button,
+        self.starpilot_toggles,
+        desired_speed_limit=desired_speed_limit,
+      )
 
     # TODO: mirror the carState.cruiseState struct?
     CS.vCruise = float(self.v_cruise_helper.v_cruise_kph)
     CS.vCruiseCluster = float(self.v_cruise_helper.v_cruise_cluster_kph)
 
-    # OPGM variables
     if any(be.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for be in CS.buttonEvents):
       self.resume_prev_button = True
     elif any(be.type in (ButtonType.decelCruise, ButtonType.setCruise) for be in CS.buttonEvents):
       self.resume_prev_button = False
 
-    # StarPilot variables
     FPCS = self.starpilot_card.update(CS, FPCS, self.sm, self.starpilot_toggles)
 
     return CS, RD, FPCS
@@ -266,7 +273,6 @@ class Car:
       tracks_msg.liveTracks = RD
       self.pm.send('liveTracks', tracks_msg)
 
-    # StarPilot variables
     fpcs_send = messaging.new_message('starpilotCarState')
     fpcs_send.valid = CS.canValid
     fpcs_send.starpilotCarState = FPCS
@@ -303,7 +309,6 @@ class Car:
     self.initialized_prev = initialized
     self.CS_prev = CS
 
-    # StarPilot variables
     self.CI.CS.CC = self.sm['carControl']
 
     self.starpilot_toggles = get_starpilot_toggles(self.sm)

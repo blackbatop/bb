@@ -29,7 +29,6 @@ DESIRES = {
   },
 }
 
-# StarPilot variables
 TurnDirection = log.Desire
 
 TURN_DESIRES = {
@@ -49,7 +48,6 @@ class DesireHelper:
     self.prev_one_blinker = False
     self.desire = log.Desire.none
 
-    # StarPilot variables
     self.lane_change_completed = False
 
     self.lane_change_wait_timer = 0.0
@@ -86,7 +84,6 @@ class DesireHelper:
         blindspot_detected = ((carstate.leftBlindspot and self.lane_change_direction == LaneChangeDirection.left) or
                               (carstate.rightBlindspot and self.lane_change_direction == LaneChangeDirection.right))
 
-        # StarPilot variables
         if torque_applied:
           self.lane_change_wait_timer = starpilot_toggles.lane_change_delay
         else:
@@ -102,12 +99,10 @@ class DesireHelper:
         elif torque_applied and not blindspot_detected:
           self.lane_change_state = LaneChangeState.laneChangeStarting
 
-          # StarPilot variables
           self.lane_change_completed = starpilot_toggles.one_lane_change
 
           self.lane_change_wait_timer = 0.0
 
-        # StarPilot variables
         self.lane_change_wait_timer += DT_MDL
 
       # LaneChangeState.laneChangeStarting
@@ -155,7 +150,6 @@ class DesireHelper:
       elif self.desire in (log.Desire.keepLeft, log.Desire.keepRight):
         self.desire = log.Desire.none
 
-    # StarPilot variables
     if not one_blinker:
       self.lane_change_completed = False
 

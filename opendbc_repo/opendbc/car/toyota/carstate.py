@@ -67,7 +67,6 @@ class CarState(CarStateBase):
     self.gvc = 0.0
     self.secoc_synchronization = None
 
-    # StarPilot variables
     self.latActive_previous = False
     self.needs_angle_offset_zss = False
 
@@ -222,7 +221,6 @@ class CarState(CarStateBase):
 
         buttonEvents += create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise})
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     if self.has_SDSU and not self.has_can_filter:

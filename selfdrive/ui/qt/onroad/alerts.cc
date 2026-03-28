@@ -16,7 +16,6 @@ void OnroadAlerts::updateState(const UIState &s, const StarPilotUIState &fs) {
     }
   }
 
-  // StarPilot variables
   sidebarsOpen = fs.starpilot_scene.sidebars_open;
 }
 
@@ -24,7 +23,6 @@ void OnroadAlerts::clear() {
   alert = {};
   update();
 
-  // StarPilot variables
   alertHeight = 0;
 }
 
@@ -32,7 +30,6 @@ OnroadAlerts::Alert OnroadAlerts::getAlert(const SubMaster &sm, const SubMaster 
   const cereal::SelfdriveState::Reader &ss = sm["selfdriveState"].getSelfdriveState();
   const uint64_t selfdrive_frame = sm.rcv_frame("selfdriveState");
 
-  // StarPilot variables
   const cereal::StarPilotSelfdriveState::Reader &fpss = fpsm["starpilotSelfdriveState"].getStarpilotSelfdriveState();
 
   Alert a = {};
@@ -56,7 +53,6 @@ OnroadAlerts::Alert OnroadAlerts::getAlert(const SubMaster &sm, const SubMaster 
     a = {ss.getAlertText1().cStr(), ss.getAlertText2().cStr(),
          ss.getAlertType().cStr(), ss.getAlertSize(), ss.getAlertStatus()};
 
-    // StarPilot variables
     if (a.size == cereal::SelfdriveState::AlertSize::NONE) {
       a = {fpss.getAlertText1().cStr(), fpss.getAlertText2().cStr(),
            fpss.getAlertType().cStr(), static_cast<cereal::SelfdriveState::AlertSize>(fpss.getAlertSize()), static_cast<cereal::SelfdriveState::AlertStatus>(fpss.getAlertStatus())};
@@ -91,7 +87,6 @@ OnroadAlerts::Alert OnroadAlerts::getAlert(const SubMaster &sm, const SubMaster 
 
 void OnroadAlerts::paintEvent(QPaintEvent *event) {
   if (alert.size == cereal::SelfdriveState::AlertSize::NONE) {
-    // StarPilot variables
     alertHeight = 0;
     return;
   }
@@ -100,7 +95,6 @@ void OnroadAlerts::paintEvent(QPaintEvent *event) {
     {cereal::SelfdriveState::AlertSize::MID, 420},
     {cereal::SelfdriveState::AlertSize::FULL, height()},
   };
-  // StarPilot variables
   alertHeight = alert_heights[alert.size];
   int h = alertHeight;
 
@@ -110,7 +104,6 @@ void OnroadAlerts::paintEvent(QPaintEvent *event) {
     margin = 0;
     radius = 0;
   }
-  // StarPilot variables
   alertHeight -= margin;
   QRect r = QRect(0 + margin, height() - h + margin, width() - margin*2, h - margin*2);
 

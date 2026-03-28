@@ -13,7 +13,6 @@ public:
   void setTransform(const Eigen::Matrix3f &transform) { car_space_transform = transform; }
   void draw(QPainter &painter, const QRect &surface_rect);
 
-  // StarPilot variables
   StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
   StarPilotUIScene starpilot_scene;
@@ -46,7 +45,6 @@ private:
   Eigen::Matrix3f car_space_transform = Eigen::Matrix3f::Zero();
   QRectF clip_region;
 
-  // StarPilot variables
   void mapAveragedLineToPolygon(const cereal::XYZTData::Reader &line1, const cereal::XYZTData::Reader &line2, float y_off, float z_off,
                                 QPolygonF *pvd, int max_idx, float height, bool allow_invert = true);
   void updateAdjacentLeads(const cereal::StarPilotRadarState::Reader &radar_state, const cereal::XYZTData::Reader &line);

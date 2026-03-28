@@ -34,7 +34,6 @@ if HARDWARE.get_device_type() in ("tici", "tizi"):
 
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 
-# StarPilot variables
 StarPilotAudibleAlert = custom.StarPilotCarControl.HUDControl.AudibleAlert
 
 
@@ -51,7 +50,6 @@ sound_list: dict[int, tuple[str, int | None, float]] = {
   AudibleAlert.warningSoft: ("warning_soft.wav", None, MAX_VOLUME),
   AudibleAlert.warningImmediate: ("warning_immediate.wav", None, MAX_VOLUME),
 
-  # StarPilot variables
   StarPilotAudibleAlert.angry: ("angry.wav", 1, MAX_VOLUME),
   StarPilotAudibleAlert.continued: ("continued.wav", 1, MAX_VOLUME),
   StarPilotAudibleAlert.dejaVu: ("dejaVu.wav", 1, MAX_VOLUME),
@@ -86,6 +84,7 @@ def check_selfdrive_timeout_alert(sm):
 class Soundd:
   def __init__(self):
     self.current_alert = AudibleAlert.none
+    self.current_alert_type = ""
     self.current_volume = MIN_VOLUME
     self.current_sound_frame = 0
 
@@ -93,7 +92,6 @@ class Soundd:
 
     self.spl_filter_weighted = FirstOrderFilter(0, 2.5, FILTER_DT, initialized=False)
 
-    # StarPilot variables
     self.params_memory = Params(memory=True)
 
     self.starpilot_toggles = get_starpilot_toggles()
@@ -174,26 +172,46 @@ class Soundd:
 
   def get_audible_alert(self, sm):
     if self.params_memory.get("TestAlert"):
-      self.update_alert(getattr(AudibleAlert, self.params_memory.get("TestAlert")))
+      test_alert = self.params_memory.get("TestAlert")
+      if isinstance(test_alert, bytes):
+        test_alert = test_alert.decode("utf-8", "ignore")
+
+      if test_alert == "belowSteerSpeed":
+        self.current_alert_type = "belowSteerSpeed/warning"
+        self.update_alert(AudibleAlert.prompt)
+      else:
+        self.current_alert_type = ""
+        self.update_alert(getattr(AudibleAlert, test_alert))
       self.params_memory.remove("TestAlert")
     elif not self.openpilot_crashed_played and self.error_log.is_file():
+      self.current_alert_type = ""
       self.update_alert(AudibleAlert.prompt)
       self.openpilot_crashed_played = True
     elif sm.updated['selfdriveState']:
       new_alert = sm['selfdriveState'].alertSound.raw
+      new_alert_type = sm['selfdriveState'].alertType
 
-      # StarPilot variables
       new_starpilot_alert = sm['starpilotSelfdriveState'].alertSound.raw
       if new_alert == AudibleAlert.none and new_starpilot_alert != StarPilotAudibleAlert.none:
         new_alert = new_starpilot_alert
+        new_alert_type = sm['starpilotSelfdriveState'].alertType
 
+      self.current_alert_type = new_alert_type
       self.update_alert(new_alert)
     elif check_selfdrive_timeout_alert(sm):
+      self.current_alert_type = ""
       self.update_alert(AudibleAlert.warningImmediate)
       self.selfdrive_timeout_alert = True
     elif self.selfdrive_timeout_alert:
+      self.current_alert_type = ""
       self.update_alert(AudibleAlert.none)
       self.selfdrive_timeout_alert = False
+
+  def get_volume_override(self):
+    if self.current_alert_type.startswith("belowSteerSpeed/"):
+      return self.starpilot_toggles.below_steer_speed_volume / 100.0
+
+    return self.volume_map.get(self.current_alert, 1.01)
 
   def calculate_volume(self, weighted_db):
     volume = ((weighted_db - AMBIENT_DB) / DB_SCALE) * (MAX_VOLUME - MIN_VOLUME) + MIN_VOLUME
@@ -212,7 +230,6 @@ class Soundd:
 
     sm = messaging.SubMaster(['selfdriveState', 'soundPressure'])
 
-    # StarPilot variables
     sm = sm.extend(['starpilotSelfdriveState', 'starpilotPlan'])
 
     with self.get_stream(sd) as stream:
@@ -230,8 +247,8 @@ class Soundd:
             self.auto_volume = self.current_volume
             self.current_volume = 0.0
 
-        elif self.current_alert in self.volume_map and self.starpilot_toggles.alert_volume_controller:
-          self.current_volume = self.volume_map[self.current_alert]
+        elif self.current_alert != AudibleAlert.none and self.starpilot_toggles.alert_volume_controller:
+          self.current_volume = self.get_volume_override()
           if self.current_volume == 1.01:
             self.current_volume = self.auto_volume
 
@@ -241,7 +258,6 @@ class Soundd:
 
         assert stream.active
 
-        # StarPilot variables
         starpilot_toggles = get_starpilot_toggles(sm)
         if starpilot_toggles != self.starpilot_toggles:
           self.starpilot_toggles = starpilot_toggles

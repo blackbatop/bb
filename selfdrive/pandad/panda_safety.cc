@@ -65,7 +65,6 @@ void PandaSafety::setSafetyMode(const std::string &params_string) {
   auto safety_configs = car_params.getSafetyConfigs();
   uint16_t alternative_experience = car_params.getAlternativeExperience();
 
-  // StarPilot variables
   std::string starpilot_params_string = params_.get("StarPilotCarParams");
 
   AlignedBuffer starpilot_aligned_buf;
@@ -84,7 +83,6 @@ void PandaSafety::setSafetyMode(const std::string &params_string) {
       safety_param = safety_configs[i].getSafetyParam();
     }
 
-    // StarPilot variables
     if (i < starpilot_safety_configs.size()) {
       safety_param |= starpilot_safety_configs[i].getSafetyParam();
     }

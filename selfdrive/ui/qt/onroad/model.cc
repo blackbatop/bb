@@ -45,14 +45,12 @@ void ModelRenderer::draw(QPainter &painter, const QRect &surface_rect) {
         drawLead(painter, lead_one, lead_vertices[0], surface_rect, starpilot_nvg->whiteColor());
       }
     } else {
-      // StarPilot variables
       starpilot_nvg->leadTextRect = QRect();
     }
     if (lead_two.getStatus() && (std::abs(lead_one.getDRel() - lead_two.getDRel()) > 3.0)) {
       drawLead(painter, lead_two, lead_vertices[1], surface_rect, QColor(starpilot_toggles.value("lead_marker_color").toString()));
     }
 
-    // StarPilot variables
     SubMaster &fpsm = *(starpilotUIState()->sm);
     const cereal::StarPilotRadarState::Reader &starpilot_radar_state = fpsm["starpilotRadarState"].getStarpilotRadarState();
 
@@ -76,7 +74,6 @@ void ModelRenderer::draw(QPainter &painter, const QRect &surface_rect) {
     }
   }
 
-  // StarPilot variables
   if (starpilot_toggles.value("radar_tracks").toBool()) {
     updateRadarTracks(model.getPosition());
   }
@@ -121,7 +118,6 @@ void ModelRenderer::update_model(const cereal::ModelDataV2::Reader &model, const
     max_distance = std::clamp((float)(lead_d - fmin(lead_d * 0.35, 10.)), 0.0f, max_distance);
   }
   max_idx = get_path_length_idx(model_position, max_distance);
-  // StarPilot variables
   float path_width = starpilot_toggles.value("path_width").toDouble();
   if (starpilot_toggles.value("dynamic_path_width").toBool()) {
     UIState *s = uiState();
@@ -129,7 +125,6 @@ void ModelRenderer::update_model(const cereal::ModelDataV2::Reader &model, const
   }
   mapLineToPolygon(model_position, starpilot_toggles.value("model_ui").toBool() ? path_width * (1 - (starpilot_toggles.value("path_edge_width").toDouble() / 100.0f)) : 0.9, path_offset_z, &track_vertices, max_idx, false);
 
-  // StarPilot variables
   StarPilotUIState *fs = starpilotUIState();
   SubMaster &fpsm = *(fs->sm);
 
@@ -207,7 +202,6 @@ void ModelRenderer::drawPath(QPainter &painter, const cereal::ModelDataV2::Reade
   painter.setBrush(bg);
   painter.drawPolygon(track_vertices);
 
-  // StarPilot variables
   if (starpilot_toggles.value("adjacent_paths").toBool() || starpilot_toggles.value("adjacent_path_metrics").toBool()) {
     starpilot_nvg->paintAdjacentPaths(painter);
   } else if (starpilot_toggles.value("blind_spot_path").toBool()) {
@@ -293,7 +287,6 @@ void ModelRenderer::drawLead(QPainter &painter, const cereal::RadarState::LeadDa
   painter.setBrush(QColor(marker_color.red(), marker_color.green(), marker_color.blue(), fillAlpha));
   painter.drawPolygon(chevron, std::size(chevron));
 
-  // StarPilot variables
   if (starpilot_toggles.value("lead_info").toBool()) {
     starpilot_nvg->paintLeadMetrics(painter, adjacent, chevron, lead_data);
   }
@@ -329,7 +322,6 @@ void ModelRenderer::mapLineToPolygon(const cereal::XYZTData::Reader &line, float
   }
 }
 
-// StarPilot variables
 void ModelRenderer::mapAveragedLineToPolygon(const cereal::XYZTData::Reader &line1, const cereal::XYZTData::Reader &line2, float y_off, float z_off,
                                              QPolygonF *pvd, int max_idx, float height, bool allow_invert) {
   const auto line_x1 = line1.getX(), line_y1 = line1.getY(), line_z1 = line1.getZ();

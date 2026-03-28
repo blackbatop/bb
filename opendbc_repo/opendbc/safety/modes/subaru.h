@@ -110,7 +110,6 @@ static void subaru_rx_hook(const CANPacket_t *msg) {
     bool cruise_engaged = (msg->data[5] >> 1) & 1U;
     pcm_cruise_check(cruise_engaged);
 
-    // StarPilot variables
     acc_main_on = GET_BIT(msg, 40U);
   }
 

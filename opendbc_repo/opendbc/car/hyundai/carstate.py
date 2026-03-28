@@ -203,7 +203,6 @@ class CarState(CarStateBase):
       self.low_speed_alert = False
     ret.lowSpeedAlert = self.low_speed_alert
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret
@@ -301,7 +300,6 @@ class CarState(CarStateBase):
 
     ret.blockPcmEnable = not self.recent_button_interaction()
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret

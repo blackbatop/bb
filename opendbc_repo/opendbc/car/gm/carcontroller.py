@@ -72,7 +72,6 @@ class CarController(CarControllerBase):
     self.malibu_button_phase = 0
     self.malibu_last_button_ts_nanos = 0
 
-  # OPGM variables
   def calc_pedal_command(self, accel: float, long_active: bool, v_ego: float):
     if not long_active:
       self.planner_regen_hold = False
@@ -372,7 +371,7 @@ class CarController(CarControllerBase):
         else:
           long_pitch_enabled = bool(getattr(starpilot_toggles, "long_pitch", True))
           pedal_long_path = bool(self.CP.enableGasInterceptorDEPRECATED and (self.CP.flags & GMFlags.PEDAL_LONG.value))
-          long_pitch_for_powertrain = long_pitch_enabled and not pedal_long_path
+          long_pitch_for_powertrain = long_pitch_enabled or pedal_long_path
 
           if self.is_volt:
             if long_pitch_for_powertrain and len(CC.orientationNED) == 3 and CS.out.vEgo > self.CP.vEgoStopping:
@@ -479,7 +478,6 @@ class CarController(CarControllerBase):
             resume = actuators.longControlState != LongCtrlState.starting or CC.cruiseControl.resume
             at_full_stop = at_full_stop and not resume
 
-          # StarPilot variables
           if CC.cruiseControl.resume and CS.pcm_acc_status == AccState.STANDSTILL and starpilot_toggles.volt_sng:
             acc_engaged = False
           else:
@@ -592,7 +590,6 @@ class CarController(CarControllerBase):
     self.prev_op_enabled = CC.enabled
     self.frame += 1
 
-    # OPGM variables
     new_actuators.speed = self.apply_speed
 
     return new_actuators, can_sends

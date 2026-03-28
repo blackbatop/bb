@@ -44,7 +44,6 @@ EventName = log.OnroadEvent.EventName
 ButtonType = car.CarState.ButtonEvent.Type
 SafetyModel = car.CarParams.SafetyModel
 
-# StarPilot variables
 StarPilotEventName = custom.StarPilotOnroadEvent.EventName
 
 IGNORED_SAFETY_MODES = (SafetyModel.silent, SafetyModel.noOutput)
@@ -53,6 +52,7 @@ IGNORED_SAFETY_MODES = (SafetyModel.silent, SafetyModel.noOutput)
 class SelfdriveD:
   def __init__(self, CP=None):
     self.params = Params()
+    self.params_memory = Params(memory=True)
 
     # Ensure the current branch is cached, otherwise the first cycle lags
     build_metadata = get_build_metadata()
@@ -147,7 +147,6 @@ class SelfdriveD:
     elif self.CP.passive:
       self.events.add(EventName.dashcamMode, static=True)
 
-    # StarPilot variables
     self.sm = self.sm.extend(['starpilotCarState', 'starpilotPlan'])
     self.pm = self.pm.extend(['starpilotOnroadEvents', 'starpilotSelfdriveState'])
 
@@ -159,6 +158,8 @@ class SelfdriveD:
     self.distance_pressed_previously = False
 
     self.display_timer = 0
+    self.last_below_steer_speed_alert_time = -float("inf")
+    self.last_steer_saturated_alert_time = -float("inf")
 
     self.starpilot_events_prev = []
 
@@ -171,6 +172,13 @@ class SelfdriveD:
 
     self.events.clear()
     self.starpilot_events.clear()
+
+    switchback_mode_enabled = self.params_memory.get_bool("SwitchbackModeEnabled")
+    switchback_mode_cooldown = max(0.0, float(getattr(self.starpilot_toggles, "switchback_mode_cooldown", 0.0)))
+
+    if not self.sm['deviceState'].started or not switchback_mode_enabled:
+      self.last_below_steer_speed_alert_time = -float("inf")
+      self.last_steer_saturated_alert_time = -float("inf")
 
     if self.sm['controlsState'].lateralControlState.which() == 'debugState':
       self.events.add(EventName.joystickDebug)
@@ -215,6 +223,14 @@ class SelfdriveD:
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
+      has_below_steer_speed_event = any(e.name.raw == EventName.belowSteerSpeed for e in car_events)
+      if has_below_steer_speed_event:
+        now = time.monotonic()
+        cooldown_active = switchback_mode_enabled and switchback_mode_cooldown > 0.0
+        if cooldown_active and (now - self.last_below_steer_speed_alert_time) < switchback_mode_cooldown:
+          car_events = [e for e in car_events if e.name.raw != EventName.belowSteerSpeed]
+        elif switchback_mode_enabled:
+          self.last_below_steer_speed_alert_time = now
       self.events.add_from_msg(car_events)
 
       if self.CP.notCar:
@@ -416,10 +432,16 @@ class SelfdriveD:
       commanded_torque_at_max = abs(lac.output) > 0.99
       # TODO: lac.saturated includes speed and other checks, should be pulled out
       if undershooting and turning and (lac.saturated or commanded_torque_at_max):
-        if self.starpilot_toggles.goat_scream_alert:
-          self.starpilot_events.add(StarPilotEventName.goatSteerSaturated)
-        else:
-          self.events.add(EventName.steerSaturated)
+        now = time.monotonic()
+        cooldown_active = switchback_mode_enabled and switchback_mode_cooldown > 0.0
+        if not cooldown_active or (now - self.last_steer_saturated_alert_time) >= switchback_mode_cooldown:
+          if switchback_mode_enabled:
+            self.last_steer_saturated_alert_time = now
+
+          if self.starpilot_toggles.goat_scream_alert:
+            self.starpilot_events.add(StarPilotEventName.goatSteerSaturated)
+          else:
+            self.events.add(EventName.steerSaturated)
 
     # Check for FCW
     stock_long_is_braking = self.enabled and not self.CP.openpilotLongitudinalControl and CS.aEgo < -1.25
@@ -466,7 +488,6 @@ class SelfdriveD:
 
       self.display_timer -= 1
 
-    # StarPilot variables
     self.starpilot_events.add_from_msg(self.sm['starpilotPlan'].starpilotEvents)
 
     if self.starpilot_toggles.conditional_experimental_mode:
@@ -535,7 +556,6 @@ class SelfdriveD:
     self.AM.add_many(self.sm.frame, alerts)
     self.AM.process_alerts(self.sm.frame, clear_event_types)
 
-    # StarPilot variables
     starpilot_alerts = self.starpilot_events.create_alerts(self.state_machine.current_alert_types, [self.CP, CS, self.sm, self.is_metric,
                                                                                                     self.state_machine.soft_disable_timer, pers,
                                                                                                     self.starpilot_toggles])
@@ -572,7 +592,6 @@ class SelfdriveD:
       self.pm.send('onroadEvents', ce_send)
     self.events_prev = self.events.names.copy()
 
-    # StarPilot variables
     fpss_msg = messaging.new_message('starpilotSelfdriveState')
     fpss_msg.valid = True
     fpss = fpss_msg.starpilotSelfdriveState
@@ -604,7 +623,6 @@ class SelfdriveD:
 
     self.CS_prev = CS
 
-    # StarPilot variables
     self.starpilot_toggles = get_starpilot_toggles(self.sm)
 
   def params_thread(self, evt):

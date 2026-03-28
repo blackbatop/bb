@@ -494,20 +494,19 @@ StarPilotLongitudinalPanel::StarPilotLongitudinalPanel(StarPilotSettingsWindow *
 
           QString selection = MultiOptionDialog::getSelection(priorityPrompts[i - 1], availablePriorities, "", this);
           if (selection.isEmpty()) {
+            if (i == 2 && !selectedPriorities.isEmpty()) {
+              params.put("SLCPriority2", tr("None").toStdString());
+            }
             break;
           }
 
           selectedPriorities.append(selection);
 
           params.put(QString("SLCPriority%1").arg(i).toStdString(), selection.toStdString());
-          if (selection == tr("None")) {
-            for (int j = i + 1; j <= 3; ++j) {
+          if (selection == tr("None") || selection == tr("Lowest") || selection == tr("Highest")) {
+            for (int j = i + 1; j <= 2; ++j) {
               params.put(QString("SLCPriority%1").arg(j).toStdString(), tr("None").toStdString());
             }
-            break;
-          }
-
-          if (selection == tr("Lowest") || selection == tr("Highest")) {
             break;
           }
         }
@@ -795,8 +794,6 @@ StarPilotLongitudinalPanel::StarPilotLongitudinalPanel(StarPilotSettingsWindow *
 }
 
 void StarPilotLongitudinalPanel::showEvent(QShowEvent *event) {
-  StarPilotUIState &fs = *starpilotUIState();
-
   calibratedLateralAccelerationLabel->setText(QString::number(params.getFloat("CalibratedLateralAcceleration"), 'f', 2) + tr(" m/s²"));
   calibrationProgressLabel->setText(QString::number(params.getFloat("CalibrationProgress"), 'f', 2) + "%");
 

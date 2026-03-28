@@ -258,7 +258,6 @@ class ModelState:
 def main(demo=False):
   cloudlog.warning("modeld init")
 
-  # StarPilot variables
   starpilot_toggles = get_starpilot_toggles()
 
   if not USBGPU:
@@ -332,7 +331,6 @@ def main(demo=False):
 
   DH = DesireHelper()
 
-  # StarPilot variables
   sm = sm.extend(['starpilotPlan'])
   pm = pm.extend(['starpilotModelV2'])
 
@@ -440,14 +438,12 @@ def main(demo=False):
       pm.send('drivingModelData', drivingdata_send)
       pm.send('cameraOdometry', posenet_send)
 
-      # StarPilot variables
       starpilot_modelv2_send = messaging.new_message('starpilotModelV2')
       starpilot_modelv2_send.starpilotModelV2.turnDirection = DH.turn_direction
 
       pm.send('starpilotModelV2', starpilot_modelv2_send)
     last_vipc_frame_id = meta_main.frame_id
 
-    # StarPilot variables
     starpilot_toggles = get_starpilot_toggles(sm)
 
 

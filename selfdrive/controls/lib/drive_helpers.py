@@ -55,7 +55,7 @@ def get_accel_from_plan(speeds, accels, t_idxs, action_t=DT_MDL, vEgoStopping=0.
   return a_target, should_stop
 
 
-# Backward-compatible alias used by StarPilot tinygrad_modeld.
+# Backward-compatible alias used by tinygrad_modeld.
 get_accel_from_plan_tomb_raider = get_accel_from_plan
 
 def curv_from_psis(psi_target, psi_rate, vego, action_t):

@@ -80,7 +80,6 @@ SoftwarePanel::SoftwarePanel(QWidget* parent) : ListWidget(parent) {
       targetBranchBtn->setValue(QString::fromStdString(params.get("UpdaterTargetBranch")));
       checkForUpdates();
 
-      // StarPilot variables
       if (selection != cur) {
         if (StarPilotConfirmationDialog::yesorno(tr("This branch must be downloaded before switching. Would you like to download it now?"), this)) {
           std::system("pkill -SIGHUP -f system.updated.updated");
@@ -132,7 +131,6 @@ void SoftwarePanel::showEvent(QShowEvent *event) {
 
   updateLabels();
 
-  // StarPilot variables
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
 
@@ -142,7 +140,6 @@ void SoftwarePanel::showEvent(QShowEvent *event) {
 }
 
 void SoftwarePanel::updateLabels() {
-  // StarPilot variables
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
 
@@ -155,7 +152,6 @@ void SoftwarePanel::updateLabels() {
   fs_watch->addParam("UpdateAvailable");
 
   if (!isVisible()) {
-    // StarPilot variables
     starpilot_scene.downloading_update = false;
     return;
   }
@@ -171,7 +167,6 @@ void SoftwarePanel::updateLabels() {
     downloadBtn->setEnabled(false);
     downloadBtn->setValue(updater_state);
 
-    // StarPilot variables
     starpilot_scene.downloading_update = true;
   } else {
     if (failed) {
@@ -191,7 +186,6 @@ void SoftwarePanel::updateLabels() {
     }
     downloadBtn->setEnabled(true);
 
-    // StarPilot variables
     starpilot_scene.downloading_update = false;
   }
   targetBranchBtn->setValue(QString::fromStdString(params.get("UpdaterTargetBranch")));

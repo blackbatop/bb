@@ -52,7 +52,6 @@ const LongitudinalLimits HYUNDAI_LONG_LIMITS = {
 #define HYUNDAI_FCEV_GAS_ADDR_CHECK \
   {.msg = {{0x91,  0, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
 
-// StarPilot variables
 #define HYUNDAI_LDA_BUTTON_ADDR_CHECK \
   {.msg = {{0x391, 0, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
 
@@ -178,7 +177,6 @@ static void hyundai_rx_hook(const CANPacket_t *msg) {
       brake_pressed = ((msg->data[5] >> 5U) & 0x3U) == 0x2U;
     }
 
-    // StarPilot variables
     if (msg->addr == 0x391U) {
       hyundai_lkas_button_check(GET_BIT(msg, 4U));
     }
@@ -288,7 +286,6 @@ static safety_config hyundai_init(uint16_t param) {
       HYUNDAI_FCEV_GAS_ADDR_CHECK
     };
 
-    // StarPilot variables
     static RxCheck hyundai_long_rx_checks_lda[] = {
       HYUNDAI_COMMON_RX_CHECKS(false)
       HYUNDAI_LDA_BUTTON_ADDR_CHECK
@@ -325,7 +322,6 @@ static safety_config hyundai_init(uint16_t param) {
       HYUNDAI_SCC12_ADDR_CHECK(2)
     };
 
-    // StarPilot variables
     static RxCheck hyundai_cam_scc_rx_checks_lda[] = {
       HYUNDAI_COMMON_RX_CHECKS(false)
       HYUNDAI_SCC12_ADDR_CHECK(2)
@@ -349,7 +345,6 @@ static safety_config hyundai_init(uint16_t param) {
       HYUNDAI_FCEV_GAS_ADDR_CHECK
     };
 
-    // StarPilot variables
     static RxCheck hyundai_rx_checks_lda[] = {
        HYUNDAI_COMMON_RX_CHECKS(false)
        HYUNDAI_SCC12_ADDR_CHECK(0)

@@ -64,7 +64,6 @@ static void update_state(UIState *s, StarPilotUIState *fs) {
   auto params = Params();
   scene.recording_audio = params.getBool("RecordAudio") && scene.started;
 
-  // StarPilot variables
   StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
 
   if (sm.updated("carState")) {
@@ -87,7 +86,6 @@ void ui_update_params(UIState *s) {
 }
 
 void UIState::updateStatus(StarPilotUIState *fs) {
-  // StarPilot variables
   StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
@@ -95,20 +93,20 @@ void UIState::updateStatus(StarPilotUIState *fs) {
     auto ss = (*sm)["selfdriveState"].getSelfdriveState();
     auto state = ss.getState();
 
-    // StarPilot variables
     const UIStatus previous_status = status;
 
     if (state == cereal::SelfdriveState::OpenpilotState::PRE_ENABLED || state == cereal::SelfdriveState::OpenpilotState::OVERRIDING) {
       status = STATUS_OVERRIDE;
     } else if (starpilot_scene.always_on_lateral_active) {
       status = STATUS_ALWAYS_ON_LATERAL_ACTIVE;
+    } else if (starpilot_scene.switchback_mode_enabled && ss.getEnabled()) {
+      status = STATUS_SWITCHBACK_MODE_ENABLED;
     } else if (starpilot_scene.traffic_mode_enabled && ss.getEnabled()) {
       status = STATUS_TRAFFIC_MODE_ENABLED;
     } else {
       status = ss.getEnabled() ? STATUS_ENGAGED : STATUS_DISENGAGED;
     }
 
-    // StarPilot variables
     starpilot_scene.wake_up_screen = ss.getAlertStatus() != cereal::SelfdriveState::AlertStatus::NORMAL || (status != previous_status && status != STATUS_OVERRIDE);
   }
 
@@ -126,7 +124,6 @@ void UIState::updateStatus(StarPilotUIState *fs) {
     started_prev = scene.started;
     emit offroadTransition(!scene.started);
 
-    // StarPilot variables
     if (starpilot_toggles.value("tethering_config").toInt() == 2) {
       fs->wifi->setTetheringEnabled(scene.started);
     }
@@ -158,7 +155,6 @@ void UIState::update() {
   }
   emit uiUpdate(*this, *starpilotUIState());
 
-  // StarPilot variables
   StarPilotUIState *fs = starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs->starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
@@ -195,14 +191,12 @@ void Device::resetInteractiveTimeout(int timeout, int timeout_onroad) {
   if (timeout == -1) {
     timeout = (ignition_on ? 10 : 30);
   } else {
-    // StarPilot variables
     timeout = (ignition_on ? timeout_onroad : timeout);
   }
   interactive_timeout = timeout * UI_FREQ;
 }
 
 void Device::updateBrightness(const UIState &s, const StarPilotUIState &fs) {
-  // StarPilot variables
   const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
@@ -241,7 +235,6 @@ void Device::updateBrightness(const UIState &s, const StarPilotUIState &fs) {
 }
 
 void Device::updateWakefulness(const UIState &s, const StarPilotUIState &fs) {
-  // StarPilot variables
   const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 

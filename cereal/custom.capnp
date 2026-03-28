@@ -145,6 +145,8 @@ struct StarPilotOnroadEvent @0xa5cd762cd951a455 {
     vCruise69 @26;
     yourFrogTriedToKillMe @27;
     youveGotMail @28;
+    switchbackModeActive @29;
+    switchbackModeInactive @30;
   }
 }
 

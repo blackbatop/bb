@@ -93,7 +93,6 @@ class CarState(CarStateBase):
     self.sccm_wheel_touch = copy.copy(cp.vl["SCCM_WheelTouch"])
     self.vdm_adas_status = copy.copy(cp.vl["VDM_AdasSts"])
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret

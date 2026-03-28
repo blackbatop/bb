@@ -23,6 +23,9 @@ MAX_OVERPASS_DATA_BYTES = 1_073_741_824
 MAX_OVERPASS_REQUESTS = 10_000
 METERS_PER_DEG_LAT = 111_320
 VETTING_INTERVAL_DAYS = 7
+ACTIVE_SEGMENT_BUFFER_METERS = 25
+MAX_BEARING_DELTA = 45
+MIN_LATERAL_MATCH_BUFFER = 12
 
 OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
 OVERPASS_STATUS_URL = "https://overpass-api.de/api/status"
@@ -38,6 +41,7 @@ class MapSpeedLogger:
     self.cached_segments = {}
 
     self.dataset_additions = deque(maxlen=MAX_ENTRIES)
+    self.filtered_dataset = []
 
     self.overpass_requests = self.params.get("OverpassRequests")
     self.overpass_requests.setdefault("day", datetime.now(timezone.utc).day)
@@ -51,6 +55,7 @@ class MapSpeedLogger:
     self.gps_location_service = get_gps_location_service(self.params)
 
     self.sm = messaging.SubMaster(["deviceState", "starpilotCarState", "starpilotPlan", self.gps_location_service, "mapdOut", "modelV2"])
+    self.refresh_filtered_dataset()
 
   @property
   def can_make_overpass_request(self):
@@ -89,6 +94,38 @@ class MapSpeedLogger:
   def meters_to_deg_lon(meters, latitude):
     return meters / (METERS_PER_DEG_LAT * math.cos(latitude * CV.DEG_TO_RAD))
 
+  @staticmethod
+  def bearing_delta(bearing1, bearing2):
+    return abs((bearing1 - bearing2 + 180) % 360 - 180)
+
+  @staticmethod
+  def has_live_match_fields(entry):
+    required = {"bearing", "end_coordinates", "road_name", "road_width", "speed_limit", "start_coordinates"}
+    return required.issubset(entry.keys())
+
+  @staticmethod
+  def latlon_to_local_meters(origin_latitude, origin_longitude, latitude, longitude):
+    average_latitude = ((origin_latitude + latitude) / 2) * CV.DEG_TO_RAD
+    x = (longitude - origin_longitude) * METERS_PER_DEG_LAT * math.cos(average_latitude)
+    y = (latitude - origin_latitude) * METERS_PER_DEG_LAT
+    return x, y
+
+  def clear_live_speed_limits(self):
+    self.params_memory.remove("MapSpeedLimit")
+    self.params_memory.remove("NextMapSpeedLimit")
+
+  def refresh_filtered_dataset(self, filtered_dataset=None):
+    if filtered_dataset is None:
+      filtered_dataset = self.params.get("SpeedLimitsFiltered") or []
+
+    live_match_entries = [entry for entry in filtered_dataset if self.has_live_match_fields(entry)]
+    if live_match_entries:
+      self.filtered_dataset = live_match_entries
+      return
+
+    fallback_dataset = self.params.get("SpeedLimits") or []
+    self.filtered_dataset = list(self.cleanup_dataset(fallback_dataset))
+
   def get_speed_limit_source(self):
     sources = [
       (self.sm["starpilotPlan"].slcMapboxSpeedLimit, "Mapbox"),
@@ -98,6 +135,15 @@ class MapSpeedLogger:
       if speed_limit > 0:
         return speed_limit, source
     return None
+
+  def get_live_match_candidates(self, road_name, current_bearing):
+    return [
+      entry for entry in self.filtered_dataset
+      if self.has_live_match_fields(entry)
+      and entry["road_name"] == road_name
+      and entry["speed_limit"] > 0
+      and self.bearing_delta(entry["bearing"], current_bearing) <= MAX_BEARING_DELTA
+    ]
 
   def is_in_cached_box(self, latitude, longitude):
     if self.cached_box is None:
@@ -122,6 +168,74 @@ class MapSpeedLogger:
     self.params.put("OverpassRequests", self.overpass_requests)
     self.params.put("SpeedLimits", list(dataset))
     self.params.put("SpeedLimitsFiltered", list(filtered_dataset))
+
+  def find_current_speed_limit_entry(self, latitude, longitude, road_name, current_bearing):
+    best_match = None
+    best_score = None
+
+    for entry in self.get_live_match_candidates(road_name, current_bearing):
+      start_latitude = entry["start_coordinates"]["latitude"]
+      start_longitude = entry["start_coordinates"]["longitude"]
+      end_latitude = entry["end_coordinates"]["latitude"]
+      end_longitude = entry["end_coordinates"]["longitude"]
+
+      segment_x, segment_y = self.latlon_to_local_meters(start_latitude, start_longitude, end_latitude, end_longitude)
+      segment_length_sq = segment_x ** 2 + segment_y ** 2
+      if segment_length_sq < 1:
+        continue
+
+      point_x, point_y = self.latlon_to_local_meters(start_latitude, start_longitude, latitude, longitude)
+      projection_ratio = (point_x * segment_x + point_y * segment_y) / segment_length_sq
+      segment_length = math.sqrt(segment_length_sq)
+      along_track = projection_ratio * segment_length
+
+      clamped_ratio = min(max(projection_ratio, 0.0), 1.0)
+      closest_x = segment_x * clamped_ratio
+      closest_y = segment_y * clamped_ratio
+      cross_track = math.hypot(point_x - closest_x, point_y - closest_y)
+
+      longitudinal_buffer = max(entry["speed_limit"] * 2, ACTIVE_SEGMENT_BUFFER_METERS)
+      lateral_buffer = max(entry["road_width"] * 2, MIN_LATERAL_MATCH_BUFFER)
+      if -longitudinal_buffer <= along_track <= segment_length + longitudinal_buffer and cross_track <= lateral_buffer:
+        score = (cross_track, abs(projection_ratio - 0.5))
+        if best_score is None or score < best_score:
+          best_match = entry
+          best_score = score
+
+    return best_match
+
+  def find_next_speed_limit_entry(self, latitude, longitude, road_name, current_bearing, current_entry=None):
+    best_match = None
+    best_score = None
+
+    heading_rad = current_bearing * CV.DEG_TO_RAD
+    heading_x = math.sin(heading_rad)
+    heading_y = math.cos(heading_rad)
+
+    current_segment_id = current_entry.get("segment_id") if current_entry else None
+
+    for entry in self.get_live_match_candidates(road_name, current_bearing):
+      if current_segment_id is not None and entry.get("segment_id") == current_segment_id:
+        continue
+
+      start_latitude = entry["start_coordinates"]["latitude"]
+      start_longitude = entry["start_coordinates"]["longitude"]
+
+      distance_to_start = calculate_distance_to_point(latitude, longitude, start_latitude, start_longitude)
+      if distance_to_start < 1:
+        continue
+
+      delta_x, delta_y = self.latlon_to_local_meters(latitude, longitude, start_latitude, start_longitude)
+      forward_distance = delta_x * heading_x + delta_y * heading_y
+      if forward_distance <= 0:
+        continue
+
+      score = (distance_to_start, self.bearing_delta(entry["bearing"], current_bearing))
+      if best_score is None or score < best_score:
+        best_match = entry
+        best_score = score
+
+    return best_match, best_score[0] if best_score is not None else 0
 
   def wait_for_api(self):
     while not is_url_pingable(OVERPASS_STATUS_URL):
@@ -223,7 +337,7 @@ class MapSpeedLogger:
     current_speed_source = self.get_speed_limit_source()
     valid_sources = {source[0] for source in [current_speed_source] if source and source[0] > 0}
 
-    map_speed = self.params_memory.get("MapSpeedLimit")
+    map_speed = self.params_memory.get_float("MapSpeedLimit")
     is_incorrect_limit = bool(map_speed > 0 and valid_sources and all(abs(map_speed - source) > 1 for source in valid_sources))
 
     if map_speed > 0 and not is_incorrect_limit:
@@ -257,6 +371,41 @@ class MapSpeedLogger:
     })
 
     self.previous_coordinates = {"latitude": current_latitude, "longitude": current_longitude}
+
+  def update_live_speed_limits(self):
+    gps_location = self.sm[self.gps_location_service]
+    current_latitude = gps_location.latitude
+    current_longitude = gps_location.longitude
+    current_bearing = gps_location.bearingDeg
+    road_name = self.sm["mapdOut"].roadName
+
+    if (current_latitude == 0 and current_longitude == 0) or not road_name or not self.filtered_dataset:
+      self.clear_live_speed_limits()
+      return
+
+    current_entry = self.find_current_speed_limit_entry(current_latitude, current_longitude, road_name, current_bearing)
+    next_entry, next_distance = self.find_next_speed_limit_entry(
+      current_latitude,
+      current_longitude,
+      road_name,
+      current_bearing,
+      current_entry=current_entry,
+    )
+
+    if current_entry:
+      self.params_memory.put_float("MapSpeedLimit", current_entry["speed_limit"])
+    else:
+      self.params_memory.remove("MapSpeedLimit")
+
+    if next_entry:
+      self.params_memory.put("NextMapSpeedLimit", {
+        "distance": next_distance,
+        "latitude": next_entry["start_coordinates"]["latitude"],
+        "longitude": next_entry["start_coordinates"]["longitude"],
+        "speedlimit": next_entry["speed_limit"],
+      })
+    else:
+      self.params_memory.remove("NextMapSpeedLimit")
 
   def process_new_entries(self, dataset, filtered_dataset):
     existing_segment_ids = {entry["segment_id"] for entry in filtered_dataset if "segment_id" in entry}
@@ -292,8 +441,12 @@ class MapSpeedLogger:
           continue
 
         filtered_dataset.append({
+          "bearing": entry["bearing"],
+          "end_coordinates": entry["end_coordinates"],
           "incorrect_limit": entry.get("incorrect_limit"),
           "last_vetted": datetime.now(timezone.utc).isoformat(),
+          "road_name": entry["road_name"],
+          "road_width": entry["road_width"],
           "segment_id": segment_id,
           "source": entry["source"],
           "speed_limit": entry["speed_limit"],
@@ -324,6 +477,7 @@ class MapSpeedLogger:
       self.process_new_entries(dataset, filtered_dataset)
 
     self.update_params(dataset, filtered_dataset)
+    self.refresh_filtered_dataset(filtered_dataset)
     self.params_memory.put("UpdateSpeedLimitsStatus", "Completed!")
 
   def update_cached_segments(self, latitude, longitude, vetting=False):
@@ -387,6 +541,7 @@ def main():
 
     if logger.sm["deviceState"].started:
       logger.log_speed_limit()
+      logger.update_live_speed_limits()
 
       previously_started = True
     elif previously_started:
@@ -400,6 +555,7 @@ def main():
         logger.params_memory.put_bool("UpdateSpeedLimits", True)
 
       logger.dataset_additions.clear()
+      logger.clear_live_speed_limits()
 
       previously_started = False
     elif logger.params_memory.get_bool("UpdateSpeedLimits"):
@@ -407,6 +563,7 @@ def main():
 
       logger.params_memory.remove("UpdateSpeedLimits")
     else:
+      logger.clear_live_speed_limits()
       time.sleep(5)
 
 if __name__ == "__main__":

@@ -140,8 +140,8 @@ class CarSpecificEvents:
         events.add(EventName.belowSteerSpeed)
         self.gm_low_speed_alert_shown = True
 
-      # Match StarPilot's GM-specific standstill engage behavior. Most camera-ACC cars can
-      # engage below 5 kph only when stopped with brake applied; SDGM remains narrower.
+      # Most camera-ACC cars can engage below 5 kph only when stopped with brake applied;
+      # SDGM remains narrower.
       standstill_brake_enable_allowed = (
         CS.standstill and
         CS.brake >= 20 and
@@ -153,7 +153,7 @@ class CarSpecificEvents:
       if CS.cruiseState.standstill and not self.CP.autoResumeSng:
         events.add(EventName.resumeRequired)
 
-      # Preserve the prior cycle's cruise-enabled state so low-speed disengage matches StarPilot.
+      # Preserve the prior cycle's cruise-enabled state for low-speed disengage behavior.
       if ((self.CP.flags & GMFlags.CC_LONG) and
           CS.vEgo < self.CP.minEnableSpeed and
           (CS.cruiseState.enabled or CS_prev.cruiseState.enabled)):

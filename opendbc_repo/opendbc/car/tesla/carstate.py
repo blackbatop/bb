@@ -118,7 +118,6 @@ class CarState(CarStateBase):
     # Messages needed by carcontroller
     self.das_control = copy.copy(cp_ap_party.vl["DAS_control"])
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret

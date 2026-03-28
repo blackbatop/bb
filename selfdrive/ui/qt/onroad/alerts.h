@@ -12,7 +12,6 @@ public:
   void updateState(const UIState &s, const StarPilotUIState &fs);
   void clear();
 
-  // StarPilot variables
   int alertHeight;
 
   QJsonObject starpilot_toggles;
@@ -42,7 +41,6 @@ protected:
   QColor bg;
   Alert alert = {};
 
-  // StarPilot variables
   bool sidebarsOpen;
 
   const QMap<cereal::StarPilotSelfdriveState::AlertStatus, QColor> starpilot_alert_colors = {

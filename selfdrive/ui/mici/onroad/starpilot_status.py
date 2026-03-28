@@ -11,6 +11,7 @@ ENGAGED_COLOR = rl.Color(22, 127, 64, 255)
 OVERRIDE_COLOR = rl.Color(137, 146, 141, 255)
 EXPERIMENTAL_COLOR = rl.Color(218, 111, 37, 255)
 CEM_OVERRIDE_COLOR = rl.Color(255, 214, 0, 255)
+SWITCHBACK_COLOR = rl.Color(139, 108, 197, 255)
 TRAFFIC_COLOR = rl.Color(201, 34, 49, 255)
 
 
@@ -18,6 +19,8 @@ def get_border_color(state: UIState):
   enabled = state.sm["selfdriveState"].enabled
   if state.status == UIStatus.OVERRIDE:
     return OVERRIDE_COLOR
+  if state.switchback_mode_enabled and enabled:
+    return SWITCHBACK_COLOR
   if state.traffic_mode_enabled and enabled:
     return TRAFFIC_COLOR
   if state.always_on_lateral_active:

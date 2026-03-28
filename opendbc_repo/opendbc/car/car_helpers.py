@@ -18,7 +18,6 @@ from openpilot.common.params import Params
 
 FRAME_FINGERPRINT = 100  # 1s
 
-# StarPilot variables
 StarPilotCarParams = custom.StarPilotCarParams
 
 
@@ -46,7 +45,7 @@ def _get_interface_names() -> dict[str, list[str]]:
 interface_names = _get_interface_names()
 interfaces = load_interfaces(interface_names)
 
-# Legacy StarPilot Bolt rename migration. Keep here to prevent force-fingerprint
+# Legacy Bolt rename migration. Keep here to prevent force-fingerprint
 # params from selecting a removed platform name and crashing detection.
 LEGACY_FORCED_CANDIDATE_MAP = {
   "CHEVROLET_BOLT_CC_2019_2021": "CHEVROLET_BOLT_CC_2018_2021",
@@ -300,7 +299,6 @@ def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multip
   CP.fingerprintSource = source
   CP.fuzzyFingerprint = not exact_match
 
-  # StarPilot variables
   FPCP: StarPilotCarParams = CarInterface.get_starpilot_params(candidate, fingerprints, car_fw, CP, starpilot_toggles)
 
   if CP.brand == "toyota" and FPCP.flags & ToyotaStarPilotFlags.SMART_DSU.value:

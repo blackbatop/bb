@@ -38,7 +38,6 @@ OnroadWindow::OnroadWindow(QWidget *parent) : QWidget(parent) {
   QObject::connect(uiState(), &UIState::uiUpdate, this, &OnroadWindow::updateState);
   QObject::connect(uiState(), &UIState::offroadTransition, this, &OnroadWindow::offroadTransition);
 
-  // StarPilot variables
   starpilot_nvg = new StarPilotAnnotatedCameraWidget(this);
   starpilot_onroad = new StarPilotOnroadWindow(this);
   starpilot_onroad->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -66,7 +65,6 @@ void OnroadWindow::updateState(const UIState &s, const StarPilotUIState &fs) {
     update();
   }
 
-  // StarPilot variables
   const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
@@ -101,7 +99,6 @@ void OnroadWindow::paintEvent(QPaintEvent *event) {
   p.fillRect(rect(), QColor(bg.red(), bg.green(), bg.blue(), 255));
 }
 
-// StarPilot variables
 void OnroadWindow::mousePressEvent(QMouseEvent* mouseEvent) {
   starpilot_nvg->mousePressEvent(mouseEvent);
 

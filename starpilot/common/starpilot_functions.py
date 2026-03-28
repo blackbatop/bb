@@ -71,6 +71,7 @@ def install_starpilot(build_metadata, params):
     ERROR_LOGS_PATH,
     HD_LOGS_PATH,
     KONIK_LOGS_PATH,
+    MAPS_PATH,
     THEME_SAVE_PATH
   ]
   for path in paths:
@@ -192,7 +193,7 @@ def update_maps(now, params, params_memory, manual_update=False):
   is_sunday = now.weekday() == 6
   schedule = params.get("PreferredSchedule")
 
-  maps_downloaded = MAPS_PATH.exists()
+  maps_downloaded = MAPS_PATH.exists() and any(path.is_file() for path in MAPS_PATH.rglob("*"))
   if maps_downloaded and (schedule == 0 or (schedule == 1 and not is_sunday) or (schedule == 2 and not is_first)) and not manual_update:
     return
 

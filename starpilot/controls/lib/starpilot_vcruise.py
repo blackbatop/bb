@@ -23,8 +23,8 @@ class StarPilotVCruise:
     self.force_stop_timer = 0.0
     self.tracked_model_length = 0.0
 
-  def update(self, long_control_active, now, time_validated, v_cruise, v_ego, sm, starpilot_toggles):
-    force_stop = self.starpilot_planner.starpilot_cem.stop_light_detected and long_control_active and starpilot_toggles.force_stops
+  def update(self, controls_enabled, now, time_validated, v_cruise, v_ego, sm, starpilot_toggles):
+    force_stop = self.starpilot_planner.starpilot_cem.stop_light_detected and controls_enabled and starpilot_toggles.force_stops
     force_stop &= self.starpilot_planner.model_stopped
     force_stop &= self.override_force_stop_timer <= 0
 
@@ -48,14 +48,14 @@ class StarPilotVCruise:
     v_ego_diff = v_ego_cluster - v_ego
 
     # FrogsGoMoo's Curve Speed Controller
-    if long_control_active and v_ego > CRUISING_SPEED and self.starpilot_planner.road_curvature_detected and starpilot_toggles.curve_speed_controller:
+    if controls_enabled and v_ego > CRUISING_SPEED and self.starpilot_planner.road_curvature_detected and starpilot_toggles.curve_speed_controller:
       self.csc.update_target(v_ego)
 
       self.csc_controlling_speed = True
 
       self.csc_target = self.csc.target
     else:
-      self.csc.log_data(long_control_active, v_ego, sm)
+      self.csc.log_data(v_ego, sm)
 
       self.csc_controlling_speed = False
       self.csc.target_set = False

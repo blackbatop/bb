@@ -744,6 +744,8 @@ void StarPilotAnnotatedCameraWidget::paintPathEdges(QPainter &p, int height) {
     setPathEdgeColors(bg_colors[STATUS_CEM_DISABLED]);
   } else if (experimentalMode) {
     setPathEdgeColors(bg_colors[STATUS_EXPERIMENTAL_MODE_ENABLED]);
+  } else if (starpilot_scene.switchback_mode_enabled) {
+    setPathEdgeColors(bg_colors[STATUS_SWITCHBACK_MODE_ENABLED]);
   } else if (starpilot_scene.traffic_mode_enabled) {
     setPathEdgeColors(bg_colors[STATUS_TRAFFIC_MODE_ENABLED]);
   } else if (starpilot_toggles.value("color_scheme").toString() != "stock") {

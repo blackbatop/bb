@@ -61,12 +61,11 @@ static bool gm_panda_3d1_sched = false;
 static bool gm_panda_paddle_sched = false;
 static bool gm_bolt_2022_pedal = false;
 
-// OPGM variables
 static bool gm_cc_long = false;
 static bool gm_has_acc = true;
 static bool gm_pedal_long = false;
 
-// StarPilot parity scheduler state
+// 3D1 spoof scheduler state
 static bool gm_3d1_spoof_valid = false;
 static bool gm_3d1_internal_tx = false;
 static uint8_t gm_3d1_spoof_data[8] = {0U};
@@ -199,7 +198,6 @@ static void gm_try_send_3d1_spoof(uint32_t now_us) {
 static void gm_rx_hook(const CANPacket_t *msg) {
   const int GM_STANDSTILL_THRSLD = 10;  // 0.311kph
 
-  // OPGM variables
   // Keep panda threshold aligned with carstate to avoid pedal pre-enable mismatches.
   const int GM_GAS_INTERCEPTOR_THRESHOLD = 595;
 
@@ -275,7 +273,6 @@ static void gm_rx_hook(const CANPacket_t *msg) {
       cruise_engaged_prev = false;
     }
 
-    // OPGM variables
     // Cruise check for CC only cars
     if ((msg->addr == 0x3D1U) && !gm_has_acc) {
       uint32_t now_us = microsecond_timer_get();
@@ -338,7 +335,7 @@ static void gm_rx_hook(const CANPacket_t *msg) {
     }
   }
 
-  // Keep camera-bus ACC status behavior aligned with StarPilot camera/SDGM paths.
+  // Keep camera-bus ACC status behavior consistent across camera and SDGM paths.
   if ((msg->addr == 0x370U) && (msg->bus == 2U)) {
     bool cruise_engaged = (msg->data[2] >> 7) != 0U;  // ACCCmdActive
     if (gm_bolt_2022_pedal) {
@@ -350,7 +347,6 @@ static void gm_rx_hook(const CANPacket_t *msg) {
     }
   }
 
-  // StarPilot variables
   if (msg->addr == 0xC9U) {
     acc_main_on = GET_BIT(msg, 29U);
   }
@@ -440,7 +436,6 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
     }
   }
 
-  // OPGM variables
   // GAS: safety check (interceptor)
   if (msg->addr == 0x200U) {
     if (longitudinal_interceptor_checks(msg)) {
@@ -556,7 +551,6 @@ static safety_config gm_init(uint16_t param) {
   static const CanMsg GM_ASCM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x409, 0, 7, .check_relay = false}, {0x40A, 0, 7, .check_relay = false}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = false},  // pt bus
                                            {0xA1, 1, 7, .check_relay = false}, {0x306, 1, 8, .check_relay = false}, {0x308, 1, 7, .check_relay = false}, {0x310, 1, 2, .check_relay = false},   // obs bus
                                            {0x315, 2, 5, .check_relay = false},  // ch bus
-                                           // OPGM Variables
                                            {0x200, 0, 6, .check_relay = false},
                                            {0x1E1, 0, 7, .check_relay = false},
                                            {0xBD, 0, 7, .check_relay = false},
@@ -573,7 +567,6 @@ static safety_config gm_init(uint16_t param) {
   // block PSCMStatus (0x184); forwarded through openpilot to hide an alert from the camera
   static const CanMsg GM_CAM_LONG_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x315, 0, 5, .check_relay = true}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = true}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
                                                {0x184, 2, 8, .check_relay = true},  // camera bus
-                                               // OPGM Variables
                                                {0x200, 0, 6, .check_relay = false}, {0x1E1, 0, 7, .check_relay = false},
                                                {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false}};  // pt bus
 
@@ -581,7 +574,6 @@ static safety_config gm_init(uint16_t param) {
   static RxCheck gm_rx_checks[] = {
     GM_COMMON_RX_CHECKS
 
-    // OPGM Variables
     GM_ACC_RX_CHECKS
   };
 
@@ -589,7 +581,6 @@ static safety_config gm_init(uint16_t param) {
     GM_COMMON_RX_CHECKS
     {.msg = {{0xBD, 0, 7, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
-    // OPGM Variables
     GM_ACC_RX_CHECKS
   };
 
@@ -600,12 +591,10 @@ static safety_config gm_init(uint16_t param) {
 
   static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x370, 0, 6, .check_relay = false}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
                                           {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true},  // camera bus
-                                          // OPGM Variables
                                           {0x200, 0, 6, .check_relay = false},
                                           {0x1E1, 0, 7, .check_relay = false},
                                           {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false}};  // pt bus
 
-  // OPGM Variables
   static RxCheck gm_no_acc_ev_rx_checks[] = {
     GM_COMMON_RX_CHECKS
     {.msg = {{0xBD, 0, 7, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
@@ -646,7 +635,6 @@ static safety_config gm_init(uint16_t param) {
   gm_sdgm = GET_FLAG(param, GM_PARAM_HW_SDGM);
   gm_ascm_int = GET_FLAG(param, GM_PARAM_HW_ASCM_INT);
 
-  // OPGM Variables
   gm_cc_long = GET_FLAG(param, GM_PARAM_CC_LONG);
   gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
   gm_pedal_long = GET_FLAG(param, GM_PARAM_PEDAL_LONG);

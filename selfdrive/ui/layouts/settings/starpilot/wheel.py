@@ -6,8 +6,19 @@ from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 
-ACTION_NAMES = ["No Action", "Change Personality", "Force Coast", "Pause Steering", "Pause Accel/Brake", "Toggle Experimental", "Toggle Traffic"]
-ACTION_IDS = {name: i for i, name in enumerate(ACTION_NAMES)}
+ACTION_OPTIONS = [
+  {"id": 0, "name": "No Action"},
+  {"id": 1, "name": "Change Personality", "requires_longitudinal": True},
+  {"id": 2, "name": "Force Coast", "requires_longitudinal": True},
+  {"id": 3, "name": "Pause Steering"},
+  {"id": 4, "name": "Pause Accel/Brake", "requires_longitudinal": True},
+  {"id": 5, "name": "Toggle Experimental", "requires_longitudinal": True},
+  {"id": 6, "name": "Toggle Traffic", "requires_longitudinal": True},
+  {"id": 7, "name": "Toggle Switchback"},
+]
+ACTION_NAMES = [option["name"] for option in ACTION_OPTIONS]
+ACTION_IDS = {option["name"]: option["id"] for option in ACTION_OPTIONS}
+ACTION_NAME_BY_ID = {option["id"]: option["name"] for option in ACTION_OPTIONS}
 
 
 class StarPilotWheelLayout(StarPilotPanel):
@@ -55,16 +66,14 @@ class StarPilotWheelLayout(StarPilotPanel):
 
   def _get_action_name(self, key):
     idx = self._params.get_int(key)
-    if 0 <= idx < len(ACTION_NAMES):
-      return ACTION_NAMES[idx]
-    return ACTION_NAMES[0]
+    return ACTION_NAME_BY_ID.get(idx, ACTION_NAMES[0])
 
   def _get_available_actions(self):
-    actions = list(ACTION_NAMES[:1])  # No Action
     cs = starpilot_state.car_state
-    if cs.hasOpenpilotLongitudinal:
-      actions.extend(ACTION_NAMES[1:])
-    return actions
+    return [
+      option["name"] for option in ACTION_OPTIONS
+      if cs.hasOpenpilotLongitudinal or not option.get("requires_longitudinal", False)
+    ]
 
   def _show_action_picker(self, key):
     actions = self._get_available_actions()

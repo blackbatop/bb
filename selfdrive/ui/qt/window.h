@@ -23,6 +23,5 @@ private:
   SettingsWindow *settingsWindow;
   OnboardingWindow *onboardingWindow;
 
-  // StarPilot variables
   Params params;
 };

@@ -29,7 +29,6 @@ class CarState(CarStateBase):
     ret.cruiseState.enabled = True
     ret.cruiseState.available = True
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret

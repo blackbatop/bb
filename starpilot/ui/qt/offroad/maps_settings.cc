@@ -1,6 +1,18 @@
+#include <QDirIterator>
 #include <QtConcurrent>
 
 #include "starpilot/ui/qt/offroad/maps_settings.h"
+
+namespace {
+bool hasDownloadedMaps(const QDir &dir) {
+  if (!dir.exists()) {
+    return false;
+  }
+
+  QDirIterator it(dir.absolutePath(), QDir::Files, QDirIterator::Subdirectories);
+  return it.hasNext();
+}
+}  // namespace
 
 StarPilotMapsPanel::StarPilotMapsPanel(StarPilotSettingsWindow *parent, bool forceOpen) : StarPilotListWidget(parent), parent(parent) {
   forceOpenDescriptions = forceOpen;
@@ -145,7 +157,7 @@ void StarPilotMapsPanel::showEvent(QShowEvent *event) {
 
   bool parked = !scene.started || starpilot_scene.parked || parent->isFrogsGoMoo;
 
-  removeMapsButton->setVisible(mapsFolderPath.exists());
+  removeMapsButton->setVisible(hasDownloadedMaps(mapsFolderPath));
 
   if (mapDownloadActive) {
     downloadMapsButton->setText(tr("CANCEL"));
@@ -219,7 +231,7 @@ void StarPilotMapsPanel::cancelDownload() {
     downloadTimeElapsed->setVisible(false);
 
     lastMapsDownload->setVisible(true);
-    removeMapsButton->setVisible(mapsFolderPath.exists());
+    removeMapsButton->setVisible(hasDownloadedMaps(mapsFolderPath));
 
     update();
   });
@@ -254,7 +266,7 @@ void StarPilotMapsPanel::updateDownloadLabels(int downloadedFiles, int totalFile
     downloadTimeElapsed->setVisible(false);
 
     lastMapsDownload->setVisible(true);
-    removeMapsButton->setVisible(true);
+    removeMapsButton->setVisible(hasDownloadedMaps(mapsFolderPath));
 
     params.put("LastMapsUpdate", formatCurrentDate().toStdString());
 

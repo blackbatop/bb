@@ -35,6 +35,17 @@ LOG_CANDIDATES = [
   "raw_log.bz2",
 ]
 
+ROUTE_TIME_LOG_CANDIDATES = [
+  "rlog.zst",
+  "rlog.bz2",
+  "rlog",
+  "qlog.zst",
+  "qlog.bz2",
+  "qlog",
+  "raw_log.zst",
+  "raw_log.bz2",
+]
+
 SEGMENT_RE = re.compile(r"^[0-9a-fA-F]{8}--[0-9a-fA-F]{10}--\d+$")
 
 TARGET_LOUDNESS = -15.0
@@ -558,12 +569,44 @@ def get_repo_owner(git_normalized_origin):
   parts = git_normalized_origin.split("/")
   return parts[1] if len(parts) >= 2 else "unknown"
 
-def get_route_start_time(log_file_path):
-  if not os.path.exists(log_file_path):
+def get_route_log_path(path):
+  target = Path(path)
+  if target.is_dir():
+    for candidate in ROUTE_TIME_LOG_CANDIDATES:
+      candidate_path = target / candidate
+      if candidate_path.exists():
+        return candidate_path
     return None
 
-  creation_time = os.path.getctime(log_file_path)
-  return datetime.fromtimestamp(creation_time)
+  if target.exists():
+    return target
+
+  if target.parent.is_dir():
+    for candidate in ROUTE_TIME_LOG_CANDIDATES:
+      candidate_path = target.parent / candidate
+      if candidate_path.exists():
+        return candidate_path
+
+  return None
+
+
+def get_route_start_time(path):
+  log_path = get_route_log_path(path)
+  if log_path is None:
+    target = Path(path)
+    if not target.exists():
+      return None
+    log_path = target
+
+  try:
+    modified_time = log_path.stat().st_mtime
+  except OSError:
+    return None
+
+  if modified_time <= 0:
+    return None
+
+  return datetime.fromtimestamp(modified_time)
 
 def get_routes_names(footage_path):
   segments = get_all_segment_names(footage_path)
@@ -608,7 +651,6 @@ def normalize_theme_name(name, for_path=False):
 def process_route(footage_path, route_name):
   segment_path = f"{footage_path}{route_name}--0"
   qcamera_path = f"{segment_path}/qcamera.ts"
-  rlog_path = f"{segment_path}/rlog"
 
   png_output_path = os.path.join(segment_path, "preview.png")
   if not os.path.exists(png_output_path):
@@ -623,7 +665,7 @@ def process_route(footage_path, route_name):
 
   route_timestamp_str = custom_name
   if not custom_name:
-    route_timestamp_dt = get_route_start_time(rlog_path)
+    route_timestamp_dt = get_route_start_time(segment_path)
     route_timestamp_str = route_timestamp_dt.isoformat() if route_timestamp_dt else None
 
   return {

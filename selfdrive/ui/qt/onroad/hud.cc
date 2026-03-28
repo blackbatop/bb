@@ -67,7 +67,6 @@ void HudRenderer::drawSetSpeed(QPainter &p, const QRect &surface_rect) {
   const QSize default_size = {172, 204};
   QSize set_speed_size = is_metric ? QSize(200, 204) : default_size;
 
-  // StarPilot variables
   if (starpilot_nvg->speedLimitHeight != 0) {
     set_speed_size.rheight() += starpilot_nvg->speedLimitHeight;
     if (starpilot_toggles.value("speed_limit_vienna").toBool()) {
@@ -109,7 +108,6 @@ void HudRenderer::drawSetSpeed(QPainter &p, const QRect &surface_rect) {
     p.drawText(set_speed_rect.adjusted(0, 77, 0, 0), Qt::AlignTop | Qt::AlignHCenter, setSpeedStr);
   }
 
-  // StarPilot variables
   starpilot_nvg->defaultSize = default_size;
   starpilot_nvg->isCruiseSet = is_cruise_set;
   starpilot_nvg->setSpeedRect = set_speed_rect;

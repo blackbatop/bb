@@ -42,7 +42,6 @@ private:
   QPushButton* alert_notif;
   QPushButton* update_notif;
 
-  // StarPilot variables
   ElidedLabel* date;
 };
 
@@ -73,7 +72,6 @@ private:
   DriverViewWindow *driver_view;
   QStackedLayout *slayout;
 
-  // StarPilot variables
   DeveloperSidebar *developer_sidebar;
 
   Params params;

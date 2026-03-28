@@ -29,7 +29,6 @@ class CarInterface(CarInterfaceBase):
 
     ret.centerToFront = ret.wheelbase * 0.41
 
-    # StarPilot variables
     ret.enableBsm = True
 
     return ret

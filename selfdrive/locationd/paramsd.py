@@ -59,7 +59,6 @@ class VehicleParamsLearner:
 
     self.reset(None)
 
-    # StarPilot variables
     self.CP = CP
 
   def reset(self, t: float | None):
@@ -192,7 +191,6 @@ class VehicleParamsLearner:
       liveParameters.debugFilterState.value = x.tolist()
       liveParameters.debugFilterState.std = P.tolist()
 
-    # StarPilot variables
     if self.CP.carFingerprint == "RAM_HD":
       liveParameters.valid = True
 
@@ -285,7 +283,6 @@ def main():
   steer_ratio, stiffness_factor, angle_offset_deg, pInitial = retrieve_initial_vehicle_params(params, CP, REPLAY, DEBUG)
   learner = VehicleParamsLearner(CP, steer_ratio, stiffness_factor, np.radians(angle_offset_deg), pInitial)
 
-  # StarPilot variables
   sm = sm.extend(['starpilotPlan'])
 
   learner.starpilot_toggles = get_starpilot_toggles()
@@ -307,7 +304,6 @@ def main():
 
       pm.send('liveParameters', msg_dat)
 
-    # StarPilot variables
     learner.starpilot_toggles = get_starpilot_toggles(sm)
 
 

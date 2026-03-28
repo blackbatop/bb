@@ -60,7 +60,6 @@ bool acc_main_on = false;  // referred to as "ACC off" in ISO 15622:2018
 int cruise_button_prev = 0;
 bool safety_rx_checks_invalid = false;
 
-// StarPilot variables
 bool aol_allowed = false;
 bool lkas_button_prev = false;
 bool lkas_on = false;
@@ -97,7 +96,6 @@ uint16_t current_safety_param = 0;
 static const safety_hooks *current_hooks = &nooutput_hooks;
 safety_config current_safety_config;
 
-// OPGM variables
 bool enable_gas_interceptor = false;
 int gas_interceptor_prev = 0;
 bool gm_remote_start_boots_comma = false;
@@ -375,7 +373,6 @@ static void generic_rx_checks(void) {
   }
   steering_disengage_prev = steering_disengage;
 
-  // StarPilot variables
   aol_allowed = (acc_main_on || lkas_on) && (alternative_experience & ALT_EXP_ALWAYS_ON_LATERAL);
 }
 
@@ -497,11 +494,9 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
     }
   }
 
-  // OPGM variables
   enable_gas_interceptor = false;
   gas_interceptor_prev = 0;
 
-  // StarPilot variables
   aol_allowed = false;
   lkas_button_prev = false;
   lkas_on = false;

@@ -34,7 +34,6 @@ public:
   void setMinLength(int length);
   void show();
 
-  // StarPilot variables
   void setMaxLength(int length);
 
 private:
@@ -46,7 +45,6 @@ private:
   QVBoxLayout *main_layout;
   QPushButton *eye_btn;
 
-  // StarPilot variables
   void updateMaxLengthSublabel(const QString &text);
 
   int maxLength;

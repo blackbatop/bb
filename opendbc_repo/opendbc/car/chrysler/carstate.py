@@ -28,7 +28,6 @@ class CarState(CarStateBase):
     # RealFast variables
     self.button_message = "CRUISE_BUTTONS_ALT" if FPCP.flags & ChryslerStarPilotFlags.RAM_HD_ALT_BUTTONS else "CRUISE_BUTTONS"
 
-    # StarPilot variables
     self.lkas_button = 0
 
   def update(self, can_parsers, starpilot_toggles) -> structs.CarState:
@@ -104,7 +103,6 @@ class CarState(CarStateBase):
 
     buttonEvents = create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise})
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     self.prev_lkas_button = self.lkas_button

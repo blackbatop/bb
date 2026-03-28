@@ -14,7 +14,9 @@ from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPan
 from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import TileGrid, ToggleTile, SliderDialog
 
 class StarPilotSoundsLayout(StarPilotPanel):
+  COOLDOWN_KEY = "SwitchbackModeCooldown"
   VOLUME_KEYS = [
+    "BelowSteerSpeedVolume",
     "DisengageVolume",
     "EngageVolume",
     "PromptVolume",
@@ -70,7 +72,9 @@ class StarPilotSoundsLayout(StarPilotPanel):
         panel.refresh_visibility()
 
 class StarPilotVolumeControlLayout(StarPilotPanel):
+  COOLDOWN_INFO = {"title": tr_noop("Switchback Mode Cooldown"), "icon": "toggle_icons/icon_mute.png", "min": 0, "max": 60}
   VOLUME_INFO = {
+    "BelowSteerSpeedVolume": {"title": tr_noop("Min Steer Speed Alert"), "icon": "toggle_icons/icon_mute.png", "min": 0},
     "DisengageVolume": {"title": tr_noop("Disengage Volume"), "icon": "toggle_icons/icon_mute.png", "min": 0},
     "EngageVolume": {"title": tr_noop("Engage Volume"), "icon": "toggle_icons/icon_green_light.png", "min": 0},
     "PromptVolume": {"title": tr_noop("Prompt Volume"), "icon": "toggle_icons/icon_message.png", "min": 0},
@@ -108,6 +112,23 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
         "color": "#FF0097"
       })
 
+    def get_cooldown_val():
+      v = self._params.get_int(StarPilotSoundsLayout.COOLDOWN_KEY, return_default=True, default=0)
+      if v == 0:
+        return tr("Off")
+      if v == 1:
+        return tr("1 second")
+      return f"{v} {tr('seconds')}"
+
+    self.CATEGORIES.append({
+      "title": self.COOLDOWN_INFO["title"],
+      "type": "value",
+      "get_value": get_cooldown_val,
+      "on_click": self._show_cooldown_selector,
+      "icon": self.COOLDOWN_INFO["icon"],
+      "color": "#FF0097"
+    })
+
     self._rebuild_grid()
 
   def _show_volume_selector(self, key: str, info: dict):
@@ -125,6 +146,19 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
     gui_app.set_modal_overlay(SliderDialog(
       tr(info["title"]), 0, 101, 1, current_v, on_close,
       unit="%", labels={0: tr("Muted"), 101: tr("Auto")}, color="#FF0097"
+    ))
+
+  def _show_cooldown_selector(self):
+    current_v = self._params.get_int(StarPilotSoundsLayout.COOLDOWN_KEY, return_default=True, default=0)
+
+    def on_close(res, val):
+      if res == DialogResult.CONFIRM:
+        self._params.put_int(StarPilotSoundsLayout.COOLDOWN_KEY, int(val))
+        self._rebuild_grid()
+
+    gui_app.set_modal_overlay(SliderDialog(
+      tr(self.COOLDOWN_INFO["title"]), 0, self.COOLDOWN_INFO["max"], 1, current_v, on_close,
+      unit=" s", labels={0: tr("Off")}, color="#FF0097"
     ))
 
   @classmethod
@@ -151,13 +185,15 @@ while True:
   def _test_sound(self, key: str):
     base_name = key.replace("Volume", "")
     if ui_state.started:
-      self._params_memory.put("TestAlert", base_name[0].lower() + base_name[1:])
+      alert_name = "belowSteerSpeed" if base_name == "BelowSteerSpeed" else base_name[0].lower() + base_name[1:]
+      self._params_memory.put("TestAlert", alert_name)
     else:
       self._play_sound_offroad(key)
 
   def _play_sound_offroad(self, key: str):
     base_name = key.replace("Volume", "")
-    snake_case = "".join(["_" + c.lower() if c.isupper() else c for c in base_name]).lstrip("_")
+    preview_base_name = "Prompt" if base_name == "BelowSteerSpeed" else base_name
+    snake_case = "".join(["_" + c.lower() if c.isupper() else c for c in preview_base_name]).lstrip("_")
     stock_path = Path(BASEDIR) / "selfdrive" / "assets" / "sounds" / f"{snake_case}.wav"
     theme_path = ACTIVE_THEME_PATH / "sounds" / f"{snake_case}.wav"
     sound_path = theme_path if theme_path.exists() else stock_path

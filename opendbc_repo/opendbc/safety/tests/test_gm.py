@@ -132,7 +132,6 @@ class TestGmSafetyBase(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTe
     values = {"ACCButtons": buttons}
     return self.packer.make_can_msg_safety("ASCMSteeringButton", self.BUTTONS_BUS, values)
 
-  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # ECMEngineStatus, bit 29 is CruiseMainOn
     values = {"CruiseMainOn": 1 if toggle_on else 0}
@@ -289,7 +288,6 @@ class TestGmCameraLongitudinalEVSafety(GmCameraAccEVRegenMixin, TestGmCameraLong
   pass
 
 
-# OPGM variables
 def interceptor_msg(gas, addr):
   to_send = common.make_msg(0, addr, 6)
   to_send[0].data[0] = (gas & 0xFF00) >> 8

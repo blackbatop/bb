@@ -18,7 +18,6 @@ public:
   explicit AnnotatedCameraWidget(VisionStreamType type, QWidget* parent = 0);
   void updateState(const UIState &s, const StarPilotUIState &fs);
 
-  // StarPilot variables
   double fps;
 
   StarPilotAnnotatedCameraWidget *starpilot_nvg;
@@ -38,7 +37,6 @@ private:
   int skip_frame_count = 0;
   bool wide_cam_requested = false;
 
-  // StarPilot variables
   void paintEvent(QPaintEvent *event) override;
 
   DrivingPersonalityButton *personality_btn;

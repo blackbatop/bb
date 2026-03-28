@@ -11,7 +11,6 @@ from opendbc.car.subaru.values import DBC, GLOBAL_ES_ADDR, CanBus, CarController
 MAX_STEER_RATE = 25  # deg/s
 MAX_STEER_RATE_FRAMES = 7  # tx control frames needed before torque can be cut
 
-# StarPilot variables
 _SNG_ACC_MIN_DIST = 3
 _SNG_ACC_MAX_DIST = 4.5
 
@@ -27,7 +26,6 @@ class CarController(CarControllerBase):
     self.p = CarControllerParams(CP)
     self.packer = CANPacker(DBC[CP.carFingerprint][Bus.pt])
 
-    # StarPilot variables
     self.manual_hold = False
     self.prev_standstill = False
     self.sng_acc_resume = False
@@ -71,7 +69,6 @@ class CarController(CarControllerBase):
 
       self.apply_torque_last = apply_torque
 
-    # StarPilot variables
     # *** stop and go ***
     if starpilot_toggles.subaru_sng:
       throttle_cmd, speed_cmd = self.stop_and_go(CC, CS)
@@ -112,7 +109,6 @@ class CarController(CarControllerBase):
 
         can_sends.append(subarucan.create_preglobal_es_distance(self.packer, cruise_button, CS.es_distance_msg))
 
-      # StarPilot variables
       if starpilot_toggles.subaru_sng:
         can_sends.append(subarucan.create_preglobal_throttle(self.packer, CS.throttle_msg["COUNTER"] + 1, CS.throttle_msg, throttle_cmd))
     else:
@@ -127,7 +123,6 @@ class CarController(CarControllerBase):
         if self.CP.flags & SubaruFlags.SEND_INFOTAINMENT:
           can_sends.append(subarucan.create_es_infotainment(self.packer, self.frame // 10, CS.es_infotainment_msg, hud_control.visualAlert))
 
-      # StarPilot variables
       if starpilot_toggles.subaru_sng:
         can_sends.append(subarucan.create_throttle(self.packer, CS.throttle_msg["COUNTER"] + 1, CS.throttle_msg, throttle_cmd))
         if self.frame % 2 == 0:
@@ -171,7 +166,6 @@ class CarController(CarControllerBase):
     self.frame += 1
     return new_actuators, can_sends
 
-  # StarPilot variables
   def stop_and_go(self, CC, CS, speed_cmd=False, throttle_cmd=False):
     if self.CP.flags & SubaruFlags.PREGLOBAL:
       trigger_resume = CC.enabled

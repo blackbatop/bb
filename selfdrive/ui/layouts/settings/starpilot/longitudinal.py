@@ -596,23 +596,55 @@ class StarPilotSpeedLimitControllerLayout(StarPilotPanel):
       {
         "title": tr_noop("Source Priority"),
         "type": "value",
-        "get_value": lambda: self._params.get("SLCPriority1", encoding='utf-8') or "Dashboard",
+        "get_value": self._get_priority_value,
         "on_click": self._on_priority_clicked,
         "color": "#1BA1E2",
       },
     ]
     self._rebuild_grid()
 
-  def _on_priority_clicked(self):
-    options = ["Dashboard", "Map Data", "Highest", "Lowest"]
+  def _get_priority_value(self):
+    primary = self._params.get("SLCPriority1", encoding='utf-8') or "Map Data"
+    secondary = self._params.get("SLCPriority2", encoding='utf-8') or "None"
+    if primary in ("Highest", "Lowest") or secondary in ("", "None", primary):
+      return primary
+    return f"{primary}, {secondary}"
 
-    def on_select(res, val):
+  def _on_priority_clicked(self):
+    primary_options = ["Dashboard", "Map Data", "Highest", "Lowest"]
+    current_primary = self._params.get("SLCPriority1", encoding='utf-8') or "Map Data"
+    current_secondary = self._params.get("SLCPriority2", encoding='utf-8') or "None"
+
+    def on_secondary_select(primary, res, val):
       if res == DialogResult.CONFIRM:
-        self._params.put("SLCPriority1", val)
+        self._params.put("SLCPriority1", primary)
+        self._params.put("SLCPriority2", val)
         self._rebuild_grid()
 
+    def show_secondary_dialog(primary):
+      secondary_options = ["None"] + [option for option in ("Dashboard", "Map Data") if option != primary]
+      selected_secondary = current_secondary if current_secondary in secondary_options else "None"
+      gui_app.set_modal_overlay(
+        SelectionDialog(
+          tr("SLC Secondary Priority"),
+          secondary_options,
+          selected_secondary,
+          on_close=lambda res, val: on_secondary_select(primary, res, val),
+        )
+      )
+
+    def on_primary_select(res, val):
+      if res != DialogResult.CONFIRM:
+        return
+      if val in ("Highest", "Lowest"):
+        self._params.put("SLCPriority1", val)
+        self._params.put("SLCPriority2", "None")
+        self._rebuild_grid()
+        return
+      show_secondary_dialog(val)
+
     gui_app.set_modal_overlay(
-      SelectionDialog(tr("SLC Priority"), options, self._params.get("SLCPriority1", encoding='utf-8') or "Dashboard", on_close=on_select)
+      SelectionDialog(tr("SLC Primary Priority"), primary_options, current_primary, on_close=on_primary_select)
     )
 
   def _show_selection(self, key, options):

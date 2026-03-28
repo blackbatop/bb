@@ -310,7 +310,6 @@ class TorqueSteeringSafetyTestBase(SafetyTestBase, abc.ABC):
     for _ in range(10):
       self.assertFalse(self._tx(self._torque_cmd_msg(self.MAX_TORQUE, 1)))
 
-  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     """Toggles "Always On Lateral" On/Off"""
     pass
@@ -851,7 +850,6 @@ class AngleSteeringSafetyTest(VehicleSpeedSafetyTest):
     for _ in range(5):
       self.assertTrue(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
 
-  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     """Toggles "Always On Lateral" on/off"""
     pass
@@ -1216,7 +1214,6 @@ class CarSafetyTest(SafetyTest):
     self.assertFalse(self.safety.safety_config_valid())
 
 
-# OPGM variables
 class GasInterceptorSafetyTest(PandaSafetyTestBase):
 
   INTERCEPTOR_THRESHOLD = 0

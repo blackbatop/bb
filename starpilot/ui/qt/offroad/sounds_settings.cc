@@ -23,6 +23,8 @@ StarPilotSoundsPanel::StarPilotSoundsPanel(StarPilotSettingsWindow *parent, bool
 
   const std::vector<std::tuple<QString, QString, QString, QString>> soundsToggles {
     {"AlertVolumeControl", tr("Alert Volume Controller"), tr("<b>Set how loud each type of openpilot alert is</b> to keep routine prompts from becoming distracting."), "../../starpilot/assets/toggle_icons/icon_mute.png"},
+    {"SwitchbackModeCooldown", tr("Switchback Mode Cooldown"), tr("<b>Set the minimum time between repeated steering-limit and minimum-steer-speed alerts while \"Switchback Mode\" is active.</b><br><br>Useful on winding roads where \"Turn Exceeds Steering Limit\" and \"Steer Unavailable Under\" can repeat frequently. Set to <b>Off</b> to disable the cooldown even when the mode is on."), ""},
+    {"BelowSteerSpeedVolume", tr("Min Steer Speed Alert Volume"), tr("<b>Set the volume for the \"Steer Unavailable Under\" alert shown below the car's minimum steering speed.</b><br><br>Set to <b>Muted</b> to silence only this alert."), ""},
     {"DisengageVolume", tr("Disengage Volume"), tr("<b>Set the volume for alerts when openpilot disengages.</b><br><br>Examples include: \"Cruise Fault: Restart the Car\", \"Parking Brake Engaged\", \"Pedal Pressed\"."), ""},
     {"EngageVolume", tr("Engage Volume"), tr("<b>Set the volume for the chime when openpilot engages</b>, such as after pressing the \"RESUME\" or \"SET\" steering wheel buttons."), ""},
     {"PromptVolume", tr("Prompt Volume"), tr("<b>Set the volume for prompts that need attention.</b><br><br>Examples include: \"Car Detected in Blindspot\", \"Steering Temporarily Unavailable\", \"Turn Exceeds Steering Limit\"."), ""},
@@ -48,6 +50,12 @@ StarPilotSoundsPanel::StarPilotSoundsPanel(StarPilotSettingsWindow *parent, bool
         soundsLayout->setCurrentWidget(alertVolumeControlPanel);
       });
       soundsToggle = alertVolumeControlToggle;
+    } else if (alertCooldownKeys.contains(param)) {
+      std::map<float, QString> cooldownLabels;
+      for (int i = 0; i <= 60; ++i) {
+        cooldownLabels[i] = i == 0 ? tr("Off") : i == 1 ? tr("1 second") : QString::number(i) + tr(" seconds");
+      }
+      soundsToggle = new StarPilotParamValueControl(param, title, desc, icon, 0, 60, QString(), cooldownLabels, 1);
     } else if (alertVolumeControlKeys.contains(param)) {
       std::map<float, QString> volumeLabels;
       for (int i = 0; i <= 101; ++i) {
@@ -73,7 +81,7 @@ StarPilotSoundsPanel::StarPilotSoundsPanel(StarPilotSettingsWindow *parent, bool
 
     toggles[param] = soundsToggle;
 
-    if (alertVolumeControlKeys.contains(param)) {
+    if (alertCooldownKeys.contains(param) || alertVolumeControlKeys.contains(param)) {
       alertVolumeControlList->addItem(soundsToggle);
     } else if (customAlertsKeys.contains(param)) {
       customAlertsList->addItem(soundsToggle);
@@ -113,7 +121,7 @@ StarPilotSoundsPanel::StarPilotSoundsPanel(StarPilotSettingsWindow *parent, bool
   QObject::connect(uiState(), &UIState::uiUpdate, this, &StarPilotSoundsPanel::updateState);
 
   for (auto &[key, toggle] : toggles) {
-    if (alertVolumeControlKeys.contains(key)) {
+    if (alertCooldownKeys.contains(key) || alertVolumeControlKeys.contains(key)) {
       toggle->setVisible(true);
     }
   }
@@ -191,7 +199,7 @@ void StarPilotSoundsPanel::updateToggles() {
     toggle->setVisible(setVisible);
 
     if (setVisible) {
-      if (alertVolumeControlKeys.contains(key)) {
+      if (alertCooldownKeys.contains(key) || alertVolumeControlKeys.contains(key)) {
         toggles["AlertVolumeControl"]->setVisible(true);
       } else if (customAlertsKeys.contains(key)) {
         toggles["CustomAlerts"]->setVisible(true);
@@ -212,10 +220,11 @@ void StarPilotSoundsPanel::testSound(const QString &key) {
 
     util::sleep_for(UI_FREQ);
 
-    QString camelCaseAlert = QString(baseName).replace(0, 1, baseName[0].toLower());
+    QString camelCaseAlert = baseName == "BelowSteerSpeed" ? "belowSteerSpeed" : QString(baseName).replace(0, 1, baseName[0].toLower());
     params_memory.put("TestAlert", camelCaseAlert.toStdString());
   } else {
-    QString snakeCaseAlert = QString(baseName).replace(QRegularExpression("([A-Z])"), "_\\1").toLower().mid(1);
+    QString previewBaseName = baseName == "BelowSteerSpeed" ? "Prompt" : baseName;
+    QString snakeCaseAlert = QString(previewBaseName).replace(QRegularExpression("([A-Z])"), "_\\1").toLower().mid(1);
     QString stockPath = "../../selfdrive/assets/sounds/" + snakeCaseAlert + ".wav";
     QString themePath = "../../starpilot/assets/active_theme/sounds/" + snakeCaseAlert + ".wav";
 

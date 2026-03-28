@@ -20,7 +20,6 @@ AnnotatedCameraWidget::AnnotatedCameraWidget(VisionStreamType type, QWidget *par
   experimental_btn = new ExperimentalButton(this);
   main_layout->addWidget(experimental_btn, 0, Qt::AlignTop | Qt::AlignRight);
 
-  // StarPilot variables
   personality_btn = new DrivingPersonalityButton(this);
   personality_btn->setVisible(false);
 
@@ -33,7 +32,6 @@ void AnnotatedCameraWidget::updateState(const UIState &s, const StarPilotUIState
   experimental_btn->updateState(s, fs);
   dmon.updateState(s);
 
-  // StarPilot variables
   const SubMaster &sm = *(s.sm);
 
   const cereal::CarState::Reader &carState = sm["carState"].getCarState();
@@ -164,7 +162,6 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(Qt::NoPen);
 
-  // StarPilot variables
   dmon.starpilot_nvg = starpilot_nvg;
   hud.starpilot_nvg = starpilot_nvg;
   model.starpilot_nvg = starpilot_nvg;
@@ -182,7 +179,6 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
   hud.updateState(*s);
   hud.draw(painter, rect());
 
-  // StarPilot variables
   starpilot_nvg->paintStarPilotWidgets(painter, *s);
 
   double cur_draw_t = millis_since_boot();

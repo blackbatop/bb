@@ -30,7 +30,6 @@ STANDSTILL_THRESHOLD = 10 * 0.0311
 BUTTONS_DICT = {CruiseButtons.RES_ACCEL: ButtonType.accelCruise, CruiseButtons.DECEL_SET: ButtonType.decelCruise,
                 CruiseButtons.MAIN: ButtonType.mainCruise, CruiseButtons.CANCEL: ButtonType.cancel}
 
-# OPGM variables
 GearShifter = structs.CarState.GearShifter
 BOLT_GEN1_CANCEL_PERSONALITY_CARS = {
   CAR.CHEVROLET_BOLT_CC_2017,
@@ -58,7 +57,6 @@ class CarState(CarStateBase):
     self.prev_distance_button = 0
     self.distance_button = 0
 
-    # OPGM variables
     self.single_pedal_mode = False
 
     self.pedal_steady = 0

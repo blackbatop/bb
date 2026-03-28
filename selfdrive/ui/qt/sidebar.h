@@ -20,7 +20,7 @@ class Sidebar : public QFrame {
   Q_PROPERTY(int netStrength MEMBER net_strength NOTIFY valueChanged);
   Q_PROPERTY(bool recordingAudio MEMBER recording_audio NOTIFY valueChanged);
 
-  // StarPilot properties
+  // Additional properties
   Q_PROPERTY(ItemStatus chipStatus MEMBER chip_status NOTIFY valueChanged)
   Q_PROPERTY(ItemStatus memoryStatus MEMBER memory_status NOTIFY valueChanged)
   Q_PROPERTY(ItemStatus storageStatus MEMBER storage_status NOTIFY valueChanged)
@@ -65,14 +65,12 @@ protected:
   QString net_type;
   int net_strength = 0;
 
-  // StarPilot variables
   ItemStatus chip_status, memory_status, storage_status;
 
 private:
   std::unique_ptr<PubMaster> pm;
   Networking *networking = nullptr;
 
-  // StarPilot variables
   void showEvent(QShowEvent *event);
   void updateTheme();
 

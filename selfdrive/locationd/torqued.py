@@ -253,7 +253,6 @@ def main(demo=False):
   params = Params()
   estimator = TorqueEstimator(messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams))
 
-  # StarPilot variables
   sm = sm.extend(['starpilotPlan'])
 
   starpilot_toggles = get_starpilot_toggles()
@@ -280,7 +279,6 @@ def main(demo=False):
       msg = estimator.get_msg(valid=sm.all_checks(), with_points=True)
       params.put_nonblocking("LiveTorqueParameters", msg.to_bytes())
 
-    # StarPilot variables
     estimator.starpilot_toggles = get_starpilot_toggles(sm)
 
 

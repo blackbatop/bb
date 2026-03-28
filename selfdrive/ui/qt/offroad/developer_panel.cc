@@ -69,7 +69,6 @@ DeveloperPanel::DeveloperPanel(SettingsWindow *parent) : QFrame(parent) {
   // Toggles should be not available to change in onroad state
   QObject::connect(uiState(), &UIState::offroadTransition, this, &DeveloperPanel::updateToggles);
 
-  // StarPilot variables
   QJsonObject shownDescriptions = QJsonDocument::fromJson(QString::fromStdString(params.get("ShownToggleDescriptions")).toUtf8()).object();
   QString className = this->metaObject()->className();
 
@@ -282,7 +281,6 @@ void DeveloperPanel::updateToggles(bool _offroad) {
       btn->setEnabled(_offroad);
     }
 
-    // StarPilot variables
     for (auto &[key, toggle] : toggles) {
       if (toggle == btn) {
         btn->setEnabled(true);
@@ -317,7 +315,6 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 
     longManeuverToggle->setEnabled((showAllToggles || hasLongitudinalControl(CP)) && _offroad);
 
-    // StarPilot variables
     hasOpenpilotLongitudinal = hasLongitudinalControl(CP);
     hasRadar = !CP.getRadarUnavailable();
 
@@ -331,7 +328,6 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 
   offroad = _offroad;
 
-  // StarPilot variables
   tuningLevel = params.getInt("TuningLevel");
 
   for (auto &[key, toggle] : toggles) {
@@ -388,7 +384,6 @@ void DeveloperPanel::updateToggles(bool _offroad) {
 void DeveloperPanel::showEvent(QShowEvent *event) {
   updateToggles(offroad);
 
-  // StarPilot variables
   for (int i = 0; i < sidebarMetricsToggles.size(); ++i) {
     if (params.getBool(sidebarMetricsToggles[i].toStdString())) {
       sidebarMetricsToggle->setCheckedButton(i);

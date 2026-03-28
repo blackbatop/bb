@@ -59,7 +59,6 @@ NON_LINEAR_TORQUE_PARAMS = {
   },
 }
 
-# OPGM variables
 PEDAL_MSG = 0x201
 CAM_MSG = 0x320
 ACCELERATOR_POS_MSG = 0xBE
@@ -348,6 +347,15 @@ class CarInterface(CarInterfaceBase):
     ret.steerLimitTimer = 0.4
     ret.longitudinalActuatorDelay = 0.5  # large delay to initially start braking
 
+    if candidate in (
+      CAR.CHEVROLET_VOLT,
+      CAR.CHEVROLET_VOLT_2019,
+      CAR.CHEVROLET_VOLT_ASCM,
+      CAR.CHEVROLET_VOLT_CAMERA,
+      CAR.CHEVROLET_VOLT_CC,
+    ):
+      ret.minSteerSpeed = 7 * CV.MPH_TO_MS
+
     if candidate in (CAR.CHEVROLET_VOLT, CAR.CHEVROLET_VOLT_CC, CAR.CHEVROLET_VOLT_CAMERA):
       ret.minEnableSpeed = -1
 
@@ -486,7 +494,6 @@ class CarInterface(CarInterfaceBase):
       ret.steerActuatorDelay = 0.5
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
-    # OPGM variables
     elif candidate in (CAR.CHEVROLET_MALIBU, CAR.CHEVROLET_MALIBU_CC, CAR.CHEVROLET_MALIBU_HYBRID_CC):
       ret.steerActuatorDelay = 0.2
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
@@ -524,7 +531,7 @@ class CarInterface(CarInterfaceBase):
           ret.longitudinalTuning.kfDEPRECATED = 0.25
 
       if is_bolt_2022_2023_pedal:
-        # Gen2 Bolt pedal-long should follow the no-ACC panda path like StarPilot.
+        # Gen2 Bolt pedal-long should follow the no-ACC panda path.
         ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.FLAG_GM_NO_ACC.value
 
       if candidate in (CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL, CAR.CHEVROLET_MALIBU_HYBRID_CC):
@@ -627,7 +634,6 @@ class CarInterface(CarInterfaceBase):
     if remap_cancel_to_distance or malibu_cancel_passthrough:
       ret.alternativeExperience |= ALTERNATIVE_EXPERIENCE.GM_REMAP_CANCEL_TO_DISTANCE
 
-    # StarPilot variables
     if candidate == CAR.CHEVROLET_TRAX:
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 

@@ -24,6 +24,7 @@ class StarPilotEvents:
 
     self.always_on_lateral_enabled_previously = False
     self.previous_traffic_mode = False
+    self.previous_switchback_mode = False
     self.random_event_playing = False
     self.startup_seen = False
     self.stopped_for_light = False
@@ -39,10 +40,15 @@ class StarPilotEvents:
   def update(self, long_control_active, v_cruise, sm, starpilot_toggles):
     current_alert = sm["selfdriveState"].alertType
     current_starpilot_alert = sm["selfdriveState"].alertType
+    switchback_mode_enabled = self.starpilot_planner.params_memory.get_bool("SwitchbackModeEnabled")
 
     alerts_empty = all(sm[state].alertText1 == "" and sm[state].alertText2 == "" for state in ["selfdriveState", "starpilotSelfdriveState"])
 
     self.events.clear()
+
+    if not sm["deviceState"].started:
+      self.previous_switchback_mode = False
+      self.previous_traffic_mode = False
 
     acceleration = sm["carControl"].actuators.accel
 
@@ -192,6 +198,14 @@ class StarPilotEvents:
         self.events.add(StarPilotEventName.trafficModeActive)
 
       self.previous_traffic_mode = sm["starpilotCarState"].trafficModeEnabled
+
+    if switchback_mode_enabled != self.previous_switchback_mode:
+      if self.previous_switchback_mode:
+        self.events.add(StarPilotEventName.switchbackModeInactive)
+      else:
+        self.events.add(StarPilotEventName.switchbackModeActive)
+
+      self.previous_switchback_mode = switchback_mode_enabled
 
     if sm["starpilotModelV2"].turnDirection == TurnDirection.turnLeft:
       self.events.add(StarPilotEventName.turningLeft)

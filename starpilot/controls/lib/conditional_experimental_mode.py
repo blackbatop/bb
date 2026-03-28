@@ -25,7 +25,7 @@ def interp(x, xp, fp):
 
 
 def scale_threshold(v_ego):
-  # Keep StarPilot speed-based lead threshold behavior (v_ego in m/s)
+  # Speed-based lead threshold behavior (v_ego in m/s)
   return interp(v_ego, [0.0, 17.9, 26.8, 35.8, 44.7], [0.58, 0.60, 0.62, 0.75, 0.90])
 
 

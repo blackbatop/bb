@@ -124,7 +124,6 @@ class CarState(CarStateBase):
     if self.CP.flags & SubaruFlags.SEND_INFOTAINMENT:
       self.es_infotainment_msg = copy.copy(cp_cam.vl["ES_Infotainment"])
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     if starpilot_toggles.subaru_sng:

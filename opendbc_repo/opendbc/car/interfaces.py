@@ -30,7 +30,6 @@ from openpilot.common.params import Params
 GearShifter = structs.CarState.GearShifter
 ButtonType = structs.CarState.ButtonEvent.Type
 
-# StarPilot variables
 Ecu = structs.CarParams.Ecu
 
 V_CRUISE_MAX = 145
@@ -133,7 +132,6 @@ class CarInterfaceBase(ABC):
     dbc_names = {bus: cp.dbc_name for bus, cp in self.can_parsers.items()}
     self.CC: CarControllerBase = self.CarController(dbc_names, CP)
 
-    # StarPilot variables
     self.FPCP = FPCP
 
     self.params_memory = Params(memory=True)
@@ -181,14 +179,12 @@ class CarInterfaceBase(ABC):
     ret.rotationalInertia = scale_rot_inertia(ret.mass, ret.wheelbase)
     ret.tireStiffnessFront, ret.tireStiffnessRear = scale_tire_stiffness(ret.mass, ret.wheelbase, ret.centerToFront, ret.tireStiffnessFactor)
 
-    # StarPilot variables
     toggles_to_check = ("force_torque_controller", "nnff", "nnff_lite")
     if ret.steerControlType != structs.CarParams.SteerControlType.angle and any(getattr(starpilot_toggles, toggle, False) for toggle in toggles_to_check):
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
     return ret
 
-  # StarPilot variables
   @classmethod
   def get_starpilot_params(cls, candidate: str, fingerprint: dict[int, dict[int, int]], car_fw: list[structs.CarParams.CarFw], CP: structs.CarParams, starpilot_toggles: SimpleNamespace):
     fp_ret = custom.StarPilotCarParams.new_message()
@@ -343,7 +339,6 @@ class CarInterfaceBase(ABC):
     # save for next iteration
     self.CS.out = ret
 
-    # StarPilot variables
     prev_distance_button = self.distance_button
     self.distance_button = self.params_memory.get_bool("OnroadDistanceButtonPressed")
     if self.distance_button != prev_distance_button:
@@ -383,7 +378,6 @@ class CarStateBase(ABC):
     K = get_kalman_gain(DT_CTRL, np.array(A), np.array(C), np.array(Q), R)
     self.v_ego_kf = KF1D(x0=x0, A=A, C=C[0], K=K)
 
-    # StarPilot variables
     self.FPCP = FPCP
 
     self.CC: structs.CarControl = structs.CarControl.new_message()

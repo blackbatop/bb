@@ -200,8 +200,13 @@ function formatSliderValue(val, stepStr, precisionInt, key) {
   const v = parseFloat(val)
   if (Number.isNaN(v)) return val
 
+  if (key === "SwitchbackModeCooldown") {
+    if (v === 0) return "Off"
+    return v === 1 ? "1 sec" : `${v} sec`
+  }
+
   const volumeKeys = [
-    "DisengageVolume", "EngageVolume", "PromptVolume",
+    "BelowSteerSpeedVolume", "DisengageVolume", "EngageVolume", "PromptVolume",
     "PromptDistractedVolume", "RefuseVolume",
     "WarningImmediateVolume", "WarningSoftVolume",
   ]

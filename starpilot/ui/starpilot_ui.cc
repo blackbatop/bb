@@ -23,6 +23,8 @@ static void update_state(StarPilotUIState *fs) {
       starpilot_scene.online = deviceState.getNetworkType() != cereal::DeviceState::NetworkType::NONE;
     }
   }
+  starpilot_scene.switchback_mode_enabled = fs->params_memory.getBool("SwitchbackModeEnabled");
+
   if (fpsm.updated("starpilotCarState")) {
     const cereal::StarPilotCarState::Reader &starpilotCarState = fpsm["starpilotCarState"].getStarpilotCarState();
     starpilot_scene.always_on_lateral_active = !starpilot_scene.enabled && starpilotCarState.getAlwaysOnLateralEnabled();

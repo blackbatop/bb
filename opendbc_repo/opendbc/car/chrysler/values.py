@@ -19,7 +19,6 @@ class ChryslerFlags(IntFlag):
   HIGHER_MIN_STEERING_SPEED = 1
 
 
-# StarPilot variables 
 class ChryslerStarPilotFlags(IntFlag):
   RAM_HD_ALT_BUTTONS = 1
 

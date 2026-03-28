@@ -62,7 +62,6 @@ class Controls:
     elif self.CP.lateralTuning.which() == 'torque':
       self.LaC = LatControlTorque(self.CP, self.CI, DT_CTRL)
 
-    # StarPilot variables
     self.sm = self.sm.extend(['liveDelay', 'starpilotCarState', 'starpilotPlan'])
 
     self.starpilot_toggles = get_starpilot_toggles()
@@ -78,7 +77,6 @@ class Controls:
       device_pose = Pose.from_live_pose(self.sm['livePose'])
       self.calibrated_pose = self.pose_calibrator.build_calibrated_pose(device_pose)
 
-    # StarPilot variables
     if hasattr(self.LaC, "pid") and self.CP.lateralTuning.which() != "pid":
       self.LaC.pid._k_p = self.starpilot_toggles.steerKp
 
@@ -152,7 +150,6 @@ class Controls:
     actuators.torque = float(steer)
     actuators.steeringAngleDeg = float(steeringAngleDeg)
 
-    # OPGM variables
     if len(long_plan.speeds):
       actuators.speed = long_plan.speeds[-1]
 

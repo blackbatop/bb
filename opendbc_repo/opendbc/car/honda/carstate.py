@@ -220,7 +220,6 @@ class CarState(CarStateBase):
       *create_button_events(self.cruise_setting, prev_cruise_setting, SETTINGS_BUTTONS_DICT),
     ]
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret

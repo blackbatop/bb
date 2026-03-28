@@ -18,7 +18,6 @@ private:
   QColor bg = bg_colors[STATUS_DISENGAGED];
   QHBoxLayout* split;
 
-  // StarPilot variables
   void mousePressEvent(QMouseEvent* mouseEvent);
 
   StarPilotAnnotatedCameraWidget *starpilot_nvg;

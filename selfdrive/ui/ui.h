@@ -45,10 +45,10 @@ typedef enum UIStatus {
   STATUS_OVERRIDE,
   STATUS_ENGAGED,
 
-  // StarPilot variables
   STATUS_ALWAYS_ON_LATERAL_ACTIVE,
   STATUS_CEM_DISABLED,
   STATUS_EXPERIMENTAL_MODE_ENABLED,
+  STATUS_SWITCHBACK_MODE_ENABLED,
   STATUS_TRAFFIC_MODE_ENABLED,
 } UIStatus;
 
@@ -57,10 +57,10 @@ const QColor bg_colors [] = {
   [STATUS_OVERRIDE] = QColor(0x91, 0x9b, 0x95, 0xf1),
   [STATUS_ENGAGED] = QColor(0x17, 0x86, 0x44, 0xf1),
 
-  // StarPilot variables
   [STATUS_ALWAYS_ON_LATERAL_ACTIVE] = QColor(0x0a, 0xba, 0xb5, 0xf1),
   [STATUS_CEM_DISABLED] = QColor(0xff, 0xff, 0x00, 0xf1),
   [STATUS_EXPERIMENTAL_MODE_ENABLED] = QColor(0xda, 0x6f, 0x25, 0xf1),
+  [STATUS_SWITCHBACK_MODE_ENABLED] = QColor(0x8b, 0x6c, 0xc5, 0xf1),
   [STATUS_TRAFFIC_MODE_ENABLED] = QColor(0xc9, 0x22, 0x31, 0xf1),
 };
 

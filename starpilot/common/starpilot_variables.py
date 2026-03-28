@@ -43,7 +43,7 @@ THRESHOLD = 1 - 1 / math.e                # Requires the condition to be true fo
 
 NON_DRIVING_GEARS = [GearShifter.neutral, GearShifter.park, GearShifter.reverse, GearShifter.unknown]
 
-# Temporary fallback until StarPilot hosts its own weather-compatible API.
+# Temporary fallback until the weather-compatible API is hosted locally.
 STARPILOT_API = os.getenv("STARPILOT_API", "https://frogpilot.com/api")
 
 LEGACY_CARMODEL_MIGRATIONS = {
@@ -111,7 +111,8 @@ BUTTON_FUNCTIONS = {
   "PAUSE_LATERAL": 3,
   "PAUSE_LONGITUDINAL": 4,
   "EXPERIMENTAL_MODE": 5,
-  "TRAFFIC_MODE": 6
+  "TRAFFIC_MODE": 6,
+  "SWITCHBACK_MODE": 7,
 }
 
 DEVELOPER_SIDEBAR_METRICS = {
@@ -546,6 +547,8 @@ class StarPilotVariables:
     toggle.vEgoStopping = self.get_value("VEgoStopping", cast=float, condition=advanced_longitudinal_tuning, default=toggle.vEgoStopping, min=0.01, max=1)
 
     toggle.alert_volume_controller = self.get_value("AlertVolumeControl")
+    toggle.below_steer_speed_volume = self.get_value("BelowSteerSpeedVolume", cast=float, condition=toggle.alert_volume_controller)
+    toggle.switchback_mode_cooldown = self.get_value("SwitchbackModeCooldown", cast=float, min=0, max=60)
     toggle.disengage_volume = self.get_value("DisengageVolume", cast=float, condition=toggle.alert_volume_controller)
     toggle.engage_volume = self.get_value("EngageVolume", cast=float, condition=toggle.alert_volume_controller)
     toggle.prompt_volume = self.get_value("PromptVolume", cast=float, condition=toggle.alert_volume_controller)
@@ -709,6 +712,7 @@ class StarPilotVariables:
     toggle.pause_lateral_via_distance = distance_button_control == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
     toggle.pause_longitudinal_via_distance = toggle.openpilot_longitudinal and distance_button_control == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
     toggle.personality_profile_via_distance = toggle.openpilot_longitudinal and distance_button_control == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_distance = distance_button_control == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
     toggle.traffic_mode_via_distance = toggle.openpilot_longitudinal and distance_button_control == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
 
     distance_button_control_long = self.get_value("LongDistanceButtonControl", cast=float)
@@ -718,6 +722,7 @@ class StarPilotVariables:
     toggle.pause_lateral_via_distance_long = distance_button_control_long == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
     toggle.pause_longitudinal_via_distance_long = toggle.openpilot_longitudinal and distance_button_control_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
     toggle.personality_profile_via_distance_long = toggle.openpilot_longitudinal and distance_button_control_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_distance_long = distance_button_control_long == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
     toggle.traffic_mode_via_distance_long = toggle.openpilot_longitudinal and distance_button_control_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
 
     distance_button_control_very_long = self.get_value("VeryLongDistanceButtonControl", cast=float)
@@ -727,6 +732,7 @@ class StarPilotVariables:
     toggle.pause_lateral_via_distance_very_long = distance_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
     toggle.pause_longitudinal_via_distance_very_long = toggle.openpilot_longitudinal and distance_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
     toggle.personality_profile_via_distance_very_long = toggle.openpilot_longitudinal and distance_button_control_very_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_distance_very_long = distance_button_control_very_long == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
     toggle.traffic_mode_via_distance_very_long = toggle.openpilot_longitudinal and distance_button_control_very_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
 
     toggle.frogsgomoo_tweak = self.get_value("FrogsGoMoosTweak", condition=toggle.openpilot_longitudinal and toggle.car_make == "toyota")
@@ -764,6 +770,7 @@ class StarPilotVariables:
     toggle.pause_lateral_via_lkas = lkas_button_control == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
     toggle.pause_longitudinal_via_lkas = toggle.openpilot_longitudinal and lkas_button_control == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
     toggle.personality_profile_via_lkas = toggle.openpilot_longitudinal and lkas_button_control == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_lkas = lkas_button_control == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
     toggle.traffic_mode_via_lkas = toggle.openpilot_longitudinal and lkas_button_control == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
 
     toggle.lock_doors_timer = self.get_value("LockDoorsTimer", cast=float, condition=(toggle.car_make == "toyota"))

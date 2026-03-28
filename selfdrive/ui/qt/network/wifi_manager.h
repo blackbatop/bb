@@ -69,7 +69,6 @@ public:
   void changeTetheringPassword(const QString &newPassword);
   QString getTetheringPassword();
 
-  // StarPilot variables
   QString getIp4Address();
 
 private:

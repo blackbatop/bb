@@ -14,7 +14,6 @@ public:
   explicit ExperimentalButton(QWidget *parent = 0);
   void updateState(const UIState &s, const StarPilotUIState &fs);
 
-  // StarPilot variables
   StarPilotUIScene starpilot_scene;
 
   QJsonObject starpilot_toggles;
@@ -29,7 +28,6 @@ private:
   bool experimental_mode;
   bool engageable;
 
-  // StarPilot variables
   void showEvent(QShowEvent *event) override;
   void updateBackgroundColor();
   void updateTheme();

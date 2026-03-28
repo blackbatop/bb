@@ -115,7 +115,7 @@ class StarPilotPlanner:
     self.model_stopped = self.model_length < CRUISING_SPEED * PLANNER_TIME
     self.model_stopped |= self.starpilot_vcruise.forcing_stop
 
-    self.road_curvature, self.time_to_curve = calculate_road_curvature(sm["modelV2"])
+    self.road_curvature, self.time_to_curve = calculate_road_curvature(sm["modelV2"], v_ego)
 
     self.road_curvature_detected = (1 / abs(self.road_curvature))**0.5 < v_ego > CRUISING_SPEED and not (sm["carState"].leftBlinker or sm["carState"].rightBlinker)
 

@@ -12,7 +12,6 @@ public:
   void updateState(const UIState &s);
   void draw(QPainter &painter, const QRect &surface_rect);
 
-  // StarPilot variables
   StarPilotAnnotatedCameraWidget *starpilot_nvg;
 
   bool onroad_distance_btn_enabled;

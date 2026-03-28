@@ -122,7 +122,6 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
       self.assertFalse(self._rx(msg))
       self.assertFalse(self.safety.get_controls_allowed())
 
-  # StarPilot variables
   def _toggle_aol(self, toggle_on):
     # pcm_cruise_2, bit 15 is toggle_on
     values = {"MAIN_ON": 1 if toggle_on else 0}

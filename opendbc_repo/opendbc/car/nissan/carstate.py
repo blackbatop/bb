@@ -25,7 +25,6 @@ class CarState(CarStateBase):
 
     self.distance_button = 0
 
-    # StarPilot variables
     self.lkas_button = 0
 
   def update(self, can_parsers, starpilot_toggles) -> structs.CarState:
@@ -132,7 +131,6 @@ class CarState(CarStateBase):
 
     buttonEvents = create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise})
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     self.prev_lkas_button = self.lkas_button

@@ -139,7 +139,6 @@ class CarState(CarStateBase):
 
     self.frame += 1
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret
@@ -234,7 +233,6 @@ class CarState(CarStateBase):
 
     self.frame += 1
 
-    # StarPilot variables
     fp_ret = custom.StarPilotCarState.new_message()
 
     return ret, fp_ret

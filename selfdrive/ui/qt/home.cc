@@ -46,7 +46,6 @@ HomeWindow::HomeWindow(QWidget* parent) : QWidget(parent) {
   QObject::connect(uiState(), &UIState::offroadTransition, this, &HomeWindow::offroadTransition);
   QObject::connect(uiState(), &UIState::offroadTransition, sidebar, &Sidebar::offroadTransition);
 
-  // StarPilot variables
   developer_sidebar = new DeveloperSidebar(this);
   main_layout->addWidget(developer_sidebar);
   developer_sidebar->setVisible(false);
@@ -65,7 +64,6 @@ void HomeWindow::updateState(const UIState &s, const StarPilotUIState &fs) {
     slayout->setCurrentWidget(body);
   }
 
-  // StarPilot variables
   const StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   const QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
 
@@ -86,7 +84,6 @@ void HomeWindow::updateState(const UIState &s, const StarPilotUIState &fs) {
 }
 
 void HomeWindow::offroadTransition(bool offroad) {
-  // StarPilot variables
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;
@@ -96,7 +93,6 @@ void HomeWindow::offroadTransition(bool offroad) {
   if (offroad) {
     slayout->setCurrentWidget(home);
 
-    // StarPilot variables
     developer_sidebar->setVisible(false);
   } else {
     slayout->setCurrentWidget(onroad);
@@ -114,7 +110,6 @@ void HomeWindow::showDriverView(bool show, bool started) {
   }
   sidebar->setVisible(show == false);
 
-  // StarPilot variables
   developer_sidebar->setVisible(false);
 }
 
@@ -123,7 +118,6 @@ void HomeWindow::mousePressEvent(QMouseEvent* e) {
   if ((onroad->isVisible() || body->isVisible()) && (!sidebar->isVisible() || e->x() > sidebar->width())) {
     sidebar->setVisible(!sidebar->isVisible());
 
-    // StarPilot variables
     params.putBool("SidebarOpen", sidebar->isVisible());
   }
 }
@@ -152,7 +146,6 @@ OffroadHome::OffroadHome(QWidget* parent) : QFrame(parent) {
   header_layout->setContentsMargins(0, 0, 0, 0);
   header_layout->setSpacing(16);
 
-  // StarPilot variables
   date = new ElidedLabel();
   header_layout->addWidget(date, 0, Qt::AlignHCenter | Qt::AlignLeft);
 
@@ -306,7 +299,6 @@ void OffroadHome::refresh() {
     alert_notif->setText(QString::number(alerts) + (alerts > 1 ? tr(" ALERTS") : tr(" ALERT")));
   }
 
-  // StarPilot variables
   StarPilotUIState &fs = *starpilotUIState();
   StarPilotUIScene &starpilot_scene = fs.starpilot_scene;
   QJsonObject &starpilot_toggles = starpilot_scene.starpilot_toggles;

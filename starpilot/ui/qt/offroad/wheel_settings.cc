@@ -13,7 +13,8 @@ StarPilotWheelPanel::StarPilotWheelPanel(StarPilotSettingsWindow *parent, bool f
   for (const auto &[param, title, desc, icon] : wheelToggles) {
     QMap<int, QString> functionsMap {
       {0, tr("No Action")},
-      {3, tr("Pause Steering")}
+      {3, tr("Pause Steering")},
+      {7, tr("Toggle \"Switchback Mode\" On/Off")}
     };
 
     QMap<int, QString> longitudinalFunctionsMap {
