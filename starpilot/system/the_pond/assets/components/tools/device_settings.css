@@ -142,7 +142,7 @@
 }
 
 .ds-section-body {
-  max-height: 5000px;
+  max-height: 100000px;
   overflow: hidden;
   transition: max-height 0.3s ease-in-out;
 }
