@@ -7,7 +7,6 @@
     {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
     {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
     {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
-    /* OPGM Variables */                                                                                                       \
     {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
     {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
 
@@ -627,6 +626,19 @@ static safety_config gm_init(uint16_t param) {
     {.msg = {{0x370, 2, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // camera ACC status
   };
 
+  static RxCheck gm_sdgm_acc_rx_checks[] = {
+    {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             {0x1E1, 2, 7, 100000U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             { 0 }}},
+    {.msg = {{0xF1, 0, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             {0xF1, 2, 6, 100000U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             { 0 }}},
+    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+  };
+
   static const CanMsg GM_CC_LONG_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x370, 0, 6, .check_relay = false}, {0x1E1, 0, 7, .check_relay = false}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
                                               {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false},
                                               {0x184, 2, 8, .check_relay = true}, {0x1E1, 2, 7, .check_relay = false}};  // camera bus
@@ -706,6 +718,8 @@ static safety_config gm_init(uint16_t param) {
     } else {
       SET_RX_CHECKS(gm_pedal_rx_checks, ret);
     }
+  } else if (gm_has_acc && gm_sdgm) {
+    SET_RX_CHECKS(gm_sdgm_acc_rx_checks, ret);
   } else if (gm_has_acc && (gm_hw == GM_CAM || gm_sdgm)) {
     SET_RX_CHECKS(gm_cam_acc_rx_checks, ret);
   } else if (!gm_has_acc && gm_ev) {
