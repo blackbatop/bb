@@ -7,7 +7,7 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import COMFO
 from openpilot.starpilot.common.starpilot_variables import CITY_SPEED_LIMIT, MAX_T_FOLLOW
 
 TRAFFIC_MODE_BP = [0., CITY_SPEED_LIMIT]
-PERSONALITY_BP = [45. * CV.MPH_TO_MS, 70. * CV.MPH_TO_MS]
+PERSONALITY_BP = [20. * CV.KPH_TO_MS, 90. * CV.KPH_TO_MS]
 HIGHWAY_DISABLE_THROTTLE_MIN_SPEED = 45. * CV.MPH_TO_MS
 
 class StarPilotFollowing:
