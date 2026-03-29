@@ -689,7 +689,7 @@ static safety_config gm_init(uint16_t param) {
   const bool gm_ascm_int_stock_cam = gm_ascm_int && (gm_hw == GM_CAM) && gm_pcm_cruise && !gm_cam_long && !gm_pedal_long && !gm_cc_long;
   gm_steer_limits = GET_FLAG(param, GM_PARAM_BOLT_2017) ? &GM_BOLT_2017_STEERING_LIMITS : &GM_STEERING_LIMITS;
 
-  if (gm_hw == GM_ASCM || gm_ascm_int || gm_force_ascm) {
+  if ((gm_hw == GM_ASCM && !gm_sdgm) || gm_ascm_int || gm_force_ascm) {
     gm_long_limits = &GM_ASCM_LONG_LIMITS;
   } else {
     gm_long_limits = &GM_CAM_LONG_LIMITS;

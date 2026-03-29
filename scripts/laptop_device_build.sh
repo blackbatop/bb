@@ -105,6 +105,7 @@ ensure_image_exists() {
     "${engine}" build --pull --platform linux/arm64 -f tools/laptop_device_build/Dockerfile -t "${IMAGE_NAME}" .
   fi
   assert_image_arch "${engine}"
+  ensure_image_capnp_version "${engine}"
 }
 
 assert_image_arch() {
@@ -113,6 +114,41 @@ assert_image_arch() {
   arch="$("${engine}" image inspect "${IMAGE_NAME}" --format '{{.Architecture}}' 2>/dev/null || true)"
   if [[ "${arch}" != "arm64" ]]; then
     err "Container image ${IMAGE_NAME} is '${arch:-unknown}', expected 'arm64'. Rebuild with: ${engine} build --pull --platform linux/arm64 -f tools/laptop_device_build/Dockerfile -t ${IMAGE_NAME} ."
+  fi
+}
+
+expected_capnp_version() {
+  local raw_version=""
+  raw_version="$(sed -n 's/^#elif CAPNP_VERSION != \([0-9][0-9]*\)$/\1/p' "${ROOT_DIR}/cereal/gen/cpp/custom.capnp.h" | head -n 1)"
+  [[ -n "${raw_version}" ]] || err "Unable to determine expected Cap'n Proto version from cereal/gen/cpp/custom.capnp.h."
+
+  local major=$(( raw_version / 1000000 ))
+  local minor=$(( (raw_version / 1000) % 1000 ))
+  local micro=$(( raw_version % 1000 ))
+  echo "${major}.${minor}.${micro}"
+}
+
+image_capnp_version() {
+  local engine="$1"
+  "${engine}" run --rm --platform linux/arm64 "${IMAGE_NAME}" bash -lc "capnp --version | awk '{print \$4}'" 2>/dev/null || true
+}
+
+ensure_image_capnp_version() {
+  local engine="$1"
+  local expected actual
+  expected="$(expected_capnp_version)"
+  actual="$(image_capnp_version "${engine}")"
+
+  if [[ "${actual}" == "${expected}" ]]; then
+    return
+  fi
+
+  echo "Container image ${IMAGE_NAME} has Cap'n Proto ${actual:-unknown}, expected ${expected}. Rebuilding it now..."
+  "${engine}" build --pull --platform linux/arm64 -f tools/laptop_device_build/Dockerfile -t "${IMAGE_NAME}" .
+
+  actual="$(image_capnp_version "${engine}")"
+  if [[ "${actual}" != "${expected}" ]]; then
+    err "Container image ${IMAGE_NAME} still has Cap'n Proto ${actual:-unknown} after rebuild; expected ${expected}."
   fi
 }
 
