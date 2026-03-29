@@ -116,7 +116,14 @@ def create_adas_keepalive(bus):
 
 
 def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop, include_always_one3=False, use_volt_layout=False):
-  if use_volt_layout:
+  gas_regen_msg = packer.dbc.name_to_msg.get("ASCMGasRegenCmd")
+  has_legacy_volt_layout = gas_regen_msg is not None and {
+    "GasRegenCmdActiveInv",
+    "GasRegenAlwaysOne",
+    "GasRegenAlwaysOne2",
+  }.issubset(gas_regen_msg.sigs)
+
+  if use_volt_layout and has_legacy_volt_layout:
     values = {
       "GasRegenCmdActive": enabled,
       "RollingCounter": idx,
@@ -136,8 +143,8 @@ def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop, 
 
     return packer.make_can_msg("ASCMGasRegenCmd", bus, values)
 
-  # Use the legacy GM Global A camera-long GasRegen byte layout.
-  # The regenerated DBC shape does not expose the same wire-format helper fields.
+  # Preserve the legacy GM Global A GasRegen wire layout when the DBC no longer
+  # exposes the helper fields used by older ACC implementations.
   throttle = int(throttle)
   dat = bytearray(8)
   dat[0] = ((idx & 0x3) << 6) | int(enabled)
