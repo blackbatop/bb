@@ -44,6 +44,23 @@ function agnos_init {
   fi
 }
 
+function cleanup_legacy_device_state {
+  echo "Cleaning up legacy device state"
+  sudo rm -rf /data/params
+  sudo rm -rf /persist/params
+  sudo rm -rf /cache/params
+  sudo rm -rf /data/media/0/realdata
+  sudo rm -rf /data/media/0/realdata_HD
+  sudo rm -rf /data/media/0/realdata_konik
+  sudo rm -rf /data/models
+  sudo rm -rf /data/toggle_backups
+  sudo rm -rf /data/backups
+  sudo rm -rf /data/themes
+  sudo rm -rf /data/media/0/osm/offline
+  sudo rm -rf /cache/use_HD
+  sudo rm -rf /cache/use_konik
+}
+
 function launch {
   # Remove orphaned git lock if it exists on boot
   [ -f "$DIR/.git/index.lock" ] && rm -f $DIR/.git/index.lock
@@ -91,6 +108,8 @@ function launch {
   if [ -f /AGNOS ]; then
     agnos_init
   fi
+
+  cleanup_legacy_device_state
 
   # write tmux scrollback to a file
   tmux capture-pane -pq -S-1000 > /tmp/launch_log
