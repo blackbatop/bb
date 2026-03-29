@@ -77,6 +77,7 @@ Options:
   --no-vipc              do not output video
   --all                  do output all messages including uiDebug, userBookmark.
                          this may causes issues when used along with UI
+  --headless             run replay without the ncurses console UI
 
 Arguments:
   route                  the drive to replay. find your drives at
@@ -89,6 +90,12 @@ To visualize the replay within the openpilot UI, run the following commands:
 ```bash
 tools/replay/replay <route-name>
 cd selfdrive/ui && ./ui.py
+```
+
+For the StarPilot host workflow, the combined desktop launcher is:
+
+```bash
+./onroad --c3 <route-name>
 ```
 
 ## Work with plotjuggler

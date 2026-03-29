@@ -27,6 +27,7 @@ Commands:
   c3           Launch the desktop Qt UI from the isolated host cache.
   c4           Launch the small raylib UI from the isolated host cache.
   raybig       Launch the large raylib UI from the isolated host cache.
+  onroad       Launch replay plus desktop UI(s) from the isolated host cache.
   replay       Build and run replay from the isolated host cache.
   cabana       Build and run cabana from the isolated host cache.
   plotjuggler  Run PlotJuggler helper from the isolated host cache.
@@ -43,6 +44,7 @@ Notes:
   - For c3/c4/raybig, pass the jobs count first to preserve existing shorthand:
       ./dev c3 8
       ./dev raybig 12
+  - `./onroad --c3 f08912a233c1584f/2022-08-11--18-02-41/1` launches replay plus the selected desktop UI.
   - `./dev sync` refreshes all host buckets. Use `./dev sync cabana` to sync one.
 EOF
 }
@@ -61,7 +63,7 @@ resolve_host_bucket() {
   local name="${1:-shared}"
 
   case "${name}" in
-    shared|default|ui|c3|c4|raybig|replay|shell)
+    shared|default|ui|c3|c4|raybig|onroad|replay|shell)
       echo "shared"
       ;;
     cabana)
@@ -212,6 +214,17 @@ purge_host_python_artifacts() {
     "${WORK_DIR}/msgq_repo/msgq/visionipc/visionipc_pyx.cpp"
 }
 
+purge_host_desktop_ui_artifacts() {
+  rm -f \
+    "${WORK_DIR}/selfdrive/ui/libqt_widgets.a" \
+    "${WORK_DIR}/selfdrive/ui/libqt_util.a" \
+    "${WORK_DIR}/selfdrive/ui/assets.o" \
+    "${WORK_DIR}/selfdrive/ui/main.o" \
+    "${WORK_DIR}/selfdrive/ui/moc_ui.o" \
+    "${WORK_DIR}/selfdrive/ui/ui.o" \
+    "${WORK_DIR}/selfdrive/ui/ui"
+}
+
 ensure_host_python_tools() {
   ensure_venv
 
@@ -234,6 +247,22 @@ ensure_host_python_tools() {
   (
     cd "${WORK_DIR}"
     UV_PROJECT_ENVIRONMENT="${HOST_VENV}" UV_PYTHON="${ROOT_DIR}/.venv/bin/python3" uv sync --frozen --all-extras
+  )
+}
+
+sync_host_generated_headers() {
+  if ! command -v capnpc >/dev/null 2>&1; then
+    return
+  fi
+
+  (
+    cd "${WORK_DIR}"
+    capnpc --src-prefix=cereal \
+      cereal/log.capnp \
+      cereal/car.capnp \
+      cereal/legacy.capnp \
+      cereal/custom.capnp \
+      -o c++:cereal/gen/cpp/
   )
 }
 
@@ -264,6 +293,8 @@ sync_worktree() {
     "selfdrive/ui/ui"
     "selfdrive/ui/ui.macos"
     "selfdrive/ui/ui.larch64"
+    "selfdrive/ui/libqt_widgets.a"
+    "selfdrive/ui/libqt_util.a"
     "cereal/libcereal.a"
     "cereal/libsocketmaster.a"
     "cereal/messaging/bridge"
@@ -294,7 +325,9 @@ sync_worktree() {
   done
 
   rsync "${rsync_args[@]}" "${ROOT_DIR}/" "${WORK_DIR}/"
+  purge_host_desktop_ui_artifacts
   rm -f "${WORK_DIR}/third_party/libjson11.a" "${WORK_DIR}/third_party/libkaitai.a"
+  sync_host_generated_headers
   ensure_host_python_tools
   rm -rf "${WORK_DIR}/.venv"
   ln -s "${HOST_VENV}" "${WORK_DIR}/.venv"
@@ -396,6 +429,18 @@ launch_raybig() {
   run_in_worktree "${WORK_DIR}/scripts/launch_ui_raybig_desktop.sh" "${jobs}" "$@"
 }
 
+launch_onroad() {
+  local jobs
+  jobs="$(default_jobs)"
+  if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
+    jobs="$1"
+    shift || true
+  fi
+
+  sync_worktree
+  run_in_worktree "${WORK_DIR}/scripts/launch_onroad_desktop.sh" "${jobs}" "$@"
+}
+
 launch_replay() {
   local jobs
   jobs="$(default_jobs)"
@@ -473,7 +518,7 @@ main() {
     help|-h|--help)
       usage
       ;;
-    c3|c4|raybig|replay|shell)
+    c3|c4|raybig|onroad|replay|shell)
       set_host_bucket "shared"
       acquire_host_lock "${command} $*"
       ;;
@@ -516,6 +561,9 @@ main() {
       ;;
     raybig)
       launch_raybig "$@"
+      ;;
+    onroad)
+      launch_onroad "$@"
       ;;
     replay)
       launch_replay "$@"

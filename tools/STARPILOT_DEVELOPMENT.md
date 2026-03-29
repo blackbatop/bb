@@ -73,6 +73,7 @@ All three entrypoints do the same thing. `./dev` is the shortest general-purpose
 ### Available host commands
 
 - `./dev replay [args...]`
+- `./onroad [jobs] (--c3 | --c4 | --raybig | --all | --replay-only) <route-or-replay-args...>`
 - `./dev cabana [args...]`
 - `./dev plotjuggler [args...]`
 - `./dev juggle [args...]`
@@ -91,6 +92,9 @@ Examples:
 
 ```bash
 ./dev replay
+./onroad --c3 f08912a233c1584f/2022-08-11--18-02-41/1
+./onroad --c4 f08912a233c1584f/2022-08-11--18-02-41/1 --start 30
+./onroad --all f08912a233c1584f/2022-08-11--18-02-41/1
 ./dev plotjuggler --help
 ./dev cabana
 ./c3 8
@@ -158,6 +162,12 @@ Use `./dev ...` when:
 - you want host-native tools like replay, cabana, or PlotJuggler
 - you want host-native `.so` files separated from the main repo
 - you do not want AI tools or git status confused by temporary build churn
+
+Use `./onroad ...` when:
+
+- you want a recorded route to drive the desktop UI(s) on PC
+- you need replay and UI to share the same isolated host runtime and messaging prefix
+- you want the default side-by-side desktop UI launch without running separate replay/UI commands
 
 Use `./c3`, `./c4`, or `./raybig` when:
 

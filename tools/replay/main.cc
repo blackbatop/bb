@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "common/util.h"
 #include "common/prefix.h"
 #include "tools/replay/consoleui.h"
 #include "tools/replay/replay.h"
@@ -31,6 +32,7 @@ Options:
       --no-hw-decoder Disable HW video decoding
       --no-vipc      Do not output video
       --all          Output all messages including bookmarkButton, uiDebug, userBookmark
+      --headless     Run replay without the ncurses console UI
   -h, --help         Show this help message
 )";
 
@@ -42,6 +44,7 @@ struct ReplayConfig {
   std::string prefix;
   uint32_t flags = REPLAY_FLAG_NONE;
   bool auto_source = false;
+  bool headless = false;
   int start_seconds = 0;
   int cache_segments = -1;
   float playback_speed = -1;
@@ -66,6 +69,7 @@ bool parseArgs(int argc, char *argv[], ReplayConfig &config) {
       {"no-hw-decoder", no_argument, nullptr, 0},
       {"no-vipc", no_argument, nullptr, 0},
       {"all", no_argument, nullptr, 0},
+      {"headless", no_argument, nullptr, 0},
       {"help", no_argument, nullptr, 'h'},
       {nullptr, 0, nullptr, 0},  // Terminating entry
   };
@@ -100,6 +104,7 @@ bool parseArgs(int argc, char *argv[], ReplayConfig &config) {
         std::string name = cli_options[option_index].name;
         if (name == "demo") config.route = DEMO_ROUTE;
         else if (name == "auto") config.auto_source = true;
+        else if (name == "headless") config.headless = true;
         else config.flags |= flag_map.at(name);
         break;
       }
@@ -147,6 +152,15 @@ int main(int argc, char *argv[]) {
   }
   if (!replay.load()) {
     return 1;
+  }
+
+  if (config.headless) {
+    replay.start(config.start_seconds);
+    ExitHandler do_exit;
+    while (!do_exit) {
+      util::sleep_for(100);
+    }
+    return 0;
   }
 
   ConsoleUI console_ui(&replay);

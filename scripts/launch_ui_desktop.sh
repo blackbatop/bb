@@ -182,6 +182,7 @@ prepare_host_artifacts() {
 
   purge_objects "${ROOT_DIR}/selfdrive/ui"
   purge_objects "${ROOT_DIR}/starpilot/ui"
+  rm -f "${ROOT_DIR}/selfdrive/ui/libqt_widgets.a" "${ROOT_DIR}/selfdrive/ui/libqt_util.a"
   rm -f "${ROOT_DIR}/selfdrive/ui/ui"
 }
 
@@ -201,6 +202,8 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   # Keep desktop host builds on Apple toolchain even if shell exports Homebrew llvm.
   export CC="/usr/bin/clang"
   export CXX="/usr/bin/clang++"
+  export AR="/usr/bin/ar"
+  export RANLIB="/usr/bin/ranlib"
 fi
 unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
 

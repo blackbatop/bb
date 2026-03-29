@@ -110,8 +110,10 @@ cleanup() {
     kill "${FAKE_WIFI_PID}" >/dev/null 2>&1 || true
     wait "${FAKE_WIFI_PID}" >/dev/null 2>&1 || true
   fi
-  restore_runtime_artifacts
-  restore_new_tracked_changes
+  if [[ ! "${SP_KEEP_DESKTOP_RUNTIME_ARTIFACTS:-0}" =~ ^(1|true|yes|on)$ ]]; then
+    restore_runtime_artifacts
+    restore_new_tracked_changes
+  fi
   rm -f "${PRE_TRACKED_DIRTY}" "${POST_TRACKED_DIRTY}"
 }
 
