@@ -118,9 +118,26 @@ assert_image_arch() {
 }
 
 expected_capnp_version() {
+  if [[ -n "${COMMA_EXPECTED_CAPNP_VERSION:-}" ]]; then
+    echo "${COMMA_EXPECTED_CAPNP_VERSION}"
+    return
+  fi
+
+  local dockerfile_version=""
+  dockerfile_version="$(sed -n 's/^ARG CAPNP_VERSION=\(.*\)$/\1/p' "${ROOT_DIR}/tools/laptop_device_build/Dockerfile" | head -n 1)"
+  if [[ -n "${dockerfile_version}" ]]; then
+    echo "${dockerfile_version}"
+    return
+  fi
+
+  local header_path="${ROOT_DIR}/cereal/gen/cpp/custom.capnp.h"
+  if [[ ! -f "${header_path}" ]]; then
+    err "Unable to determine expected Cap'n Proto version. Set COMMA_EXPECTED_CAPNP_VERSION or restore tools/laptop_device_build/Dockerfile ARG CAPNP_VERSION."
+  fi
+
   local raw_version=""
-  raw_version="$(sed -n 's/^#elif CAPNP_VERSION != \([0-9][0-9]*\)$/\1/p' "${ROOT_DIR}/cereal/gen/cpp/custom.capnp.h" | head -n 1)"
-  [[ -n "${raw_version}" ]] || err "Unable to determine expected Cap'n Proto version from cereal/gen/cpp/custom.capnp.h."
+  raw_version="$(sed -n 's/^#elif CAPNP_VERSION != \([0-9][0-9]*\)$/\1/p' "${header_path}" | head -n 1)"
+  [[ -n "${raw_version}" ]] || err "Unable to determine expected Cap'n Proto version from ${header_path}."
 
   local major=$(( raw_version / 1000000 ))
   local minor=$(( (raw_version / 1000) % 1000 ))

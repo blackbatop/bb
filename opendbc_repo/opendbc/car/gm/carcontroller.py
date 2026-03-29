@@ -7,6 +7,7 @@ from opendbc.car.gm import gmcan
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.gm.values import ASCM_INT, CAR, CC_ONLY_CAR, CC_REGEN_PADDLE_CAR, DBC, EV_CAR, SDGM_CAR, AccState, CanBus, CarControllerParams, CruiseButtons, GMFlags
 from opendbc.car.interfaces import CarControllerBase
+from opendbc.car.gm.cancel_logic import get_stock_cc_active_for_cancel
 from openpilot.common.params import Params, UnknownKeyName
 from openpilot.starpilot.common.testing_grounds import testing_ground
 
@@ -534,7 +535,12 @@ class CarController(CarControllerBase):
       cc_long_cancel = ((self.CP.flags & GMFlags.CC_LONG.value) and
                         self.prev_op_enabled and not CC.enabled and CS.out.cruiseState.enabled)
 
-      if pedal_cancel or cc_long_cancel:
+      if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
+        stock_cc_active = get_stock_cc_active_for_cancel(self.CP, CS)
+        pedal_cancel = bool(self.CP.flags & GMFlags.PEDAL_LONG.value) and CC.longActive
+        cc_long_cancel = bool(self.CP.flags & GMFlags.CC_LONG.value) and not CC.enabled
+
+      if (pedal_cancel or cc_long_cancel) and (stock_cc_active if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC else True):
         if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
           malibu_cancel_requested = True
         elif (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
@@ -548,27 +554,26 @@ class CarController(CarControllerBase):
       self.cancel_counter = self.cancel_counter + 1 if CC.cruiseControl.cancel else 0
 
       # Stock longitudinal, integrated at camera
-      if (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
+      if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC and self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
+        malibu_cancel_requested = True
+      elif (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
         if self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
-          if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
-            malibu_cancel_requested = True
-          else:
-            self.last_button_frame = self.frame
-            sdgm_stock_cancel_pt = (
-              self.CP.carFingerprint in SDGM_CAR and
-              self.CP.carFingerprint not in {
-                CAR.CHEVROLET_VOLT,
-                CAR.CHEVROLET_VOLT_2019,
-                CAR.CHEVROLET_VOLT_ASCM,
-                CAR.CHEVROLET_VOLT_CAMERA,
-                CAR.CHEVROLET_VOLT_CC,
-                CAR.CHEVROLET_BLAZER,
-                CAR.CHEVROLET_MALIBU_SDGM,
-                CAR.CHEVROLET_TRAVERSE,
-              }
-            )
-            cancel_bus = CanBus.POWERTRAIN if sdgm_stock_cancel_pt else CanBus.CAMERA
-            can_sends.append(gmcan.create_buttons(self.packer_pt, cancel_bus, CS.buttons_counter, CruiseButtons.CANCEL))
+          self.last_button_frame = self.frame
+          sdgm_stock_cancel_pt = (
+            self.CP.carFingerprint in SDGM_CAR and
+            self.CP.carFingerprint not in {
+              CAR.CHEVROLET_VOLT,
+              CAR.CHEVROLET_VOLT_2019,
+              CAR.CHEVROLET_VOLT_ASCM,
+              CAR.CHEVROLET_VOLT_CAMERA,
+              CAR.CHEVROLET_VOLT_CC,
+              CAR.CHEVROLET_BLAZER,
+              CAR.CHEVROLET_MALIBU_SDGM,
+              CAR.CHEVROLET_TRAVERSE,
+            }
+          )
+          cancel_bus = CanBus.POWERTRAIN if sdgm_stock_cancel_pt else CanBus.CAMERA
+          can_sends.append(gmcan.create_buttons(self.packer_pt, cancel_bus, CS.buttons_counter, CruiseButtons.CANCEL))
 
     if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC:
       if malibu_cancel_requested and malibu_oem_button_slot:

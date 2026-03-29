@@ -11,6 +11,98 @@
 
 #include "system/hardware/hw.h"
 
+namespace {
+
+QString paramDefaultValue(const Params &params, const char *key) {
+  return QString::fromStdString(const_cast<Params &>(params).getKeyDefaultValue(key).value_or("")).trimmed();
+}
+
+QString builtinDefaultModelKey(const Params &params) {
+  QString key = paramDefaultValue(params, "Model");
+  if (key.isEmpty()) {
+    key = paramDefaultValue(params, "DrivingModel");
+  }
+  return key.isEmpty() ? QStringLiteral("sc2") : key;
+}
+
+QString builtinDefaultModelName(const Params &params) {
+  QString name = paramDefaultValue(params, "DrivingModelName");
+  return name.isEmpty() ? QStringLiteral("South Carolina") : name;
+}
+
+QStringList builtinDefaultModelAliases(const QString &defaultKey) {
+  QString canonical = defaultKey.trimmed();
+  if (canonical.isEmpty()) {
+    canonical = QStringLiteral("sc2");
+  }
+
+  QStringList aliases{canonical};
+
+  if (canonical.endsWith("2")) {
+    aliases.append(canonical.left(canonical.size() - 1));
+  } else {
+    aliases.append(canonical + "2");
+  }
+
+  if (canonical.endsWith("_default")) {
+    aliases.append(canonical.left(canonical.size() - QStringLiteral("_default").size()));
+  }
+
+  aliases.removeAll("");
+  aliases.removeDuplicates();
+  return aliases;
+}
+
+bool isBuiltinDefaultModel(const Params &params, const QString &key) {
+  return builtinDefaultModelAliases(builtinDefaultModelKey(params)).contains(key.trimmed());
+}
+
+QString canonicalModelKey(const Params &params, const QString &key) {
+  const QString trimmedKey = key.trimmed();
+  return isBuiltinDefaultModel(params, trimmedKey) ? builtinDefaultModelKey(params) : trimmedKey;
+}
+
+void ensureDefaultModelVisible(const Params &params, const QString &fallbackSeries,
+                               QMap<QString, QString> &modelFileToNameMap,
+                               QMap<QString, QString> &modelFileToNameMapProcessed,
+                               QMap<QString, QString> &modelSeriesMap,
+                               QMap<QString, QString> &modelReleasedDates) {
+  const QString defaultKey = builtinDefaultModelKey(params);
+  QString displayName = builtinDefaultModelName(params);
+  QString series = fallbackSeries;
+  QString releasedDate;
+
+  for (const QString &alias : builtinDefaultModelAliases(defaultKey)) {
+    if (!modelFileToNameMap.contains(alias)) {
+      continue;
+    }
+
+    displayName = modelFileToNameMap.value(alias, displayName);
+    if (series == fallbackSeries && modelSeriesMap.contains(alias)) {
+      series = modelSeriesMap.value(alias);
+    }
+    if (releasedDate.isEmpty() && modelReleasedDates.contains(alias)) {
+      releasedDate = modelReleasedDates.value(alias);
+    }
+
+    if (alias != defaultKey) {
+      modelFileToNameMap.remove(alias);
+      modelFileToNameMapProcessed.remove(alias);
+      modelSeriesMap.remove(alias);
+      modelReleasedDates.remove(alias);
+    }
+  }
+
+  modelFileToNameMap.insert(defaultKey, displayName);
+  modelFileToNameMapProcessed.insert(defaultKey, cleanModelName(displayName));
+  modelSeriesMap.insert(defaultKey, series);
+  if (!releasedDate.isEmpty()) {
+    modelReleasedDates.insert(defaultKey, releasedDate);
+  }
+}
+
+}  // namespace
+
 StarPilotModelPanel::StarPilotModelPanel(StarPilotSettingsWindow *parent) : StarPilotListWidget(parent),
                                                                              allModelsDownloaded(false),
                                                                              allModelsDownloading(false),
@@ -366,10 +458,6 @@ StarPilotModelPanel::StarPilotModelPanel(StarPilotSettingsWindow *parent) : Star
           }
 
           QString modelName = modelFileToNameMap.value(modelKey);
-          if (modelName.contains("(Default)")) {
-            continue;
-          }
-
           installedModelFileToNameMap.insert(modelKey, modelName);
           if (modelReleasedDates.contains(modelKey)) {
             installedReleasedDates.insert(modelKey, modelReleasedDates.value(modelKey));
@@ -385,15 +473,12 @@ StarPilotModelPanel::StarPilotModelPanel(StarPilotSettingsWindow *parent) : Star
         }
 
         // Add default model to the beginning of its series
-        QString defaultModelKey = QString::fromStdString(params.getKeyDefaultValue("Model").value());
-        if (defaultModelKey.isEmpty()) {
-          defaultModelKey = QString::fromStdString(params.getKeyDefaultValue("DrivingModel").value());
-        }
-        QString defaultModelName = modelFileToNameMap.value(defaultModelKey);
-        QString defaultSeries = modelSeriesMap.value(defaultModelKey, "Custom Series");
-        if (seriesToModels.contains(defaultSeries) && seriesToModels[defaultSeries].contains(defaultModelName)) {
-          seriesToModels[defaultSeries].removeAll(defaultModelName);
-          seriesToModels[defaultSeries].prepend(defaultModelName);
+        const QString defaultKey = builtinDefaultModelKey(params);
+        const QString defaultName = modelFileToNameMap.value(defaultKey, builtinDefaultModelName(params));
+        const QString defaultSeries = modelSeriesMap.value(defaultKey, tr("Custom Series"));
+        if (seriesToModels.contains(defaultSeries) && seriesToModels[defaultSeries].contains(defaultName)) {
+          seriesToModels[defaultSeries].removeAll(defaultName);
+          seriesToModels[defaultSeries].prepend(defaultName);
         }
 
         // Prepare favorites and dates for the enhanced dialog
@@ -525,6 +610,10 @@ bool StarPilotModelPanel::isModelInstalled(const QString &key) const {
     return false;
   }
 
+  if (isBuiltinDefaultModel(params, key)) {
+    return true;
+  }
+
   bool has_thneed = false;
   bool has_policy_meta = false;
   bool has_policy_tg = false;
@@ -579,12 +668,9 @@ bool StarPilotModelPanel::isModelInstalled(const QString &key) const {
 QMap<QString, QString> StarPilotModelPanel::getDeletableModelDisplayNames() {
   QMap<QString, QString> deletable;
 
-  QString defaultModelKey = QString::fromStdString(params.getKeyDefaultValue("Model").value());
-  if (defaultModelKey.isEmpty()) {
-    defaultModelKey = QString::fromStdString(params.getKeyDefaultValue("DrivingModel").value());
-  }
-  QString defaultModelName = modelFileToNameMap.value(defaultModelKey);
-  QString processedDefault = cleanModelName(defaultModelName);
+  const QString defaultKey = builtinDefaultModelKey(params);
+  const QString defaultName = modelFileToNameMap.value(defaultKey, builtinDefaultModelName(params));
+  const QString processedDefault = cleanModelName(defaultName);
   QString processedCurrent = cleanModelName(currentModel);
 
   for (auto it = modelFileToNameMap.constBegin(); it != modelFileToNameMap.constEnd(); ++it) {
@@ -636,7 +722,10 @@ void StarPilotModelPanel::showEvent(QShowEvent *event) {
     QJsonObject versionObj;
     int verCount = qMin(availableModels.size(), versionList.size());
     for (int i = 0; i < verCount; ++i) {
-      versionObj.insert(availableModels[i], versionList[i]);
+      const QString modelKey = canonicalModelKey(params, availableModels[i]);
+      if (!modelKey.isEmpty()) {
+        versionObj.insert(modelKey, versionList[i]);
+      }
     }
     QFile out(modelDir.filePath(".model_versions.json"));
     if (out.open(QIODevice::WriteOnly)) {
@@ -651,7 +740,7 @@ void StarPilotModelPanel::showEvent(QShowEvent *event) {
   modelReleasedDates.clear();
   int size = qMin(availableModels.size(), availableModelNames.size());
   for (int i = 0; i < size; ++i) {
-    const QString modelKey = availableModels[i].trimmed();
+    const QString modelKey = canonicalModelKey(params, availableModels[i]);
     const QString modelName = availableModelNames[i].trimmed();
     if (modelKey.isEmpty() || modelName.isEmpty()) {
       continue;
@@ -676,6 +765,9 @@ void StarPilotModelPanel::showEvent(QShowEvent *event) {
       }
     }
   }
+
+  ensureDefaultModelVisible(params, tr("Custom Series"), modelFileToNameMap, modelFileToNameMapProcessed, modelSeriesMap, modelReleasedDates);
+
   allModelsDownloaded = true;
   for (auto it = modelFileToNameMap.constBegin(); it != modelFileToNameMap.constEnd(); ++it) {
     if (it.value().isEmpty()) {
@@ -687,17 +779,14 @@ void StarPilotModelPanel::showEvent(QShowEvent *event) {
     }
   }
 
-  QString modelKey = QString::fromStdString(params.get("Model"));
+  QString modelKey = canonicalModelKey(params, QString::fromStdString(params.get("Model")));
   if (modelKey.isEmpty()) {
-    modelKey = QString::fromStdString(params.get("DrivingModel"));
+    modelKey = canonicalModelKey(params, QString::fromStdString(params.get("DrivingModel")));
   }
   if (!isModelInstalled(modelKey)) {
-    modelKey = QString::fromStdString(params.getKeyDefaultValue("Model").value());
-    if (modelKey.isEmpty()) {
-      modelKey = QString::fromStdString(params.getKeyDefaultValue("DrivingModel").value());
-    }
+    modelKey = builtinDefaultModelKey(params);
   }
-  currentModel = modelFileToNameMap.value(modelKey);
+  currentModel = modelFileToNameMap.value(modelKey, builtinDefaultModelName(params));
   selectModelButton->setValue(currentModel);
 
   noModelsDownloaded = getDeletableModelDisplayNames().isEmpty();
