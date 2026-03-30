@@ -27,6 +27,7 @@ class StarPilotSoundsLayout(StarPilotPanel):
   ]
   CUSTOM_ALERTS_KEYS = [
     "GoatScream",
+    "GoatScreamCriticalAlerts",
     "GreenLightAlert",
     "LeadDepartingAlert",
     "LoudBlindspotAlert",
@@ -207,6 +208,7 @@ while True:
 class StarPilotCustomAlertsLayout(StarPilotPanel):
   ALERT_INFO = {
     "GoatScream": {"title": tr_noop("Goat Scream"), "icon": "toggle_icons/icon_sound.png"},
+    "GoatScreamCriticalAlerts": {"title": tr_noop("Goat Critical"), "icon": "toggle_icons/icon_sound.png"},
     "GreenLightAlert": {"title": tr_noop("Green Light"), "icon": "toggle_icons/icon_green_light.png"},
     "LeadDepartingAlert": {"title": tr_noop("Lead Departure"), "icon": "toggle_icons/icon_steering.png"},
     "LoudBlindspotAlert": {"title": tr_noop("Loud Blindspot"), "icon": "toggle_icons/icon_display.png"},

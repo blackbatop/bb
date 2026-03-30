@@ -603,6 +603,7 @@ class StarPilotVariables:
 
     custom_alerts = self.get_value("CustomAlerts")
     toggle.goat_scream_alert = self.get_value("GoatScream", condition=custom_alerts)
+    toggle.goat_scream_critical_alerts = self.get_value("GoatScreamCriticalAlerts", condition=custom_alerts)
     toggle.green_light_alert = self.get_value("GreenLightAlert", condition=custom_alerts)
     toggle.lead_departing_alert = self.get_value("LeadDepartingAlert", condition=custom_alerts)
     toggle.loud_blindspot_alert = self.get_value("LoudBlindspotAlert", condition=custom_alerts and has_bsm)

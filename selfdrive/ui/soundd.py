@@ -5,7 +5,7 @@ import wave
 
 from pathlib import Path
 
-from cereal import car, custom, messaging
+from cereal import car, custom, log, messaging
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.params import Params
@@ -190,6 +190,11 @@ class Soundd:
     elif sm.updated['selfdriveState']:
       new_alert = sm['selfdriveState'].alertSound.raw
       new_alert_type = sm['selfdriveState'].alertType
+
+      critical_full_alert = sm['selfdriveState'].alertStatus == log.SelfdriveState.AlertStatus.critical
+      critical_full_alert &= sm['selfdriveState'].alertSize == log.SelfdriveState.AlertSize.full
+      if self.starpilot_toggles.goat_scream_critical_alerts and critical_full_alert:
+        new_alert = StarPilotAudibleAlert.goat
 
       new_starpilot_alert = sm['starpilotSelfdriveState'].alertSound.raw
       if new_alert == AudibleAlert.none and new_starpilot_alert != StarPilotAudibleAlert.none:

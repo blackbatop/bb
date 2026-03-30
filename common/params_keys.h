@@ -271,6 +271,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"StarPilotTogglesUpdated", {CLEAR_ON_MANAGER_START, BOOL, "0", "0"}},
     {"FrogsGoMoosTweak", {PERSISTENT, BOOL, "1", "0", 2}},
     {"GoatScream", {PERSISTENT, BOOL, "0", "0", 1}},
+    {"GoatScreamCriticalAlerts", {PERSISTENT, BOOL, "0", "0", 1}},
     {"GreenLightAlert", {PERSISTENT, BOOL, "0", "0", 0}},
     {"HideAlerts", {PERSISTENT, BOOL, "0", "0", 2}},
     {"HideLeadMarker", {PERSISTENT, BOOL, "0", "0", 2}},
