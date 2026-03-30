@@ -23,6 +23,22 @@
   margin-bottom: 10px;
 }
 
+.troubleshootToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: var(--border-radius-md);
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.troubleshootToggle input {
+  margin: 0;
+}
+
 .troubleshootButton {
   background: linear-gradient(135deg, #7a62b8, #8b6cc5);
   color: #fff;
@@ -103,7 +119,17 @@
   grid-template-columns: 2fr 1fr 1fr 1.3fr;
 }
 
+.troubleshootItemRowChanged {
+  background: linear-gradient(90deg, rgba(217, 90, 123, 0.12), rgba(122, 98, 184, 0.05));
+  border-left: 3px solid #d95a7b;
+  padding-left: 12px;
+}
+
 .troubleshootItemLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-weight: 600;
 }
 
@@ -112,6 +138,24 @@
 .troubleshootItemLearned {
   font-family: "Open Sans", sans-serif;
   word-break: break-word;
+}
+
+.troubleshootItemValueChanged {
+  color: #ffd1dd;
+  font-weight: 700;
+}
+
+.troubleshootChangedBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(217, 90, 123, 0.2);
+  color: #ffd7e2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  text-transform: uppercase;
 }
 
 @media (max-width: 720px) {

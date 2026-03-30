@@ -8,6 +8,7 @@ const state = reactive({
   isOnroad: false,
   refreshing: false,
   busySection: "",
+  showNonDefaultOnly: false,
 })
 
 let initialized = false
@@ -29,21 +30,66 @@ function formatLearnedValue(value) {
   return text ? formatValue(value) : ""
 }
 
+function valuesMatch(left, right) {
+  if (left === right) return true
+  if ((left === null || left === undefined) && (right === null || right === undefined)) return true
+
+  if (typeof left === "number" && typeof right === "number") {
+    return Math.abs(left - right) < 1e-9
+  }
+
+  const leftText = String(left ?? "").trim()
+  const rightText = String(right ?? "").trim()
+  if (!leftText && !rightText) return true
+
+  const leftNumber = Number(leftText)
+  const rightNumber = Number(rightText)
+  if (leftText !== "" && rightText !== "" && Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+    return Math.abs(leftNumber - rightNumber) < 1e-9
+  }
+
+  return leftText === rightText
+}
+
+function isNonDefaultItem(item) {
+  return !valuesMatch(item?.value, item?.defaultValue)
+}
+
+function getVisibleSectionItems(section) {
+  const items = Array.isArray(section?.items) ? section.items : []
+  if (!state.showNonDefaultOnly) return items
+  return items.filter(isNonDefaultItem)
+}
+
+function getVisibleSections() {
+  const sections = Array.isArray(state.sections) ? state.sections : []
+  if (!state.showNonDefaultOnly) return sections
+  return sections.filter((section) => getVisibleSectionItems(section).length > 0)
+}
+
+function countNonDefaultItems() {
+  return (Array.isArray(state.sections) ? state.sections : []).reduce((count, section) => {
+    const items = Array.isArray(section?.items) ? section.items : []
+    return count + items.filter(isNonDefaultItem).length
+  }, 0)
+}
+
 function buildReportText() {
   const lines = []
   lines.push("StarPilot Troubleshoot Report")
   lines.push(`Generated: ${new Date().toISOString()}`)
   lines.push(`Onroad: ${state.isOnroad ? "Yes" : "No"}`)
+  lines.push(`Only non-default values: ${state.showNonDefaultOnly ? "Yes" : "No"}`)
   lines.push("")
   lines.push("Snapshot")
   for (const item of state.snapshot) {
     lines.push(`- ${item.label}: ${formatValue(item.value)}`)
   }
 
-  for (const section of state.sections) {
+  for (const section of getVisibleSections()) {
     lines.push("")
     lines.push(section.title)
-    for (const item of section.items || []) {
+    for (const item of getVisibleSectionItems(section)) {
       const learnedSuffix = formatLearnedValue(item.learnedValue)
         ? `, learned: ${formatLearnedValue(item.learnedValue)}`
         : ""
@@ -140,12 +186,15 @@ function initialize() {
 }
 
 function itemRows(section) {
-  const items = Array.isArray(section?.items) ? section.items : []
+  const items = getVisibleSectionItems(section)
   const rowClassName = section?.hasLearnedColumn ? "troubleshootItemRow troubleshootItemRowLearned" : "troubleshootItemRow"
   return items.map((item) => html`
-    <div class="${rowClassName}">
-      <div class="troubleshootItemLabel">${item.label}</div>
-      <div class="troubleshootItemValue">${formatValue(item.value)}</div>
+    <div class="${`${rowClassName} ${isNonDefaultItem(item) ? "troubleshootItemRowChanged" : ""}`.trim()}">
+      <div class="troubleshootItemLabel">
+        <span>${item.label}</span>
+        ${isNonDefaultItem(item) ? html`<span class="troubleshootChangedBadge">Changed</span>` : ""}
+      </div>
+      <div class="${`troubleshootItemValue ${isNonDefaultItem(item) ? "troubleshootItemValueChanged" : ""}`.trim()}">${formatValue(item.value)}</div>
       <div class="troubleshootItemDefault">${formatValue(item.defaultValue)}</div>
       ${section?.hasLearnedColumn ? html`<div class="troubleshootItemLearned">${formatLearnedValue(item.learnedValue)}</div>` : ""}
     </div>
@@ -172,9 +221,17 @@ export function Troubleshoot() {
             <button class="troubleshootButton" @click="${copyToClipboard}">
               Copy to Clipboard
             </button>
+            <label class="troubleshootToggle">
+              <input
+                type="checkbox"
+                ?checked="${() => state.showNonDefaultOnly}"
+                @change="${(e) => { state.showNonDefaultOnly = !!e.target.checked }}" />
+              <span>Only non-default values</span>
+            </label>
           </div>
           ${() => state.error ? html`<p class="troubleshootError"><strong>Error:</strong> ${state.error}</p>` : ""}
           <p class="troubleshootStatusLine"><strong>Onroad:</strong> ${state.isOnroad ? "Yes" : "No"}</p>
+          <p class="troubleshootStatusLine"><strong>Changed Settings:</strong> ${() => countNonDefaultItems()}</p>
         </div>
 
         <div class="troubleshootCard">
@@ -191,7 +248,7 @@ export function Troubleshoot() {
           `)}
         </div>
 
-        ${() => state.sections.map((section) => html`
+        ${() => getVisibleSections().map((section) => html`
           <div class="troubleshootCard">
             <div class="troubleshootSectionHeader">
               <h3>${section.title}</h3>
@@ -212,6 +269,12 @@ export function Troubleshoot() {
             ${itemRows(section)}
           </div>
         `)}
+
+        ${() => state.showNonDefaultOnly && countNonDefaultItems() === 0 ? html`
+          <div class="troubleshootCard">
+            No settings are currently different from their defaults.
+          </div>
+        ` : ""}
       ` : ""}
     </div>
   `
