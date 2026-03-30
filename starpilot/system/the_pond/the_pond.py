@@ -4249,80 +4249,98 @@ def setup(app):
 
   @app.route("/api/themes/apply", methods=["POST"])
   def apply_theme():
-    form_data = request.form.to_dict(flat=True)
-    files = request.files
+    try:
+      form_data = request.form.to_dict(flat=True)
+      files = request.files
 
-    if not form_data.get("themeName"):
-      form_data["themeName"] = f"tmp_{secrets.token_hex(8)}"
+      if not form_data.get("themeName"):
+        form_data["themeName"] = f"tmp_{secrets.token_hex(8)}"
 
-    temp_path, error = utilities.create_theme(form_data, files, temporary=True)
-    if error:
-      return {"error": error}, 400
+      temp_path, error = utilities.create_theme(form_data, files, temporary=True)
+      if error:
+        return jsonify({"error": error}), 400
 
-    save_checklist = json.loads(form_data.get("saveChecklist", "{}"))
+      save_checklist = json.loads(form_data.get("saveChecklist", "{}"))
 
-    if save_checklist.get("colors"):
-      asset_location = temp_path / "colors"
-      save_location = ACTIVE_THEME_PATH / "colors"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("colors") and temp_path is not None:
+        asset_location = temp_path / "colors"
+        save_location = ACTIVE_THEME_PATH / "colors"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("distance_icons"):
-      asset_location = temp_path / "distance_icons"
-      save_location = ACTIVE_THEME_PATH / "distance_icons"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("distance_icons") and temp_path is not None:
+        asset_location = temp_path / "distance_icons"
+        save_location = ACTIVE_THEME_PATH / "distance_icons"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("icons"):
-      asset_location = temp_path / "icons"
-      save_location = ACTIVE_THEME_PATH / "icons"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("icons") and temp_path is not None:
+        asset_location = temp_path / "icons"
+        save_location = ACTIVE_THEME_PATH / "icons"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("sounds"):
-      asset_location = temp_path / "sounds"
-      save_location = ACTIVE_THEME_PATH / "sounds"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("sounds") and temp_path is not None:
+        asset_location = temp_path / "sounds"
+        save_location = ACTIVE_THEME_PATH / "sounds"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("turn_signals"):
-      asset_location = temp_path / "signals"
-      save_location = ACTIVE_THEME_PATH / "signals"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("turn_signals") and temp_path is not None:
+        asset_location = temp_path / "signals"
+        save_location = ACTIVE_THEME_PATH / "signals"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    wheel_location = temp_path / "WheelIcon"
-    wheel_save_location = ACTIVE_THEME_PATH / "steering_wheel"
-    if wheel_location.exists():
-      if wheel_save_location.exists():
-        delete_file(wheel_save_location)
+      wheel_location = (temp_path / "WheelIcon") if temp_path is not None else None
+      wheel_save_location = ACTIVE_THEME_PATH / "steering_wheel"
+      if wheel_location is not None and wheel_location.exists():
+        if wheel_save_location.exists():
+          delete_file(wheel_save_location)
 
-      wheel_save_location.mkdir(parents=True, exist_ok=True)
-      for file in wheel_location.iterdir():
-        destination_file = wheel_save_location / file.name
-        delete_file(destination_file)
-        destination_file.symlink_to(file)
+        wheel_save_location.mkdir(parents=True, exist_ok=True)
+        for file in wheel_location.iterdir():
+          destination_file = wheel_save_location / file.name
+          delete_file(destination_file)
+          destination_file.symlink_to(file)
 
-    params.put_bool("PersonalizeOpenpilot", True)
-    params_memory.put_bool("UseActiveTheme", True)
+      params.put_bool("PersonalizeOpenpilot", True)
+      params_memory.put_bool("UseActiveTheme", True)
 
-    update_starpilot_toggles()
-    return {"message": "Theme applied successfully!"}, 200
+      update_starpilot_toggles()
+      return jsonify({"message": "Theme applied successfully!"}), 200
+    except Exception as e:
+      return jsonify({"error": f"Failed to apply theme: {e}"}), 500
+
+  def _resolve_stock_theme_asset_path(asset_path):
+    stock_asset_path = STOCK_THEME_PATH / asset_path
+    if stock_asset_path.exists():
+      return stock_asset_path
+
+    stock_fallbacks = {
+      "steering_wheel/wheel.png": STOCK_THEME_PATH.parents[2] / "selfdrive" / "assets" / "icons" / "chffr_wheel.png",
+    }
+
+    fallback_path = stock_fallbacks.get(asset_path)
+    if fallback_path is not None and fallback_path.exists():
+      return fallback_path
+
+    return stock_asset_path
 
   @app.route("/api/themes/asset/<path:theme>/<path:asset_path>")
   def get_theme_asset(theme, asset_path):
@@ -4331,7 +4349,7 @@ def setup(app):
     if theme_type == "active" or theme == "__active__":
       file_path = ACTIVE_THEME_PATH / asset_path
     elif theme_type == "stock" or theme == "__stock__":
-      file_path = STOCK_THEME_PATH / asset_path
+      file_path = _resolve_stock_theme_asset_path(asset_path)
     elif asset_path.startswith("steering_wheels/"):
       file_path = THEME_SAVE_PATH / asset_path
     elif asset_path.startswith("steering_wheel/") and "holiday" in theme_type:
@@ -4647,12 +4665,8 @@ def setup(app):
 
     steering_wheel_path = None
     if theme_type == "stock" or theme_path == "__stock__":
-      steering_dir = theme_dir / "steering_wheel"
-      if steering_dir.exists() and steering_dir.is_dir():
-        for file in steering_dir.iterdir():
-          if file.is_file() and file.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif"]:
-            steering_wheel_path = f"steering_wheel/{file.name}"
-            break
+      if _resolve_stock_theme_asset_path("steering_wheel/wheel.png").exists():
+        steering_wheel_path = "steering_wheel/wheel.png"
     elif "holiday" in theme_type:
       steering_dir = theme_dir / "steering_wheel"
       if steering_dir.exists() and steering_dir.is_dir():

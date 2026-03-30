@@ -113,6 +113,48 @@ const state = reactive({
 let draggedIndex = -1;
 let dropIndex = -1;
 
+const getHttpErrorMessage = (response) => {
+  const statusText = response.statusText ? ` ${response.statusText}` : "";
+  return `Request failed (${response.status}${statusText})`;
+};
+
+const readResponsePayload = async (response) => {
+  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+  const text = await response.text();
+  const trimmed = text.trim();
+
+  if (contentType.includes("application/json")) {
+    try {
+      return trimmed ? JSON.parse(trimmed) : {};
+    } catch {}
+  }
+
+  if (!trimmed || trimmed.startsWith("<")) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return { message: trimmed, error: trimmed };
+  }
+};
+
+const getResponseMessage = (response, payload = {}, fallbackMessage = "") => {
+  return payload.error || payload.message || fallbackMessage || getHttpErrorMessage(response);
+};
+
+const fetchFileAsFile = async (url, filename, errorMessage) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    const payload = await readResponsePayload(response);
+    throw new Error(getResponseMessage(response, payload, errorMessage));
+  }
+
+  const blob = await response.blob();
+  return new File([blob], filename, { type: blob.type });
+};
+
 function handleDragStart(e, index) {
   draggedIndex = index;
   e.dataTransfer.effectAllowed = "move";
@@ -590,8 +632,10 @@ export function ThemeMaker() {
   const performApiAction = async (url, options, successMessage, errorMessage) => {
     try {
       const response = await fetch(url, options);
-      const result = await response.json();
-      const message = result.message || (response.ok ? successMessage : errorMessage);
+      const result = await readResponsePayload(response);
+      const message = response.ok
+        ? (result.message || successMessage)
+        : getResponseMessage(response, result, errorMessage);
       if (message) {
         showSnackbar(message, response.ok ? "success" : "error");
       }
@@ -699,7 +743,11 @@ export function ThemeMaker() {
 
   const manageThemes = async () => {
     const response = await fetch("/api/themes/list");
-    const data = await response.json();
+    const data = await readResponsePayload(response);
+    if (!response.ok) {
+      showSnackbar(getResponseMessage(response, data, "Failed to load themes."), "error");
+      return;
+    }
     state.themes = (data.themes || []).map(t => ({
       ...t,
       localHasColors: !!t.hasColors,
@@ -866,25 +914,22 @@ export function ThemeMaker() {
 
     try {
       const response = await fetch(`/api/themes/load/${theme.path}?type=${theme.type}`);
-      const data = await response.json();
+      const data = await readResponsePayload(response);
+      if (!response.ok) {
+        throw new Error(getResponseMessage(response, data, "Failed to load theme asset."));
+      }
 
-      const fetchAndStoreFile = async (assetPath, key, subkey = null, type = "image", assetGroup = "") => {
+      const fetchAndStoreFile = async (assetPath, key, subkey = null, type = "image") => {
         if (!assetPath) return;
-        try {
-          const url = `/api/themes/asset/${theme.path}/${assetPath}?type=${theme.type}`;
-          const fileResponse = await fetch(url);
-          const blob = await fileResponse.blob();
-          const filename = assetPath.split("/").pop();
-          const file = new File([blob], filename, { type: blob.type });
+        const url = `/api/themes/asset/${theme.path}/${assetPath}?type=${theme.type}`;
+        const filename = assetPath.split("/").pop();
+        const file = await fetchFileAsFile(url, filename, `Failed to load ${assetType.replace("_", " ")} from "${theme.name}".`);
 
-          const store = type === "image" ? fileStore.images : fileStore.sounds;
-          if (subkey) {
-            store[key][subkey] = file;
-          } else {
-            store[key] = file;
-          }
-        } catch (err) {
-          console.error(`Failed to load file from ${assetPath}`, err);
+        const store = type === "image" ? fileStore.images : fileStore.sounds;
+        if (subkey) {
+          store[key][subkey] = file;
+        } else {
+          store[key] = file;
         }
       };
 
@@ -895,35 +940,32 @@ export function ThemeMaker() {
       if (assetType === "distance_icons" && data.images.distanceIcons) {
         for (const [subkey, asset] of Object.entries(data.images.distanceIcons)) {
           state.imageFileNames.distanceIcons[subkey] = theme.name;
-          await fetchAndStoreFile(asset.path, "distanceIcons", subkey, "image", "distance_icons");
+          await fetchAndStoreFile(asset.path, "distanceIcons", subkey, "image");
         }
       }
 
       if (assetType === "icons" && (data.images.homeButton || data.images.settingsButton)) {
         if (data.images.homeButton) {
           state.imageFileNames.homeButton = theme.name;
-          await fetchAndStoreFile(data.images.homeButton.path, "homeButton", null, "image", "icons");
+          await fetchAndStoreFile(data.images.homeButton.path, "homeButton", null, "image");
         }
         if (data.images.settingsButton) {
           state.imageFileNames.settingsButton = theme.name;
-          await fetchAndStoreFile(data.images.settingsButton.path, "settingsButton", null, "image", "icons");
+          await fetchAndStoreFile(data.images.settingsButton.path, "settingsButton", null, "image");
         }
       }
 
       if (assetType === "steering_wheel" && data.images.steeringWheel?.path) {
         const url = `/api/themes/asset/${theme.path}/${data.images.steeringWheel.path}?type=${theme.type}`;
-        const fileResponse = await fetch(url);
-        const blob = await fileResponse.blob();
         const filename = data.images.steeringWheel.filename || theme.path;
-        const file = new File([blob], filename, { type: blob.type });
-        fileStore.images.steeringWheel = file;
+        fileStore.images.steeringWheel = await fetchFileAsFile(url, filename, `Failed to load steering wheel from "${theme.name}".`);
         state.imageFileNames.steeringWheel = theme.name;
       }
 
       if (assetType === "sounds" && Object.keys(data.sounds).length) {
         for (const [key, asset] of Object.entries(data.sounds)) {
           state.soundFileNames[key] = theme.name;
-          await fetchAndStoreFile(asset.path, key, null, "audio", "sounds");
+          await fetchAndStoreFile(asset.path, key, null, "audio");
         }
       }
 
@@ -936,10 +978,10 @@ export function ThemeMaker() {
         state.imageFileNames.turnSignalBlindspot = data.images.turnSignalBlindspot?.filename ? theme.name : "";
 
         if (data.images.turnSignal) {
-          await fetchAndStoreFile(data.images.turnSignal.path, "turnSignal", null, "image", "signals");
+          await fetchAndStoreFile(data.images.turnSignal.path, "turnSignal", null, "image");
         }
         if (data.images.turnSignalBlindspot) {
-          await fetchAndStoreFile(data.images.turnSignalBlindspot.path, "turnSignalBlindspot", null, "image", "signals");
+          await fetchAndStoreFile(data.images.turnSignalBlindspot.path, "turnSignalBlindspot", null, "image");
         }
 
         state.sequentialImages = data.sequentialImages || [];
@@ -949,10 +991,7 @@ export function ThemeMaker() {
           state.imageFileNames.turnSignal = theme.name;
           for (const img of data.sequentialImages) {
             const url = `/api/themes/asset/${theme.path}/signals/${img}?type=${theme.type}`;
-            const fileResponse = await fetch(url);
-            const blob = await fileResponse.blob();
-            const file = new File([blob], img, { type: blob.type });
-            fileStore.sequentialFiles.push(file);
+            fileStore.sequentialFiles.push(await fetchFileAsFile(url, img, `Failed to load turn signal frames from "${theme.name}".`));
           }
         }
       }
@@ -960,7 +999,7 @@ export function ThemeMaker() {
       showSnackbar(`Loaded ${assetType.replace("_", " ")} from "${theme.name}"!`);
     } catch (err) {
       console.error("Failed to load theme asset:", err);
-      showSnackbar("Failed to load theme asset.", "error");
+      showSnackbar(err.message || "Failed to load theme asset.", "error");
     } finally {
       state.isLoadingAsset = false;
     }
@@ -1035,13 +1074,13 @@ export function ThemeMaker() {
       : `&component=${state.activeTab === "turn_signals" ? "signals" : state.activeTab}`;
 
     const response = await fetch(`/api/themes/delete/${theme.path}?type=${theme.type}${component}`, { method: "DELETE" });
-    const result = await response.json();
+    const result = await readResponsePayload(response);
     if (response.ok) {
-      showSnackbar(result.message, "success");
+      showSnackbar(getResponseMessage(response, result, "Theme deleted."), "success");
       deleteThemeAndRestoreDownloadables(theme.name);
       manageThemes();
     } else {
-      showSnackbar(result.message, "error");
+      showSnackbar(getResponseMessage(response, result, "Failed to delete theme."), "error");
     }
     state.showDeleteConfirmModal = false;
     state.themeToDelete = null;
