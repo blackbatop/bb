@@ -67,6 +67,64 @@
   margin: 6px 0 0;
 }
 
+.troubleshootFaultSummary {
+  margin: 0 0 12px;
+  opacity: 0.92;
+}
+
+.troubleshootFaultGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.troubleshootFaultItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.troubleshootFaultLabel {
+  font-weight: 700;
+}
+
+.troubleshootStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.troubleshootStatusBadgeOk {
+  background: rgba(64, 201, 124, 0.18);
+  color: #b8ffd4;
+}
+
+.troubleshootStatusBadgeWarn {
+  background: rgba(245, 188, 87, 0.18);
+  color: #ffe2a3;
+}
+
+.troubleshootStatusBadgeFault {
+  background: rgba(217, 90, 123, 0.2);
+  color: #ffd7e2;
+}
+
+.troubleshootStatusBadgeNeutral {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .troubleshootSectionHeader {
   display: flex;
   align-items: center;

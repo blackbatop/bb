@@ -2077,6 +2077,91 @@ def _snapshot_bool_text(value):
     return "No"
   return "Unavailable"
 
+def _build_vehicle_fault_status():
+  unavailable_items = [
+    {"label": "Cruise Fault", "value": "Unavailable", "severity": "neutral"},
+    {"label": "LKAS Fault", "value": "Unavailable", "severity": "neutral"},
+    {"label": "CAN Valid", "value": "Unavailable", "severity": "neutral"},
+    {"label": "Cruise Available", "value": "Unavailable", "severity": "neutral"},
+    {"label": "Cruise Engaged", "value": "Unavailable", "severity": "neutral"},
+  ]
+
+  is_onroad = params.get_bool("IsOnroad")
+  unavailable_summary = "Vehicle fault status is unavailable while offroad."
+  unavailable_severity = "neutral"
+  if is_onroad:
+    unavailable_summary = "Waiting for live vehicle fault status..."
+    unavailable_severity = "warn"
+
+  try:
+    sm = messaging.SubMaster(["carState"], poll="carState")
+    sm.update(100)
+    has_live_car_state = sm.seen["carState"] and sm.alive["carState"] and sm.valid["carState"]
+    if not has_live_car_state:
+      return {
+        "available": False,
+        "summary": unavailable_summary,
+        "summarySeverity": unavailable_severity,
+        "items": unavailable_items,
+      }
+
+    car_state = sm["carState"]
+    cruise_state = getattr(car_state, "cruiseState", None)
+
+    cruise_faulted = bool(getattr(car_state, "accFaulted", False))
+    steer_fault_temporary = bool(getattr(car_state, "steerFaultTemporary", False))
+    steer_fault_permanent = bool(getattr(car_state, "steerFaultPermanent", False))
+    can_valid = bool(getattr(car_state, "canValid", False))
+    cruise_available = bool(getattr(cruise_state, "available", False)) if cruise_state is not None else None
+    cruise_enabled = bool(getattr(cruise_state, "enabled", False)) if cruise_state is not None else None
+
+    if steer_fault_permanent:
+      lkas_fault_value = "Permanent"
+      lkas_fault_severity = "fault"
+    elif steer_fault_temporary:
+      lkas_fault_value = "Temporary"
+      lkas_fault_severity = "warn"
+    else:
+      lkas_fault_value = "Clear"
+      lkas_fault_severity = "ok"
+
+    active_statuses = []
+    if cruise_faulted:
+      active_statuses.append("cruise fault")
+    if steer_fault_permanent:
+      active_statuses.append("permanent LKAS fault")
+    elif steer_fault_temporary:
+      active_statuses.append("temporary LKAS fault")
+    if not can_valid:
+      active_statuses.append("CAN invalid")
+
+    if active_statuses:
+      summary = "Active status: " + ", ".join(active_statuses) + "."
+      summary_severity = "fault" if ("cruise fault" in active_statuses or "permanent LKAS fault" in active_statuses or "CAN invalid" in active_statuses) else "warn"
+    else:
+      summary = "No active cruise or LKAS faults detected."
+      summary_severity = "ok"
+
+    return {
+      "available": True,
+      "summary": summary,
+      "summarySeverity": summary_severity,
+      "items": [
+        {"label": "Cruise Fault", "value": "Faulted" if cruise_faulted else "Clear", "severity": "fault" if cruise_faulted else "ok"},
+        {"label": "LKAS Fault", "value": lkas_fault_value, "severity": lkas_fault_severity},
+        {"label": "CAN Valid", "value": "Yes" if can_valid else "No", "severity": "ok" if can_valid else "fault"},
+        {"label": "Cruise Available", "value": "Yes" if cruise_available else "No", "severity": "ok" if cruise_available else "neutral"},
+        {"label": "Cruise Engaged", "value": "Yes" if cruise_enabled else "No", "severity": "ok" if cruise_enabled else "neutral"},
+      ],
+    }
+  except Exception:
+    return {
+      "available": False,
+      "summary": unavailable_summary,
+      "summarySeverity": unavailable_severity,
+      "items": unavailable_items,
+    }
+
 def _get_starpilot_toggles_snapshot():
   raw_toggles = _safe_params_get_live_raw("StarPilotToggles")
   if not raw_toggles:
@@ -2260,6 +2345,7 @@ def _build_troubleshoot_payload():
   ]
 
   return {
+    "vehicleStatus": _build_vehicle_fault_status(),
     "snapshot": snapshot_items,
     "sections": sections,
     "isOnroad": params.get_bool("IsOnroad"),

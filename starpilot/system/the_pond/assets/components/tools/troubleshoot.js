@@ -3,6 +3,12 @@ import { html, reactive } from "/assets/vendor/arrow-core.js"
 const state = reactive({
   loading: true,
   error: "",
+  vehicleStatus: {
+    available: false,
+    summary: "",
+    summarySeverity: "neutral",
+    items: [],
+  },
   snapshot: [],
   sections: [],
   isOnroad: false,
@@ -74,12 +80,25 @@ function countNonDefaultItems() {
   }, 0)
 }
 
+function statusBadgeClass(severity) {
+  const safeSeverity = String(severity || "neutral").trim().toLowerCase()
+  return `troubleshootStatusBadge troubleshootStatusBadge${safeSeverity.charAt(0).toUpperCase()}${safeSeverity.slice(1)}`
+}
+
 function buildReportText() {
   const lines = []
   lines.push("StarPilot Troubleshoot Report")
   lines.push(`Generated: ${new Date().toISOString()}`)
   lines.push(`Onroad: ${state.isOnroad ? "Yes" : "No"}`)
   lines.push(`Only non-default values: ${state.showNonDefaultOnly ? "Yes" : "No"}`)
+  if (state.vehicleStatus?.summary) {
+    lines.push("")
+    lines.push("Vehicle Fault Status")
+    lines.push(`Summary: ${state.vehicleStatus.summary}`)
+    for (const item of state.vehicleStatus.items || []) {
+      lines.push(`- ${item.label}: ${formatValue(item.value)}`)
+    }
+  }
   lines.push("")
   lines.push("Snapshot")
   for (const item of state.snapshot) {
@@ -133,6 +152,12 @@ async function fetchTroubleshoot(showToast = false) {
 
     state.snapshot = Array.isArray(payload.snapshot) ? payload.snapshot : []
     state.sections = Array.isArray(payload.sections) ? payload.sections : []
+    state.vehicleStatus = {
+      available: !!payload.vehicleStatus?.available,
+      summary: String(payload.vehicleStatus?.summary || ""),
+      summarySeverity: String(payload.vehicleStatus?.summarySeverity || "neutral"),
+      items: Array.isArray(payload.vehicleStatus?.items) ? payload.vehicleStatus.items : [],
+    }
     state.isOnroad = !!payload.isOnroad
     state.error = ""
 
@@ -232,6 +257,24 @@ export function Troubleshoot() {
           ${() => state.error ? html`<p class="troubleshootError"><strong>Error:</strong> ${state.error}</p>` : ""}
           <p class="troubleshootStatusLine"><strong>Onroad:</strong> ${state.isOnroad ? "Yes" : "No"}</p>
           <p class="troubleshootStatusLine"><strong>Changed Settings:</strong> ${() => countNonDefaultItems()}</p>
+        </div>
+
+        <div class="troubleshootCard">
+          <div class="troubleshootSectionHeader">
+            <h3>Vehicle Fault Status</h3>
+            <span class="${() => statusBadgeClass(state.vehicleStatus?.available ? "ok" : state.vehicleStatus?.summarySeverity || "neutral")}">
+              ${() => state.vehicleStatus?.available ? "Live" : "Unavailable"}
+            </span>
+          </div>
+          <p class="troubleshootFaultSummary">${() => state.vehicleStatus?.summary || "Vehicle fault status unavailable."}</p>
+          <div class="troubleshootFaultGrid">
+            ${() => (state.vehicleStatus?.items || []).map((item) => html`
+              <div class="troubleshootFaultItem">
+                <div class="troubleshootFaultLabel">${item.label}</div>
+                <div class="${() => statusBadgeClass(item.severity)}">${formatValue(item.value)}</div>
+              </div>
+            `)}
+          </div>
         </div>
 
         <div class="troubleshootCard">
