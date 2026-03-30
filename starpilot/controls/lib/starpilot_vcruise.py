@@ -2,10 +2,11 @@
 from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
 
-from openpilot.starpilot.common.starpilot_variables import CRUISING_SPEED, PLANNER_TIME
+from openpilot.starpilot.common.starpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, PLANNER_TIME
 from openpilot.starpilot.controls.lib.curve_speed_controller import CurveSpeedController
 from openpilot.starpilot.controls.lib.speed_limit_controller import SpeedLimitController
 
+CSC_MIN_SPEED = CITY_SPEED_LIMIT * CV.MPH_TO_MS
 OVERRIDE_FORCE_STOP_TIMER = 10
 
 
@@ -94,6 +95,6 @@ class StarPilotVCruise:
       targets = [self.csc_target, v_cruise]
       if starpilot_toggles.speed_limit_controller:
         targets.append(max(self.slc.overridden_speed, self.slc_target + self.slc_offset) - v_ego_diff)
-      v_cruise = min([target if target >= CRUISING_SPEED else v_cruise for target in targets])
+      v_cruise = min([target if target >= CSC_MIN_SPEED else v_cruise for target in targets])
 
     return v_cruise
