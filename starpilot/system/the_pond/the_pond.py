@@ -4319,7 +4319,7 @@ def setup(app):
           delete_file(destination_file)
           destination_file.symlink_to(file)
 
-      params.put_bool("PersonalizeOpenpilot", True)
+      params.put_bool("CustomThemes", True)
       params_memory.put_bool("UseActiveTheme", True)
 
       update_starpilot_toggles()
@@ -4410,7 +4410,7 @@ def setup(app):
       "theme_names": {}
     }
 
-    if not params.get_bool("PersonalizeOpenpilot"):
+    if not params.get_bool("CustomThemes"):
       theme_data["theme_names"] = {
         "colors": "Stock",
         "distanceIcons": "Stock",
@@ -4421,11 +4421,11 @@ def setup(app):
       }
     else:
       theme_param_map = {
-        "CustomColors": "colors",
-        "CustomDistanceIcons": "distanceIcons",
-        "CustomIcons": "icons",
-        "CustomSounds": "sounds",
-        "CustomSignals": "turnSignals",
+        "ColorScheme": "colors",
+        "DistanceIconPack": "distanceIcons",
+        "IconPack": "icons",
+        "SoundPack": "sounds",
+        "SignalAnimation": "turnSignals",
         "WheelIcon": "steeringWheel"
       }
       for param, theme_key in theme_param_map.items():
