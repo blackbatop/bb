@@ -828,7 +828,9 @@ class StarPilotVariables:
 
     navigation_ui = self.get_value("NavigationUI")
     toggle.road_name_ui = self.get_value("RoadNameUI", condition=navigation_ui) or toggle.debug_mode
-    toggle.show_speed_limits = self.get_value("ShowSpeedLimits", condition=navigation_ui) or toggle.debug_mode
+    # Speed-limit display is also used by the C4 display-only vision test path,
+    # so it must not be disabled just because the broader Navigation UI group is off.
+    toggle.show_speed_limits = self.get_value("ShowSpeedLimits") or toggle.debug_mode
     toggle.speed_limit_vienna = self.get_value("UseVienna", condition=navigation_ui)
 
     quality_of_life_lateral = self.get_value("QOLLateral")
