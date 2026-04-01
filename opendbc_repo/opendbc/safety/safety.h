@@ -200,7 +200,8 @@ bool safety_rx_hook(const CANPacket_t *msg) {
 
   bool valid = rx_msg_safety_check(msg, &current_safety_config, current_hooks);
   bool whitelisted = get_addr_check_index(msg, current_safety_config.rx_checks, current_safety_config.rx_checks_len) != -1;
-  if (valid && whitelisted) {
+  bool gm_rx_passthrough = current_safety_mode == SAFETY_GM;
+  if (valid && (whitelisted || gm_rx_passthrough)) {
     current_hooks->rx(msg);
   }
 
