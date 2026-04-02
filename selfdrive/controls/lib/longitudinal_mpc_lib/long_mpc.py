@@ -647,4 +647,8 @@ class LongitudinalMpc:
 if __name__ == "__main__":
   ocp = gen_long_ocp()
   AcadosOcpSolver.generate(ocp, json_file=JSON_FILE)
+  # CasADi/acados teardown can segfault on the containerized Linux arm64 build
+  # after generation has already completed successfully. Exit immediately so
+  # SCons can continue with the generated artifacts we just wrote.
+  os._exit(0)
   # AcadosOcpSolver.build(ocp.code_export_directory, with_cython=True)
