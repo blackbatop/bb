@@ -101,6 +101,8 @@ class FontWeight(StrEnum):
   MEDIUM = "Inter-Medium.fnt"
   BOLD = "Inter-Bold.fnt"
   SEMI_BOLD = "Inter-SemiBold.fnt"
+  EXTRA_BOLD = "Inter-ExtraBold.fnt"
+  BLACK = "Inter-Black.fnt"
   UNIFONT = "unifont.fnt"
 
   # Small UI fonts

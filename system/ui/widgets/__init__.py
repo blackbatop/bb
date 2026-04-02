@@ -55,6 +55,20 @@ class Widget(abc.ABC):
     return any(self.__is_pressed)
 
   @property
+  def _is_pressed(self) -> bool:
+    return any(self.__is_pressed)
+
+  @_is_pressed.setter
+  def _is_pressed(self, value: bool):
+    if value:
+      for i, tracked in enumerate(self._Widget__tracking_is_pressed):
+        if tracked:
+          self.__is_pressed[i] = True
+    else:
+      for i in range(len(self.__is_pressed)):
+        self.__is_pressed[i] = False
+
+  @property
   def enabled(self) -> bool:
     return self._enabled() if callable(self._enabled) else self._enabled
 
