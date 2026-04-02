@@ -25,7 +25,7 @@ def main() -> NoReturn:
     while True:
       dat = b''.join(sock.recv_multipart())
       level = dat[0]
-      record = dat[1:].decode("utf-8")
+      record = dat[1:].decode("utf-8", errors="backslashreplace")
       if level >= log_level:
         log_handler.emit(record)
 

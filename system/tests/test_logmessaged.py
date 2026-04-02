@@ -3,6 +3,7 @@ import os
 import time
 
 import cereal.messaging as messaging
+import zmq
 from openpilot.system.manager.process_config import managed_processes
 from openpilot.system.hardware.hw import Paths
 from openpilot.common.swaglog import cloudlog, ipchandler
@@ -53,3 +54,19 @@ class TestLogmessaged:
     logsize = sum([os.path.getsize(f) for f in self._get_log_files()])
     assert (n*len(msg)) < logsize < (n*(len(msg)+1024))
 
+  def test_invalid_utf8_log(self):
+    ctx = zmq.Context()
+    sock = ctx.socket(zmq.PUSH)
+    sock.connect(Paths.swaglog_ipc())
+
+    try:
+      sock.send(b"\n" + b'{"msg":"\xff"}')
+      cloudlog.error("after invalid utf8 log")
+      time.sleep(0.5)
+
+      msgs = [m.logMessage for m in messaging.drain_sock(self.sock)]
+      assert any('"\\xff"' in m for m in msgs)
+      assert any("after invalid utf8 log" in m for m in msgs)
+    finally:
+      sock.close()
+      ctx.term()
