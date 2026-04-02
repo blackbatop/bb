@@ -11,7 +11,7 @@ from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
-from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import TileGrid, ToggleTile, SliderDialog
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, ToggleTile, AetherSliderDialog
 
 class StarPilotSoundsLayout(StarPilotPanel):
   COOLDOWN_KEY = "SwitchbackModeCooldown"
@@ -48,14 +48,14 @@ class StarPilotSoundsLayout(StarPilotPanel):
         "panel": "volume_control",
         "desc": tr_noop("Adjust volume levels for different alert types."),
         "icon": "toggle_icons/icon_mute.png",
-        "color": "#FF0097"
+        "color": "#F57371"
       },
       {
         "title": tr_noop("StarPilot Alerts"),
         "panel": "custom_alerts",
         "desc": tr_noop("Enable or disable specific StarPilot-only alerts."),
         "icon": "toggle_icons/icon_green_light.png",
-        "color": "#FF0097"
+        "color": "#F57371"
       },
     ]
 
@@ -110,7 +110,7 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
         "get_value": get_val,
         "on_click": on_click,
         "icon": info["icon"],
-        "color": "#FF0097"
+        "color": "#F57371"
       })
 
     def get_cooldown_val():
@@ -127,7 +127,7 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
       "get_value": get_cooldown_val,
       "on_click": self._show_cooldown_selector,
       "icon": self.COOLDOWN_INFO["icon"],
-      "color": "#FF0097"
+      "color": "#F57371"
     })
 
     self._rebuild_grid()
@@ -144,9 +144,9 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
         self._test_sound(key)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SliderDialog(
+    gui_app.set_modal_overlay(AetherSliderDialog(
       tr(info["title"]), 0, 101, 1, current_v, on_close,
-      unit="%", labels={0: tr("Muted"), 101: tr("Auto")}, color="#FF0097"
+      unit="%", labels={0: tr("Muted"), 101: tr("Auto")}, color="#F57371"
     ))
 
   def _show_cooldown_selector(self):
@@ -157,9 +157,9 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
         self._params.put_int(StarPilotSoundsLayout.COOLDOWN_KEY, int(val))
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SliderDialog(
+    gui_app.set_modal_overlay(AetherSliderDialog(
       tr(self.COOLDOWN_INFO["title"]), 0, self.COOLDOWN_INFO["max"], 1, current_v, on_close,
-      unit=" min", labels={0: tr("Off")}, color="#FF0097"
+      unit=" min", labels={0: tr("Off")}, color="#F57371"
     ))
 
   @classmethod
@@ -226,7 +226,7 @@ class StarPilotCustomAlertsLayout(StarPilotPanel):
         "get_state": lambda k=key: self._params.get_bool(k),
         "set_state": lambda s, k=key: self._params.put_bool(k, s),
         "icon": info["icon"],
-        "color": "#FF0097",
+        "color": "#F57371",
         "key": key # Store for visibility check
       })
     self._rebuild_grid()

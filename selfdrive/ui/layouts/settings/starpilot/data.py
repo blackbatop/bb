@@ -27,22 +27,22 @@ class StarPilotDataLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {"title": tr_noop("Manage Backups"), "panel": "backups", "icon": "toggle_icons/icon_system.png", "color": "#FA6800"},
-      {"title": tr_noop("Toggle Backups"), "panel": "toggle_backups", "icon": "toggle_icons/icon_system.png", "color": "#FA6800"},
-      {"title": tr_noop("Manage Storage"), "panel": "storage", "icon": "toggle_icons/icon_system.png", "color": "#FA6800"},
+      {"title": tr_noop("Manage Backups"), "panel": "backups", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
+      {"title": tr_noop("Toggle Backups"), "panel": "toggle_backups", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
+      {"title": tr_noop("Manage Storage"), "panel": "storage", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
       {
         "title": tr_noop("Delete Driving Data"),
         "type": "hub",
         "on_click": self._on_delete_driving_data,
         "icon": "toggle_icons/icon_system.png",
-        "color": "#FA6800",
+        "color": "#D43D8A",
       },
       {
         "title": tr_noop("Delete Error Logs"),
         "type": "hub",
         "on_click": self._on_delete_error_logs,
         "icon": "toggle_icons/icon_system.png",
-        "color": "#FA6800",
+        "color": "#D43D8A",
       },
     ]
 
@@ -92,9 +92,9 @@ class StarPilotBackupsLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {"title": tr_noop("Create Backup"), "type": "hub", "on_click": self._on_create_backup, "color": "#FA6800"},
-      {"title": tr_noop("Restore Backup"), "type": "hub", "on_click": self._on_restore_backup, "color": "#FA6800"},
-      {"title": tr_noop("Delete Backup"), "type": "hub", "on_click": self._on_delete_backup, "color": "#FA6800"},
+      {"title": tr_noop("Create Backup"), "type": "hub", "on_click": self._on_create_backup, "color": "#D43D8A"},
+      {"title": tr_noop("Restore Backup"), "type": "hub", "on_click": self._on_restore_backup, "color": "#D43D8A"},
+      {"title": tr_noop("Delete Backup"), "type": "hub", "on_click": self._on_delete_backup, "color": "#D43D8A"},
     ]
     self._rebuild_grid()
 
@@ -159,9 +159,9 @@ class StarPilotToggleBackupsLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {"title": tr_noop("Create Toggle Backup"), "type": "hub", "on_click": self._on_create, "color": "#FA6800"},
-      {"title": tr_noop("Restore Toggle Backup"), "type": "hub", "on_click": self._on_restore, "color": "#FA6800"},
-      {"title": tr_noop("Delete Toggle Backup"), "type": "hub", "on_click": self._on_delete, "color": "#FA6800"},
+      {"title": tr_noop("Create Toggle Backup"), "type": "hub", "on_click": self._on_create, "color": "#D43D8A"},
+      {"title": tr_noop("Restore Toggle Backup"), "type": "hub", "on_click": self._on_restore, "color": "#D43D8A"},
+      {"title": tr_noop("Delete Toggle Backup"), "type": "hub", "on_click": self._on_delete, "color": "#D43D8A"},
     ]
     self._rebuild_grid()
 
@@ -233,7 +233,7 @@ class StarPilotStorageLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {"title": tr_noop("Driving Data"), "type": "value", "get_value": self._get_storage, "on_click": lambda: None, "color": "#FA6800"},
+      {"title": tr_noop("Driving Data"), "type": "value", "get_value": self._get_storage, "on_click": lambda: None, "color": "#D43D8A"},
     ]
     self._rebuild_grid()
 

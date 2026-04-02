@@ -95,7 +95,7 @@ class StarPilotThemesLayout(StarPilotPanel):
         "title": tr_noop("Personalize openpilot"),
         "panel": "personalize",
         "icon": "toggle_icons/icon_frog.png",
-        "color": "#A200FF",
+        "color": "#542A71",
         "desc": tr_noop("Customize the overall look and feel."),
       },
       {
@@ -104,7 +104,7 @@ class StarPilotThemesLayout(StarPilotPanel):
         "get_state": lambda: self._params.get_bool("HolidayThemes"),
         "set_state": lambda s: self._params.put_bool("HolidayThemes", s),
         "icon": "toggle_icons/icon_calendar.png",
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Rainbow Path"),
@@ -112,7 +112,7 @@ class StarPilotThemesLayout(StarPilotPanel):
         "get_state": lambda: self._params.get_bool("RainbowPath"),
         "set_state": lambda s: self._params.put_bool("RainbowPath", s),
         "icon": "toggle_icons/icon_rainbow.png",
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Random Events"),
@@ -120,7 +120,7 @@ class StarPilotThemesLayout(StarPilotPanel):
         "get_state": lambda: self._params.get_bool("RandomEvents"),
         "set_state": lambda s: self._params.put_bool("RandomEvents", s),
         "icon": "toggle_icons/icon_random.png",
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Random Themes"),
@@ -128,9 +128,9 @@ class StarPilotThemesLayout(StarPilotPanel):
         "get_state": lambda: self._params.get_bool("RandomThemes"),
         "set_state": lambda s: self._params.put_bool("RandomThemes", s),
         "icon": "toggle_icons/icon_random_themes.png",
-        "color": "#A200FF",
+        "color": "#542A71",
       },
-      {"title": tr_noop("Startup Alert"), "type": "hub", "on_click": self._on_startup_alert, "color": "#A200FF"},
+      {"title": tr_noop("Startup Alert"), "type": "hub", "on_click": self._on_startup_alert, "color": "#542A71"},
     ]
 
     for name, panel in self._sub_panels.items():
@@ -175,49 +175,49 @@ class StarPilotPersonalizeLayout(StarPilotPanel):
         "type": "value",
         "get_value": lambda: self._get_theme_value("BootLogo"),
         "on_click": lambda: self._show_theme_selector("BootLogo"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Color Scheme"),
         "type": "value",
         "get_value": lambda: self._get_theme_value("ColorScheme"),
         "on_click": lambda: self._show_theme_selector("ColorScheme"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Distance Icons"),
         "type": "value",
         "get_value": lambda: self._get_theme_value("DistanceIconPack"),
         "on_click": lambda: self._show_theme_selector("DistanceIconPack"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Icon Pack"),
         "type": "value",
         "get_value": lambda: self._get_theme_value("IconPack"),
         "on_click": lambda: self._show_theme_selector("IconPack"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Turn Signals"),
         "type": "value",
         "get_value": lambda: self._get_theme_value("SignalAnimation"),
         "on_click": lambda: self._show_theme_selector("SignalAnimation"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Sound Pack"),
         "type": "value",
         "get_value": lambda: self._get_theme_value("SoundPack"),
         "on_click": lambda: self._show_theme_selector("SoundPack"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
       {
         "title": tr_noop("Steering Wheel"),
         "type": "value",
         "get_value": lambda: self._get_theme_value("WheelIcon"),
         "on_click": lambda: self._show_theme_selector("WheelIcon"),
-        "color": "#A200FF",
+        "color": "#542A71",
       },
     ]
     self._rebuild_grid()

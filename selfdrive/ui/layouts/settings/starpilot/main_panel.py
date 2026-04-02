@@ -22,7 +22,7 @@ from openpilot.selfdrive.ui.layouts.settings.starpilot.themes import StarPilotTh
 from openpilot.selfdrive.ui.layouts.settings.starpilot.vehicle import StarPilotVehicleSettingsLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.wheel import StarPilotWheelLayout
 
-from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import TileGrid, HubTile, RadioTileGroup
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, RadioTileGroup
 
 STARPILOT_ICONS_DIR = "toggle_icons"
 
@@ -33,42 +33,42 @@ class StarPilotLayout(Widget):
       "icon": "icon_sound.png",
       "desc": "Adjust alert volumes and enable custom notifications.",
       "buttons": [("MANAGE", "SOUNDS", 0)],
-      "color": "#FF0097",
+      "color": "#F57371",
     },
     {
       "title": "Driving Controls",
       "icon": "icon_steering.png",
       "desc": "Fine-tune custom StarPilot acceleration, braking, and steering controls.",
       "buttons": [("DRIVING MODEL", "DRIVING_MODEL", 0), ("GAS / BRAKE", "LONGITUDINAL", 0), ("STEERING", "LATERAL", 0)],
-      "color": "#1BA1E2",
+      "color": "#597497",
     },
     {
       "title": "Navigation",
       "icon": "icon_navigate.png",
       "desc": "Download map data for the Speed Limit Controller.",
       "buttons": [("MAP DATA", "MAPS", 0), ("NAVIGATION", "NAVIGATION", 0)],
-      "color": "#8CBF26",
+      "color": "#68ACA3",
     },
     {
       "title": "System Settings",
       "icon": "icon_system.png",
       "desc": "Manage backups, device settings, screen options, storage, and tools to keep StarPilot running smoothly.",
       "buttons": [("DATA", "DATA", 0), ("DEVICE CONTROLS", "DEVICE", 0), ("UTILITIES", "UTILITIES", 0)],
-      "color": "#FA6800",
+      "color": "#D43D8A",
     },
     {
       "title": "Theme and Appearance",
       "icon": "icon_display.png",
       "desc": "Customize the look of the driving screen and interface, including themes!",
       "buttons": [("APPEARANCE", "VISUALS", 0), ("THEME", "THEMES", 0)],
-      "color": "#A200FF",
+      "color": "#542A71",
     },
     {
       "title": "Vehicle Settings",
       "icon": "icon_vehicle.png",
       "desc": "Configure car-specific options and steering wheel button mappings.",
       "buttons": [("VEHICLE SETTINGS", "VEHICLE", 0), ("WHEEL CONTROLS", "WHEEL", 0)],
-      "color": "#FFC40D",
+      "color": "#786088",
     },
   ]
 

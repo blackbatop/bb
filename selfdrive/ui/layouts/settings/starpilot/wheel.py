@@ -30,28 +30,28 @@ class StarPilotWheelLayout(StarPilotPanel):
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("RemapCancelToDistance"),
         "set_state": self._set_cancel_remap_state,
-        "color": "#FFC40D",
+        "color": "#786088",
       },
       {
         "title": tr_noop("Distance Button"),
         "type": "value",
         "get_value": lambda: self._get_action_name("DistanceButtonControl"),
         "on_click": lambda: self._show_action_picker("DistanceButtonControl"),
-        "color": "#FFC40D",
+        "color": "#786088",
       },
       {
         "title": tr_noop("Distance (Long Press)"),
         "type": "value",
         "get_value": lambda: self._get_action_name("LongDistanceButtonControl"),
         "on_click": lambda: self._show_action_picker("LongDistanceButtonControl"),
-        "color": "#FFC40D",
+        "color": "#786088",
       },
       {
         "title": tr_noop("Distance (Very Long)"),
         "type": "value",
         "get_value": lambda: self._get_action_name("VeryLongDistanceButtonControl"),
         "on_click": lambda: self._show_action_picker("VeryLongDistanceButtonControl"),
-        "color": "#FFC40D",
+        "color": "#786088",
       },
       {
         "title": tr_noop("LKAS Button"),
@@ -60,7 +60,7 @@ class StarPilotWheelLayout(StarPilotPanel):
         "on_click": lambda: self._show_action_picker("LKASButtonControl"),
         "is_enabled": lambda: not self._lkas_locked(),
         "key": "LKASButtonControl",
-        "color": "#FFC40D",
+        "color": "#786088",
       },
     ]
     self._rebuild_grid()
@@ -122,7 +122,7 @@ class StarPilotWheelLayout(StarPilotPanel):
     if self._lkas_locked():
       self._force_lkas_no_action()
     if self._tile_grid is None:
-      self._tile_grid = __import__('openpilot.selfdrive.ui.layouts.settings.starpilot.metro', fromlist=['TileGrid']).TileGrid(columns=None, padding=20)
+      self._tile_grid = __import__('openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid', fromlist=['TileGrid']).TileGrid(columns=None, padding=20)
     self._tile_grid.clear()
     cs = starpilot_state.car_state
     for cat in self.CATEGORIES:
@@ -134,11 +134,11 @@ class StarPilotWheelLayout(StarPilotPanel):
         continue
       tile_type = cat.get("type", "hub")
       if tile_type == "toggle":
-        from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import ToggleTile
+        from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import ToggleTile
 
         tile = ToggleTile(title=tr(cat["title"]), get_state=cat["get_state"], set_state=cat["set_state"], bg_color=cat.get("color"))
       elif tile_type == "value":
-        from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import ValueTile
+        from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import ValueTile
 
         tile = ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], bg_color=cat.get("color"), is_enabled=cat.get("is_enabled"))
       else:

@@ -44,19 +44,19 @@ class StarPilotUtilitiesLayout(StarPilotPanel):
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("DebugMode"),
         "set_state": lambda s: self._params.put_bool("DebugMode", s),
-        "color": "#FA6800",
+        "color": "#D43D8A",
       },
-      {"title": tr_noop("Flash Panda"), "type": "hub", "on_click": self._on_flash_panda, "color": "#FA6800"},
+      {"title": tr_noop("Flash Panda"), "type": "hub", "on_click": self._on_flash_panda, "color": "#D43D8A"},
       {
         "title": tr_noop("Force Drive State"),
         "type": "value",
         "get_value": self._get_force_drive_state,
         "on_click": self._on_force_drive_state,
-        "color": "#FA6800",
+        "color": "#D43D8A",
       },
-      {"title": tr_noop("Report Issue"), "type": "hub", "on_click": self._on_report_issue, "color": "#FA6800"},
-      {"title": tr_noop("Reset to Defaults"), "type": "hub", "on_click": self._on_reset_defaults, "color": "#FA6800"},
-      {"title": tr_noop("Reset to Stock"), "type": "hub", "on_click": self._on_reset_stock, "color": "#FA6800"},
+      {"title": tr_noop("Report Issue"), "type": "hub", "on_click": self._on_report_issue, "color": "#D43D8A"},
+      {"title": tr_noop("Reset to Defaults"), "type": "hub", "on_click": self._on_reset_defaults, "color": "#D43D8A"},
+      {"title": tr_noop("Reset to Stock"), "type": "hub", "on_click": self._on_reset_stock, "color": "#D43D8A"},
     ]
     self._rebuild_grid()
 

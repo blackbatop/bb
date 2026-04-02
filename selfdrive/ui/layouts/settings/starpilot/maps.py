@@ -37,7 +37,7 @@ class StarPilotMapRegionLayout(StarPilotPanel):
         "type": "toggle",
         "get_state": lambda k=key: self._get_map_state(k),
         "set_state": lambda s, k=key: self._set_map_state(k, s),
-        "color": "#8CBF26"
+        "color": "#68ACA3"
       })
     self._rebuild_grid()
 
@@ -62,13 +62,13 @@ class StarPilotMapCountriesLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {"title": tr_noop("Africa"), "panel": "africa", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Antarctica"), "panel": "antarctica", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Asia"), "panel": "asia", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Europe"), "panel": "europe", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("North America"), "panel": "north_america", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Oceania"), "panel": "oceania", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("South America"), "panel": "south_america", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
+      {"title": tr_noop("Africa"), "panel": "africa", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Antarctica"), "panel": "antarctica", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Asia"), "panel": "asia", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Europe"), "panel": "europe", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("North America"), "panel": "north_america", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Oceania"), "panel": "oceania", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("South America"), "panel": "south_america", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
     ]
     self._rebuild_grid()
 
@@ -76,11 +76,11 @@ class StarPilotMapStatesLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {"title": tr_noop("Midwest"), "panel": "midwest", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Northeast"), "panel": "northeast", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("South"), "panel": "south", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("West"), "panel": "west", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Territories"), "panel": "territories", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
+      {"title": tr_noop("Midwest"), "panel": "midwest", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Northeast"), "panel": "northeast", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("South"), "panel": "south", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("West"), "panel": "west", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Territories"), "panel": "territories", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
     ]
     self._rebuild_grid()
 
@@ -106,12 +106,12 @@ class StarPilotMapsLayout(StarPilotPanel):
     }
 
     self.CATEGORIES = [
-      {"title": tr_noop("Download Maps"), "type": "hub", "on_click": self._on_download, "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Auto Update Schedule"), "type": "value", "get_value": lambda: self._params.get("PreferredSchedule", encoding='utf-8') or "Manually", "on_click": self._on_schedule, "icon": "toggle_icons/icon_calendar.png", "color": "#8CBF26"},
-      {"title": tr_noop("Countries"), "panel": "countries", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("U.S. States"), "panel": "states", "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
-      {"title": tr_noop("Storage Used"), "type": "value", "get_value": self._get_storage, "on_click": lambda: None, "icon": "toggle_icons/icon_system.png", "color": "#8CBF26"},
-      {"title": tr_noop("Remove Maps"), "type": "hub", "on_click": self._on_remove, "icon": "toggle_icons/icon_map.png", "color": "#8CBF26"},
+      {"title": tr_noop("Download Maps"), "type": "hub", "on_click": self._on_download, "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Auto Update Schedule"), "type": "value", "get_value": lambda: self._params.get("PreferredSchedule", encoding='utf-8') or "Manually", "on_click": self._on_schedule, "icon": "toggle_icons/icon_calendar.png", "color": "#68ACA3"},
+      {"title": tr_noop("Countries"), "panel": "countries", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("U.S. States"), "panel": "states", "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
+      {"title": tr_noop("Storage Used"), "type": "value", "get_value": self._get_storage, "on_click": lambda: None, "icon": "toggle_icons/icon_system.png", "color": "#68ACA3"},
+      {"title": tr_noop("Remove Maps"), "type": "hub", "on_click": self._on_remove, "icon": "toggle_icons/icon_map.png", "color": "#68ACA3"},
     ]
     
     for name, panel in self._sub_panels.items():

@@ -41,21 +41,21 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
         "icon": "toggle_icons/icon_steering.png",
         "on_click": self._on_select_model_clicked,
         "get_value": lambda: self._current_model_name,
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
       {
         "title": tr_noop("Download Models"),
         "type": "hub",
         "icon": "toggle_icons/icon_system.png",
         "on_click": self._on_download_clicked,
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
       {
         "title": tr_noop("Delete Models"),
         "type": "hub",
         "icon": "toggle_icons/icon_system.png",
         "on_click": self._on_delete_clicked,
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
       {
         "title": tr_noop("Model Randomizer"),
@@ -63,7 +63,7 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
         "icon": "toggle_icons/icon_conditional.png",
         "get_state": lambda: self._params.get_bool("ModelRandomizer"),
         "set_state": self._on_model_randomizer_toggled,
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
       {
         "title": tr_noop("Auto Download"),
@@ -71,21 +71,21 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
         "icon": "toggle_icons/icon_system.png",
         "get_state": lambda: self._params.get_bool("AutomaticallyDownloadModels"),
         "set_state": lambda s: self._params.put_bool("AutomaticallyDownloadModels", s),
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
       {
         "title": tr_noop("Blacklist"),
         "type": "hub",
         "icon": "toggle_icons/icon_system.png",
         "on_click": self._on_blacklist_clicked,
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
       {
         "title": tr_noop("Ratings"),
         "type": "hub",
         "icon": "toggle_icons/icon_system.png",
         "on_click": self._on_scores_clicked,
-        "color": "#1BA1E2"
+        "color": "#597497"
       },
     ]
     

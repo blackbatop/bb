@@ -33,7 +33,7 @@ class StarPilotPanelInfo:
   instance: Widget
 
 
-from openpilot.selfdrive.ui.layouts.settings.starpilot.metro import TileGrid, HubTile, ToggleTile, ValueTile
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, ToggleTile, ValueTile
 
 
 class StarPilotPanel(Widget):

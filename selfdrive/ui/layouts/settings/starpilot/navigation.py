@@ -15,24 +15,24 @@ class StarPilotNavigationLayout(StarPilotPanel):
       "mapbox": StarPilotMapboxLayout(),
     }
     self.CATEGORIES = [
-      {"title": tr_noop("Mapbox Credentials"), "panel": "mapbox", "icon": "toggle_icons/icon_navigate.png", "color": "#8CBF26"},
-      {"title": tr_noop("Setup Instructions"), "type": "hub", "on_click": self._on_setup, "icon": "toggle_icons/icon_navigate.png", "color": "#8CBF26"},
+      {"title": tr_noop("Mapbox Credentials"), "panel": "mapbox", "icon": "toggle_icons/icon_navigate.png", "color": "#68ACA3"},
+      {"title": tr_noop("Setup Instructions"), "type": "hub", "on_click": self._on_setup, "icon": "toggle_icons/icon_navigate.png", "color": "#68ACA3"},
       {
         "title": tr_noop("Speed Limit Filler"),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("SpeedLimitFiller"),
         "set_state": lambda s: self._params.put_bool("SpeedLimitFiller", s),
         "icon": "toggle_icons/icon_speed_limit.png",
-        "color": "#8CBF26",
+        "color": "#68ACA3",
       },
-      {"title": tr_noop("Search Destination"), "type": "hub", "on_click": self._on_search, "icon": "toggle_icons/icon_navigate.png", "color": "#8CBF26"},
+      {"title": tr_noop("Search Destination"), "type": "hub", "on_click": self._on_search, "icon": "toggle_icons/icon_navigate.png", "color": "#68ACA3"},
       {
         "title": tr_noop("Home Address"),
         "type": "value",
         "get_value": lambda: self._params.get("HomeAddress", encoding='utf-8') or tr("Not set"),
         "on_click": self._on_home,
         "icon": "toggle_icons/icon_navigate.png",
-        "color": "#8CBF26",
+        "color": "#68ACA3",
       },
       {
         "title": tr_noop("Work Address"),
@@ -40,7 +40,7 @@ class StarPilotNavigationLayout(StarPilotPanel):
         "get_value": lambda: self._params.get("WorkAddress", encoding='utf-8') or tr("Not set"),
         "on_click": self._on_work,
         "icon": "toggle_icons/icon_navigate.png",
-        "color": "#8CBF26",
+        "color": "#68ACA3",
       },
     ]
     for name, panel in self._sub_panels.items():
@@ -92,14 +92,14 @@ class StarPilotMapboxLayout(StarPilotPanel):
         "type": "value",
         "get_value": self._get_key_display,
         "on_click": lambda: self._on_key("MapboxPublicKey", "pk."),
-        "color": "#8CBF26",
+        "color": "#68ACA3",
       },
       {
         "title": tr_noop("Secret Mapbox Key"),
         "type": "value",
         "get_value": self._get_secret_display,
         "on_click": lambda: self._on_key("MapboxSecretKey", "sk."),
-        "color": "#8CBF26",
+        "color": "#68ACA3",
       },
     ]
     self._rebuild_grid()
