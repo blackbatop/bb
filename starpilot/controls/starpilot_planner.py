@@ -130,8 +130,12 @@ class StarPilotPlanner:
       self.starpilot_weather.weather_id = 0
 
   def update_lead_status(self, stop_distance=STOP_DISTANCE):
+    # Keep a minimum lead-tracking cushion independent of user stop-distance tuning.
+    # Regressions here can cause ACC/chill to de-prioritize lead control at low speeds.
+    tracking_buffer = max(float(stop_distance), 4.0)
+
     following_lead = self.lead_one.status
-    following_lead &= self.lead_one.dRel < self.model_length + float(stop_distance)
+    following_lead &= self.lead_one.dRel < self.model_length + tracking_buffer
 
     self.tracking_lead_filter.update(following_lead)
     return self.tracking_lead_filter.x >= THRESHOLD
