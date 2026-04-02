@@ -33,13 +33,13 @@ TEXT_SELECTED = rl.WHITE
 
 
 class PanelType(IntEnum):
-  DEVICE = 0
-  NETWORK = 1
-  TOGGLES = 2
-  SOFTWARE = 3
-  FIREHOSE = 4
-  DEVELOPER = 5
-  STARPILOT = 6
+  STARPILOT = 0
+  DEVICE = 1
+  NETWORK = 2
+  TOGGLES = 3
+  SOFTWARE = 4
+  FIREHOSE = 5
+  DEVELOPER = 6
 
 
 @dataclass
@@ -53,7 +53,7 @@ class SettingsLayout(Widget):
   def __init__(self):
     super().__init__()
     self._params = Params()
-    self._current_panel = PanelType.DEVICE
+    self._current_panel = PanelType.STARPILOT
 
     # Panel depth tracking for hierarchical back navigation
     # 0 = top level (settings main), 1+ = nested custom panels
@@ -64,13 +64,13 @@ class SettingsLayout(Widget):
     wifi_manager.set_active(False)
 
     self._panels = {
+      PanelType.STARPILOT: PanelInfo(tr_noop("StarPilot"), StarPilotLayout()),
       PanelType.DEVICE: PanelInfo(tr_noop("Device"), DeviceLayout()),
       PanelType.NETWORK: PanelInfo(tr_noop("Network"), NetworkUI(wifi_manager)),
       PanelType.TOGGLES: PanelInfo(tr_noop("Toggles"), TogglesLayout()),
       PanelType.SOFTWARE: PanelInfo(tr_noop("Software"), SoftwareLayout()),
       PanelType.FIREHOSE: PanelInfo(tr_noop("Firehose"), FirehoseLayout()),
       PanelType.DEVELOPER: PanelInfo(tr_noop("Developer"), DeveloperLayout()),
-      PanelType.STARPILOT: PanelInfo(tr_noop("StarPilot"), StarPilotLayout()),
     }
 
     # Connect the custom-panel depth callback for hierarchical back navigation

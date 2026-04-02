@@ -92,7 +92,7 @@ class MainLayout(Widget):
     self._sidebar.set_visible(False)
 
   def _on_settings_clicked(self):
-    self.open_settings(PanelType.DEVICE)
+    self.open_settings(PanelType.STARPILOT)
 
   def _on_bookmark_clicked(self):
     user_bookmark = messaging.new_message('bookmarkButton')
