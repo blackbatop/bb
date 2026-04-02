@@ -454,7 +454,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"SoundToDownload", {CLEAR_ON_MANAGER_START, STRING, "", ""}},
     {"SpeedLimitAccepted", {CLEAR_ON_MANAGER_START, BOOL, "0", "0"}},
     {"SpeedLimitChangedAlert", {PERSISTENT, BOOL, "0", "0", 0}},
-    {"SpeedLimitController", {PERSISTENT, BOOL, "1", "0", 0}},
+    {"SpeedLimitController", {PERSISTENT, BOOL, "0", "0", 0}},
     {"SpeedLimitFiller", {PERSISTENT, BOOL, "0", "0", 0}},
     {"SpeedLimits", {PERSISTENT | DONT_LOG, JSON, "[]", "[]"}},
     {"SpeedLimitsFiltered", {PERSISTENT | DONT_LOG, JSON, "[]", "[]"}},
