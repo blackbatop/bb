@@ -9,6 +9,7 @@ from openpilot.selfdrive.ui.mici.widgets.dialog import BigMultiOptionDialog, Big
 from openpilot.system.ui.lib.application import gui_app, MousePos, FontWeight
 from openpilot.system.ui.widgets import Widget, NavWidget
 from openpilot.system.ui.lib.wifi_manager import WifiManager, Network, SecurityType
+from openpilot.selfdrive.ui.mici.layouts.settings.network.action_state import should_show_forget_button
 
 
 def normalize_ssid(ssid: str) -> str:
@@ -210,6 +211,7 @@ class NetworkInfoPage(NavWidget):
     # State
     self._network: Network | None = None
     self._connecting: Callable[[], str | None] | None = None
+    self._show_forget_btn = False
 
   def show_event(self):
     super().show_event()
@@ -233,7 +235,8 @@ class NetworkInfoPage(NavWidget):
     if self._network is None:
       return
 
-    self._connect_btn.set_full(not self._network.is_saved and not self._is_connecting)
+    self._show_forget_btn = should_show_forget_button(self._network)
+    self._connect_btn.set_full(not self._show_forget_btn)
     if self._is_connecting:
       self._connect_btn.set_label("connecting...")
       self._connect_btn.set_enabled(False)
@@ -298,7 +301,7 @@ class NetworkInfoPage(NavWidget):
       self._connect_btn.rect.height,
     ))
 
-    if not self._connect_btn.full:
+    if self._show_forget_btn:
       self._forget_btn.render(rl.Rectangle(
         self._rect.x + self._rect.width - self._forget_btn.rect.width,
         self._rect.y + self._rect.height - self._forget_btn.rect.height,

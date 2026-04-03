@@ -7,6 +7,7 @@ import { VehicleFeatures } from "/assets/components/tools/vehicle_features.js"
 import { GalaxyPairing } from "/assets/components/tools/galaxy.js"
 import { Home } from "/assets/components/home/home.js"
 import { LongitudinalManeuvers } from "/assets/components/tools/longitudinal_maneuvers.js"
+import { MapsManager } from "/assets/components/tools/maps.js"
 import { NavDestination } from "/assets/components/navigation/navigation_destination.js"
 import { NavKeys } from "/assets/components/navigation/navigation_keys.js"
 import { RouteRecordings } from "/assets/components/recordings/dashcam_routes.js"
@@ -71,6 +72,7 @@ function Root() {
     createRoute("speed_limits", "/download_speed_limits", SpeedLimits),
     createRoute("model_manager", "/manage_models", ModelManager),
     createRoute("longitudinal_maneuvers", "/longitudinal_maneuvers", LongitudinalManeuvers),
+    createRoute("maps", "/manage_maps", MapsManager),
     createRoute("plots", "/plots", LivePlots),
     createRoute("thememaker", "/theme_maker", ThemeMaker),
     createRoute("testing_ground", "/testing_ground", TestingGround),

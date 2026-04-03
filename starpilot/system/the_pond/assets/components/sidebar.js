@@ -15,6 +15,7 @@ const MENU_ITEMS = {
     { name: "Error Logs", link: "/manage_error_logs", icon: "bi-exclamation-triangle" },
     { name: "Galaxy", link: "/galaxy", icon: "bi-globe2" },
     { name: "Long Maneuvers", link: "/longitudinal_maneuvers", icon: "bi-signpost-split" },
+    { name: "Maps", link: "/manage_maps", icon: "bi-map" },
     { name: "Model Manager", link: "/manage_models", icon: "bi-cpu" },
     { name: "Plots", link: "/plots", icon: "bi-graph-up-arrow" },
     { name: "Testing Ground", link: "/testing_ground", icon: "bi-bezier2" },

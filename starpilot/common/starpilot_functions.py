@@ -17,6 +17,7 @@ from openpilot.system.version import get_build_metadata
 
 from openpilot.starpilot.assets.theme_manager import ThemeManager
 from openpilot.starpilot.common.starpilot_backups import backup_starpilot
+from openpilot.starpilot.common.maps_catalog import normalize_schedule_value, sanitize_selected_locations_csv
 from openpilot.starpilot.common.starpilot_utilities import get_starpilot_api_info, is_FrogsGoMoo, is_url_pingable, run_cmd, use_konik_server
 from openpilot.starpilot.common.starpilot_variables import (
   ERROR_LOGS_PATH, STARPILOT_API, FROGS_GO_MOO_PATH, HD_LOGS_PATH, KONIK_LOGS_PATH, MAPS_PATH, THEME_SAVE_PATH,
@@ -27,20 +28,12 @@ from openpilot.starpilot.common.starpilot_variables import (
 def starpilot_boot_functions(build_metadata, params):
   params_memory = Params(memory=True)
 
-  maps_selected = params.get("MapsSelected")
-  if maps_selected:
-    try:
-      data = json.loads(maps_selected)
-      if isinstance(data, dict):
-        new_items = []
-        for nation in data.get("nations", []):
-          new_items.append(f"nation.{nation}")
-        for state in data.get("states", []):
-          new_items.append(f"us_state.{state}")
-        new_items.sort()
-        params.put("MapsSelected", ",".join(new_items))
-    except (json.JSONDecodeError, TypeError, ValueError):
-      pass
+  maps_selected_raw = params.get("MapsSelected")
+  maps_selected = sanitize_selected_locations_csv(maps_selected_raw)
+  if isinstance(maps_selected_raw, bytes):
+    maps_selected_raw = maps_selected_raw.decode("utf-8", errors="ignore")
+  if maps_selected != (maps_selected_raw or ""):
+    params.put("MapsSelected", maps_selected)
 
   params.put("BuildMetadata", json.dumps(dataclasses.asdict(build_metadata)))
 
@@ -184,14 +177,19 @@ def update_boot_logo(starpilot=False, stock=False, selected_logo=None):
 
 
 def update_maps(now, params, params_memory, manual_update=False):
-  maps_selected = params.get("MapsSelected")
+  maps_selected_raw = params.get("MapsSelected")
+  maps_selected = sanitize_selected_locations_csv(maps_selected_raw)
   if not maps_selected:
     return
+  if isinstance(maps_selected_raw, bytes):
+    maps_selected_raw = maps_selected_raw.decode("utf-8", errors="ignore")
+  if maps_selected != (maps_selected_raw or ""):
+    params.put("MapsSelected", maps_selected)
 
   day = now.day
   is_first = day == 1
   is_sunday = now.weekday() == 6
-  schedule = params.get("PreferredSchedule")
+  schedule = normalize_schedule_value(params.get("PreferredSchedule"))
 
   maps_downloaded = MAPS_PATH.exists() and any(path.is_file() for path in MAPS_PATH.rglob("*"))
   if maps_downloaded and (schedule == 0 or (schedule == 1 and not is_sunday) or (schedule == 2 and not is_first)) and not manual_update:

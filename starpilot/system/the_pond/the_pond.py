@@ -41,8 +41,16 @@ from openpilot.system.version import get_build_metadata
 from panda import Panda
 
 from openpilot.starpilot.assets.theme_manager import HOLIDAY_THEME_PATH, THEME_COMPONENT_PARAMS
+from openpilot.starpilot.common.maps_catalog import (
+  MAPS_CATALOG,
+  MAP_SCHEDULE_OPTIONS,
+  get_selected_map_entries,
+  sanitize_selected_locations_csv,
+  schedule_label,
+  schedule_param_value,
+)
 from openpilot.starpilot.common.starpilot_utilities import delete_file, get_lock_status, run_cmd
-from openpilot.starpilot.common.starpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, LEGACY_STARPILOT_PARAM_RENAMES, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, STOCK_THEME_PATH, THEME_SAVE_PATH,\
+from openpilot.starpilot.common.starpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, LEGACY_STARPILOT_PARAM_RENAMES, MAPS_PATH, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, STOCK_THEME_PATH, THEME_SAVE_PATH,\
                                                            default_ev_tuning_enabled, update_starpilot_toggles
 from openpilot.starpilot.common.testing_grounds import (
   DEFAULT_TESTING_GROUND_VARIANT as SHARED_DEFAULT_TESTING_GROUND_VARIANT,
@@ -409,6 +417,8 @@ MODEL_DOWNLOAD_PROGRESS_PARAM = "ModelDownloadProgress"
 MODEL_CANCEL_DOWNLOAD_PARAM = "CancelModelDownload"
 MODEL_SORT_MODE_PARAM = "ModelSortMode"
 MODEL_USER_FAVORITES_PARAM = "UserFavorites"
+MAPS_DOWNLOAD_PARAM = "DownloadMaps"
+MAPS_CANCEL_DOWNLOAD_PARAM = "CancelDownloadMaps"
 
 FINGERPRINT_MAKE_LABELS = [
   "Acura",
@@ -3551,6 +3561,119 @@ def setup(app):
       return jsonify({"message": f"No files found for \"{model['label']}\"."}), 200
 
     return jsonify({"message": f"Deleted {len(deleted)} file(s) for \"{model['label']}\"."}), 200
+
+  def _get_maps_status_payload():
+    current_selected = params.get("MapsSelected", encoding="utf-8") or ""
+    selected_raw = sanitize_selected_locations_csv(current_selected)
+    if selected_raw != current_selected:
+      params.put("MapsSelected", selected_raw)
+
+    selected_entries = get_selected_map_entries(selected_raw)
+    selected_locations = [entry["token"] for entry in selected_entries]
+    maps_present = MAPS_PATH.exists() and any(path.is_file() for path in MAPS_PATH.rglob("*"))
+    storage_bytes = 0
+    if MAPS_PATH.exists():
+      try:
+        storage_bytes = sum(path.stat().st_size for path in MAPS_PATH.rglob("*") if path.is_file())
+      except Exception:
+        storage_bytes = 0
+
+    return {
+      "selectedLocations": selected_locations,
+      "selectedEntries": selected_entries,
+      "selectedCount": len(selected_locations),
+      "hasSelection": bool(selected_locations),
+      "downloading": params_memory.get_bool(MAPS_DOWNLOAD_PARAM),
+      "cancelling": params_memory.get_bool(MAPS_CANCEL_DOWNLOAD_PARAM),
+      "isOnroad": params.get_bool("IsOnroad"),
+      "lastUpdate": params.get("LastMapsUpdate", encoding="utf-8") or "Never",
+      "mapsPresent": maps_present,
+      "scheduleLabel": schedule_label(params.get("PreferredSchedule")),
+      "scheduleOptions": MAP_SCHEDULE_OPTIONS,
+      "scheduleValue": schedule_param_value(params.get("PreferredSchedule")),
+      "storageBytes": storage_bytes,
+    }
+
+  @app.route("/api/maps/catalog", methods=["GET"])
+  def get_maps_catalog():
+    return jsonify({
+      "sections": MAPS_CATALOG,
+      "scheduleOptions": MAP_SCHEDULE_OPTIONS,
+    }), 200
+
+  @app.route("/api/maps/status", methods=["GET"])
+  def get_maps_status():
+    return jsonify(_get_maps_status_payload()), 200
+
+  @app.route("/api/maps/selection", methods=["POST"])
+  def set_maps_selection():
+    payload = request.get_json(silent=True) or {}
+    selected_raw = sanitize_selected_locations_csv(payload.get("selectedLocations"))
+    params.put("MapsSelected", selected_raw)
+    return jsonify({
+      "message": f"Saved {len([entry for entry in selected_raw.split(',') if entry])} selected map region(s).",
+      "status": _get_maps_status_payload(),
+    }), 200
+
+  @app.route("/api/maps/schedule", methods=["POST"])
+  def set_maps_schedule():
+    payload = request.get_json(silent=True) or {}
+    schedule_value = schedule_param_value(payload.get("schedule"))
+    params.put("PreferredSchedule", schedule_value)
+    return jsonify({
+      "message": f"Map auto-update schedule set to {schedule_label(schedule_value)}.",
+      "status": _get_maps_status_payload(),
+    }), 200
+
+  @app.route("/api/maps/download", methods=["POST"])
+  def start_maps_download():
+    payload = request.get_json(silent=True) or {}
+
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot download maps while driving."}), 403
+
+    if params_memory.get_bool(MAPS_DOWNLOAD_PARAM):
+      return jsonify({"error": "A map download is already in progress."}), 409
+
+    if "selectedLocations" in payload:
+      params.put("MapsSelected", sanitize_selected_locations_csv(payload.get("selectedLocations")))
+
+    if "schedule" in payload:
+      params.put("PreferredSchedule", schedule_param_value(payload.get("schedule")))
+
+    selected_raw = sanitize_selected_locations_csv(params.get("MapsSelected", encoding="utf-8") or "")
+    if not selected_raw:
+      return jsonify({"error": "No map regions are selected."}), 400
+
+    params.put("MapsSelected", selected_raw)
+    params_memory.remove(MAPS_CANCEL_DOWNLOAD_PARAM)
+    params_memory.put_bool(MAPS_DOWNLOAD_PARAM, True)
+
+    return jsonify({
+      "message": f"Started downloading {len([entry for entry in selected_raw.split(',') if entry])} selected map region(s).",
+      "status": _get_maps_status_payload(),
+    }), 200
+
+  @app.route("/api/maps/cancel", methods=["POST"])
+  def cancel_maps_download():
+    if not params_memory.get_bool(MAPS_DOWNLOAD_PARAM):
+      return jsonify({"message": "No active map download to cancel.", "status": _get_maps_status_payload()}), 200
+
+    params_memory.put_bool(MAPS_CANCEL_DOWNLOAD_PARAM, True)
+    return jsonify({"message": "Map download cancellation requested.", "status": _get_maps_status_payload()}), 200
+
+  @app.route("/api/maps/remove", methods=["POST"])
+  def remove_maps_data():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot remove maps while driving."}), 403
+
+    if params_memory.get_bool(MAPS_DOWNLOAD_PARAM):
+      return jsonify({"error": "Cannot remove maps while a download is in progress."}), 409
+
+    if MAPS_PATH.exists():
+      shutil.rmtree(MAPS_PATH, ignore_errors=True)
+
+    return jsonify({"message": "Maps removed.", "status": _get_maps_status_payload()}), 200
 
   @app.route("/api/params_memory", methods=["GET"])
   def get_param_memory():
