@@ -58,40 +58,46 @@ class DeveloperLayoutMici(NavWidget):
     self._car_make_btn.set_click_callback(self._open_make_selector)
     self._car_model_btn = BigButton("car model", self._get_display_model())
     self._car_model_btn.set_click_callback(self._open_model_selector)
-    self._force_fingerprint_toggle = BigParamControl("disable auto fingerprint", "ForceFingerprint",
-                                                     toggle_callback=lambda checked: restart_needed_callback(checked))
+    self._force_fingerprint_toggle = BigParamControl(
+      "disable auto fingerprint", "ForceFingerprint", toggle_callback=lambda checked: restart_needed_callback(checked)
+    )
 
     # adb, ssh, ssh keys, debug mode, joystick debug mode, longitudinal maneuver mode, ip address
     # ******** Main Scroller ********
     self._adb_toggle = BigParamControl("enable ADB", "AdbEnabled")
     self._use_prebuilt_toggle = BigParamControl("use prebuilt binaries", "UsePrebuilt")
     self._ssh_toggle = BigParamControl("enable SSH", "SshEnabled")
-    self._joystick_toggle = BigToggle("joystick debug mode",
-                                      initial_state=ui_state.params.get_bool("JoystickDebugMode"),
-                                      toggle_callback=self._on_joystick_debug_mode)
-    self._long_maneuver_toggle = BigToggle("longitudinal maneuver mode",
-                                           initial_state=ui_state.params.get_bool("LongitudinalManeuverMode"),
-                                           toggle_callback=self._on_long_maneuver_mode)
-    self._alpha_long_toggle = BigToggle("alpha longitudinal",
-                                        initial_state=ui_state.params.get_bool("AlphaLongitudinalEnabled"),
-                                        toggle_callback=self._on_alpha_long_enabled)
-    self._debug_mode_toggle = BigParamControl("ui debug mode", "ShowDebugInfo",
-                                              toggle_callback=lambda checked: (gui_app.set_show_touches(checked),
-                                                                               gui_app.set_show_fps(checked)))
+    self._joystick_toggle = BigToggle(
+      "joystick debug mode", initial_state=ui_state.params.get_bool("JoystickDebugMode"), toggle_callback=self._on_joystick_debug_mode
+    )
+    self._long_maneuver_toggle = BigToggle(
+      "longitudinal maneuver mode", initial_state=ui_state.params.get_bool("LongitudinalManeuverMode"), toggle_callback=self._on_long_maneuver_mode
+    )
+    self._alpha_long_toggle = BigToggle(
+      "alpha longitudinal", initial_state=ui_state.params.get_bool("AlphaLongitudinalEnabled"), toggle_callback=self._on_alpha_long_enabled
+    )
+    self._debug_mode_toggle = BigParamControl(
+      "ui debug mode", "ShowDebugInfo", toggle_callback=lambda checked: (gui_app.set_show_touches(checked), gui_app.set_show_fps(checked))
+    )
 
-    self._scroller = Scroller([
-      self._adb_toggle,
-      self._use_prebuilt_toggle,
-      self._ssh_toggle,
-      self._ssh_keys_btn,
-      self._car_make_btn,
-      self._car_model_btn,
-      self._force_fingerprint_toggle,
-      self._joystick_toggle,
-      self._long_maneuver_toggle,
-      self._alpha_long_toggle,
-      self._debug_mode_toggle,
-    ], snap_items=False, scroll_indicator=True, edge_shadows=True)
+    self._scroller = Scroller(
+      [
+        self._adb_toggle,
+        self._use_prebuilt_toggle,
+        self._ssh_toggle,
+        self._ssh_keys_btn,
+        self._car_make_btn,
+        self._car_model_btn,
+        self._force_fingerprint_toggle,
+        self._joystick_toggle,
+        self._long_maneuver_toggle,
+        self._alpha_long_toggle,
+        self._debug_mode_toggle,
+      ],
+      snap_items=False,
+      scroll_indicator=True,
+      edge_shadows=True,
+    )
 
     # Toggle lists
     self._refresh_toggles = (
@@ -105,12 +111,7 @@ class DeveloperLayoutMici(NavWidget):
       ("ShowDebugInfo", self._debug_mode_toggle),
     )
     onroad_blocked_toggles = (self._adb_toggle, self._car_make_btn, self._car_model_btn, self._force_fingerprint_toggle, self._joystick_toggle)
-    release_blocked_toggles = (self._joystick_toggle, self._long_maneuver_toggle, self._alpha_long_toggle)
     engaged_blocked_toggles = (self._long_maneuver_toggle, self._alpha_long_toggle)
-
-    # Hide non-release toggles on release builds
-    for item in release_blocked_toggles:
-      item.set_visible(not ui_state.is_release)
 
     # Disable toggles that require offroad
     for item in onroad_blocked_toggles:
@@ -251,7 +252,7 @@ class DeveloperLayoutMici(NavWidget):
     # CP gating
     if ui_state.CP is not None:
       alpha_avail = ui_state.CP.alphaLongitudinalAvailable
-      if not alpha_avail or ui_state.is_release:
+      if not alpha_avail:
         self._alpha_long_toggle.set_visible(False)
         ui_state.params.remove("AlphaLongitudinalEnabled")
       else:
