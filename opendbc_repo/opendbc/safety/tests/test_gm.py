@@ -148,29 +148,29 @@ class TestGmEVSafetyBase(TestGmSafetyBase):
 
 
 class GmCameraAccEVRegenMixin:
-  # Camera-ACC EV modes don't track 0xBD in their RX checks, so regen paddle
-  # input should be ignored by safety state in these modes.
+  # Camera-ACC EV modes currently track regen paddle state and treat regen
+  # input as a user-override path that drops controls.
   def test_prev_user_regen(self):
     self.assertFalse(self.safety.get_regen_braking_prev())
     for pressed in (False, True, False):
       self._rx(self._user_regen_msg(pressed))
-      self.assertFalse(self.safety.get_regen_braking_prev())
+      self.assertEqual(pressed, self.safety.get_regen_braking_prev())
 
   def test_allow_user_regen_at_zero_speed(self):
     self._rx(self._vehicle_moving_msg(0))
     self.safety.set_controls_allowed(True)
     self._rx(self._user_regen_msg(True))
-    self.assertTrue(self.safety.get_controls_allowed())
-    self.assertTrue(self.safety.get_longitudinal_allowed())
-    self.assertFalse(self.safety.get_regen_braking_prev())
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertFalse(self.safety.get_longitudinal_allowed())
+    self.assertTrue(self.safety.get_regen_braking_prev())
 
   def test_not_allow_user_regen_when_moving(self):
     self._rx(self._vehicle_moving_msg(self.STANDSTILL_THRESHOLD + 1))
     self.safety.set_controls_allowed(True)
     self._rx(self._user_regen_msg(True))
-    self.assertTrue(self.safety.get_controls_allowed())
-    self.assertTrue(self.safety.get_longitudinal_allowed())
-    self.assertFalse(self.safety.get_regen_braking_prev())
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertFalse(self.safety.get_longitudinal_allowed())
+    self.assertTrue(self.safety.get_regen_braking_prev())
     self._rx(self._vehicle_moving_msg(0))
 
 
@@ -183,7 +183,7 @@ class TestGmAscmSafety(GmLongitudinalBase, TestGmSafetyBase):
   FWD_BUS_LOOKUP: dict[int, int] = {}
   BRAKE_BUS = 2
 
-  MAX_GAS = 1018
+  MAX_GAS = 2041
   MIN_GAS = -650  # maximum regen
   INACTIVE_GAS = -650
 
@@ -282,7 +282,7 @@ class TestGmCameraLongitudinalSafety(GmLongitudinalBase, TestGmCameraSafetyBase)
   RELAY_MALFUNCTION_ADDRS = {0: (0x180, 0x2CB, 0x370, 0x315), 2: (0x184,)}
   BUTTONS_BUS = 0  # rx only
 
-  MAX_GAS = 1346
+  MAX_GAS = 2698
   MIN_GAS = -540  # maximum regen
   INACTIVE_GAS = -500
 
@@ -401,6 +401,9 @@ class TestGmCcLongitudinalSafety(TestGmCameraSafety):
 
 
 class TestGmCcLongitudinalPandaSchedSafety(TestGmCcLongitudinalSafety):
+  FWD_BLACKLISTED_ADDRS = {2: [0x180, 0x370], 0: [0x184, 0x3D1]}
+  INTERCEPTOR_GAS_PRESSED = 596
+
   def setUp(self):
     self.packer = CANPackerPanda("gm_global_a_powertrain_generated")
     self.packer_chassis = CANPackerPanda("gm_global_a_chassis")
@@ -417,14 +420,58 @@ class TestGmCcLongitudinalPandaSchedSafety(TestGmCcLongitudinalSafety):
     )
     self.safety.init_tests()
 
-  def test_3d1_feed_frame_blocked(self):
-    self.assertFalse(self._tx(self._pcm_status_msg(True)))
-    self.assertFalse(self._tx(self._pcm_status_msg(False)))
+  def _interceptor_user_gas(self, gas):
+    return interceptor_msg(gas, 0x201)
 
-  def test_paddle_feed_frames_blocked(self):
+  def test_prev_gas(self):
+    self.assertFalse(self.safety.get_gas_pressed_prev())
+    self._rx(self._user_gas_msg(self.GAS_PRESSED_THRESHOLD + 1))
+    self.assertFalse(self.safety.get_gas_pressed_prev())
+    self._rx(self._interceptor_user_gas(self.INTERCEPTOR_GAS_PRESSED))
+    self.assertFalse(self.safety.get_gas_pressed_prev())
+    self._rx(self._interceptor_user_gas(0))
+    self.assertFalse(self.safety.get_gas_pressed_prev())
+
+  def test_no_disengage_on_gas(self):
+    self._rx(self._interceptor_user_gas(0))
     self.safety.set_controls_allowed(True)
-    self.assertFalse(self._tx(common.make_msg(0, 0xBD, 7)))
-    self.assertFalse(self._tx(common.make_msg(0, 0x1F5, 8)))
+    self._rx(self._interceptor_user_gas(self.INTERCEPTOR_GAS_PRESSED))
+    self.assertTrue(self.safety.get_controls_allowed())
+    self.assertTrue(self.safety.get_longitudinal_allowed())
+    self._rx(self._interceptor_user_gas(0))
+    self.assertTrue(self.safety.get_longitudinal_allowed())
+
+  def test_buttons(self):
+    self.safety.set_controls_allowed(0)
+    for btn in range(8):
+      self.assertFalse(self._tx(self._button_msg(btn)))
+
+    self.safety.set_controls_allowed(1)
+    for btn in range(8):
+      self.assertEqual(btn == Buttons.CANCEL, self._tx(self._button_msg(btn)))
+
+    allowed_btns = {Buttons.UNPRESS, Buttons.RES_ACCEL, Buttons.DECEL_SET, Buttons.CANCEL}
+    for enabled in (True, False):
+      self._rx(self._pcm_status_msg(enabled))
+      for btn in range(8):
+        self.assertEqual(enabled and btn in allowed_btns, self._tx(self._button_msg(btn)))
+
+  def test_3d1_feed_frame_allowed(self):
+    self.assertTrue(self._tx(self._pcm_status_msg(True)))
+    self.assertTrue(self._tx(self._pcm_status_msg(False)))
+
+  def test_paddle_feed_apply_frames_blocked_after_stock_sync(self):
+    paddle_apply = common.make_msg(0, 0xBD, 7, bytes([0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]))
+    prndl_apply = common.make_msg(0, 0x1F5, 8, bytes([0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00]))
+
+    self.safety.set_controls_allowed(True)
+    self.assertTrue(self._tx(paddle_apply))
+    self.assertTrue(self._tx(prndl_apply))
+
+    self._rx(paddle_apply)
+    self._rx(prndl_apply)
+    self.assertFalse(self._tx(paddle_apply))
+    self.assertFalse(self._tx(prndl_apply))
 
 
 if __name__ == "__main__":
