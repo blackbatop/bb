@@ -4,6 +4,7 @@ from openpilot.common.params import Params
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
 from openpilot.selfdrive.ui.onroad.augmented_road_view import AugmentedRoadView, BORDER_COLORS
 from openpilot.selfdrive.ui.onroad.starpilot.curve_speed_border import render_glow, render_filament
+from openpilot.selfdrive.ui.onroad.starpilot.path import render_adjacent_paths, render_blind_spot_path, render_path_edges
 from openpilot.selfdrive.ui.onroad.starpilot.personality_button import PersonalityButton, BTN_SIZE
 from openpilot.selfdrive.ui.onroad.starpilot.slc_speed_limit import (
   render_speed_limit, handle_slc_click, SET_SPEED_X_OFFSET, SET_SPEED_Y_OFFSET,
@@ -30,6 +31,7 @@ class StarPilotOnroadView(AugmentedRoadView):
 
     self._render_slc(rect)
     self._render_overlays()
+    self._render_path_features(rect)
 
   def _render_slc(self, rect: rl.Rectangle):
     content_rect = rl.Rectangle(
@@ -46,6 +48,27 @@ class StarPilotOnroadView(AugmentedRoadView):
   def _render_overlays(self):
     self._position_personality_button()
     self._personality_button.render()
+
+  def _render_path_features(self, rect: rl.Rectangle):
+    """Render path-related features (adjacent paths, blind spot, path edges)."""
+    mr = self.model_renderer
+
+    # Only render if we have path data
+    if not mr._path.projected_points.size:
+      return
+
+    # Path edges (always rendered if track_edge_vertices exist)
+    if mr._track_edge_vertices.size >= 4:
+      render_path_edges(mr)
+
+    # Adjacent paths or blind spot path (mutually exclusive, matching Qt behavior)
+    adjacent_enabled = self._params.get_bool("AdjacentPath")
+    blind_spot_enabled = self._params.get_bool("BlindSpotPath")
+
+    if adjacent_enabled and mr._adjacent_path_vertices[0].size >= 4:
+      render_adjacent_paths(mr)
+    elif blind_spot_enabled and mr._adjacent_path_vertices[0].size >= 4:
+      render_blind_spot_path(mr)
 
   def _position_personality_button(self):
     dm = self.driver_state_renderer

@@ -213,6 +213,15 @@ class StarPilotVisualWidgetsLayout(StarPilotPanel):
         "color": "#8B5CF6",
       },
       {
+        "title": tr_noop("Adjacent Lane Metrics"),
+        "type": "toggle",
+        "key": "AdjacentPathMetrics",
+        "get_state": lambda: self._params.get_bool("AdjacentPathMetrics"),
+        "set_state": lambda s: self._params.put_bool("AdjacentPathMetrics", s),
+        "icon": "toggle_icons/icon_road.png",
+        "color": "#8B5CF6",
+      },
+      {
         "title": tr_noop("Blind Spot Path"),
         "type": "toggle",
         "key": "BlindSpotPath",
@@ -338,6 +347,15 @@ class StarPilotModelUILayout(StarPilotPanel):
         "color": "#8B5CF6",
       },
       {
+        "title": tr_noop("Lane Line Color"),
+        "type": "value",
+        "key": "LaneLinesColor",
+        "get_value": lambda: self._get_color_display("LaneLinesColor"),
+        "on_click": lambda: self._show_color_selector("LaneLinesColor"),
+        "icon": "toggle_icons/icon_road.png",
+        "color": "#8B5CF6",
+      },
+      {
         "title": tr_noop("Path Edge Width"),
         "type": "value",
         "key": "PathEdgeWidth",
@@ -347,11 +365,29 @@ class StarPilotModelUILayout(StarPilotPanel):
         "color": "#8B5CF6",
       },
       {
+        "title": tr_noop("Path Edge Color"),
+        "type": "value",
+        "key": "PathEdgesColor",
+        "get_value": lambda: self._get_color_display("PathEdgesColor"),
+        "on_click": lambda: self._show_color_selector("PathEdgesColor"),
+        "icon": "toggle_icons/icon_road.png",
+        "color": "#8B5CF6",
+      },
+      {
         "title": tr_noop("Path Width"),
         "type": "value",
         "key": "PathWidth",
         "get_value": lambda: self._get_path_width_display(),
         "on_click": lambda: self._show_path_width_selector(),
+        "icon": "toggle_icons/icon_road.png",
+        "color": "#8B5CF6",
+      },
+      {
+        "title": tr_noop("Path Color"),
+        "type": "value",
+        "key": "PathColor",
+        "get_value": lambda: self._get_color_display("PathColor"),
+        "on_click": lambda: self._show_color_selector("PathColor"),
         "icon": "toggle_icons/icon_road.png",
         "color": "#8B5CF6",
       },
@@ -422,6 +458,26 @@ class StarPilotModelUILayout(StarPilotPanel):
         self._rebuild_grid()
 
     gui_app.set_modal_overlay(AetherSliderDialog(tr(key), min_v, max_v, step, current, on_close, unit=unit, color="#8B5CF6"))
+
+  def _get_color_display(self, key):
+    val = self._params.get(key, encoding='utf-8') or ""
+    if not val:
+      return "Stock"
+    return val.upper()
+
+  def _show_color_selector(self, key):
+    presets = ["Stock", "#FFFFFF", "#178644", "#3B82F6", "#E63956", "#8B5CF6", "#F59E0B"]
+    current = self._params.get(key, encoding='utf-8') or "Stock"
+
+    def on_select(res, val):
+      if res == DialogResult.CONFIRM:
+        if val == "Stock":
+          self._params.remove(key)
+        else:
+          self._params.put(key, val)
+        self._rebuild_grid()
+
+    gui_app.set_modal_overlay(SelectionDialog(tr(key), presets, current, on_close=on_select))
 
 
 class StarPilotNavigationVisualsLayout(StarPilotPanel):

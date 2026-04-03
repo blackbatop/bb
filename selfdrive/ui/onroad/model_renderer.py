@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.params import Params
 from openpilot.selfdrive.locationd.calibrationd import HEIGHT_INIT
-from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.shader_polygon import draw_polygon, Gradient
 from openpilot.system.ui.widgets import Widget
@@ -53,6 +53,15 @@ class ModelRenderer(Widget):
     self._lead_vehicles = [LeadVehicle(), LeadVehicle()]
     self._path_offset_z = HEIGHT_INIT[0]
 
+    # Adjacent path vertices (left, right)
+    self._adjacent_path_vertices = [np.empty((0, 2), dtype=np.float32), np.empty((0, 2), dtype=np.float32)]
+    # Outer path polygon for edge rendering
+    self._track_edge_vertices = np.empty((0, 2), dtype=np.float32)
+    # Rainbow animation state
+    self._rainbow_hue_offset = 0.0
+    # Cached speed for rainbow animation
+    self._speed = 0.0
+
     # Initialize ModelPoints objects
     self._path = ModelPoints()
     self._lane_lines = [ModelPoints() for _ in range(4)]
@@ -72,7 +81,8 @@ class ModelRenderer(Widget):
     )
 
     # Get longitudinal control setting from car parameters
-    if car_params := Params().get("CarParams"):
+    self._params = Params()
+    if car_params := self._params.get("CarParams"):
       cp = messaging.log_from_bytes(car_params, car.CarParams)
       self._longitudinal_control = cp.openpilotLongitudinalControl
 
@@ -95,6 +105,7 @@ class ModelRenderer(Widget):
 
     # Update state
     self._experimental_mode = sm['selfdriveState'].experimentalMode
+    self._speed = sm['carState'].vEgo
 
     live_calib = sm['liveCalibration']
     self._path_offset_z = live_calib.height[0] if live_calib.height else HEIGHT_INIT[0]
@@ -174,18 +185,44 @@ class ModelRenderer(Widget):
 
   def _update_model(self, lead, path_x_array):
     """Update model visualization data based on model message"""
+    path_width = self._params.get_float('PathWidth')  # stored in feet, convert to meters
+    if path_width <= 0:
+      path_width = 0.9  # default in meters
+
+    lane_line_width = self._params.get_int('LaneLinesWidth')  # stored in inches, convert to meters
+    if lane_line_width <= 0:
+      lane_line_width = int(0.025 / 0.0254)  # default ~1 inch
+    lane_line_width_m = lane_line_width * 0.0254
+
+    road_edge_width = self._params.get_int('RoadEdgesWidth')  # stored in inches
+    if road_edge_width <= 0:
+      road_edge_width = int(0.025 / 0.0254)
+    road_edge_width_m = road_edge_width * 0.0254
+
+    path_edge_width_pct = self._params.get_int('PathEdgeWidth') / 100.0
+
+    # Dynamic path width
+    if self._params.get_bool('DynamicPathWidth'):
+      status = ui_state.status
+      if status == UIStatus.ENGAGED:
+        path_width *= 1.0
+      elif status == UIStatus.ALWAYS_ON_LATERAL:
+        path_width *= 0.75
+      else:
+        path_width *= 0.50
+
     max_distance = np.clip(path_x_array[-1], MIN_DRAW_DISTANCE, MAX_DRAW_DISTANCE)
     max_idx = self._get_path_length_idx(self._lane_lines[0].raw_points[:, 0], max_distance)
 
     # Update lane lines using raw points
     for i, lane_line in enumerate(self._lane_lines):
       lane_line.projected_points = self._map_line_to_polygon(
-        lane_line.raw_points, 0.025 * self._lane_line_probs[i], 0.0, max_idx, max_distance
+        lane_line.raw_points, lane_line_width_m * self._lane_line_probs[i], 0.0, max_idx, max_distance
       )
 
     # Update road edges using raw points
     for road_edge in self._road_edges:
-      road_edge.projected_points = self._map_line_to_polygon(road_edge.raw_points, 0.025, 0.0, max_idx, max_distance)
+      road_edge.projected_points = self._map_line_to_polygon(road_edge.raw_points, road_edge_width_m, 0.0, max_idx, max_distance)
 
     # Update path using raw points
     if lead and lead.status:
@@ -194,14 +231,25 @@ class ModelRenderer(Widget):
 
     max_idx = self._get_path_length_idx(path_x_array, max_distance)
     self._path.projected_points = self._map_line_to_polygon(
-      self._path.raw_points, 0.9, self._path_offset_z, max_idx, max_distance, allow_invert=False
+      self._path.raw_points, path_width * (1 - path_edge_width_pct), self._path_offset_z, max_idx, max_distance, allow_invert=False
     )
+
+    # Compute track edge vertices (outer path polygon at full width)
+    self._track_edge_vertices = self._map_line_to_polygon(
+      self._path.raw_points, path_width, self._path_offset_z, max_idx, max_distance, allow_invert=False
+    )
+
+    # Compute adjacent path vertices
+    self._update_adjacent_paths(max_idx, max_distance)
 
     self._update_experimental_gradient()
 
   def _update_experimental_gradient(self):
     """Pre-calculate experimental mode gradient colors"""
-    if not self._experimental_mode:
+    use_acceleration = self._experimental_mode or self._params.get_bool('AccelerationPath')
+    use_rainbow = self._params.get_bool('RainbowPath') and not use_acceleration
+
+    if not use_acceleration and not use_rainbow:
       return
 
     max_len = min(len(self._path.projected_points) // 2, len(self._acceleration_x))
@@ -219,6 +267,21 @@ class ModelRenderer(Widget):
 
       # Calculate color based on acceleration (0 is bottom, 1 is top)
       lin_grad_point = 1 - (track_y - self._rect.y) / self._rect.height
+
+      if use_rainbow:
+        # Rainbow: hue based on gradient position + animated offset
+        self._rainbow_hue_offset += self._speed * 0.02
+        if self._rainbow_hue_offset >= 360.0:
+          self._rainbow_hue_offset = self._rainbow_hue_offset % 360.0
+        path_hue = (lin_grad_point * 120.0 + self._rainbow_hue_offset) % 360.0
+        saturation = 1.0
+        lightness = 0.5
+        alpha = np.interp(lin_grad_point, [0.0, 1.0], [0.5, 0.1])
+        color = self._hsla_to_color(path_hue / 360.0, saturation, lightness, alpha)
+        gradient_stops.append(lin_grad_point)
+        segment_colors.append(color)
+        i += 1 + (1 if (i + 2) < max_len else 0)
+        continue
 
       # speed up: 120, slow down: 0
       path_hue = np.clip(60 + self._acceleration_x[i] * 35, 0, 120)
@@ -270,12 +333,19 @@ class ModelRenderer(Widget):
 
   def _draw_lane_lines(self):
     """Draw lane lines and road edges"""
+    color_scheme = self._params.get('ColorScheme', encoding='utf-8') or 'stock'
+    lane_lines_color = self._params.get('LaneLinesColor', encoding='utf-8')
+
     for i, lane_line in enumerate(self._lane_lines):
       if lane_line.projected_points.size == 0:
         continue
 
       alpha = np.clip(self._lane_line_probs[i], 0.0, 0.7)
-      color = rl.Color(255, 255, 255, int(alpha * 255))
+      if color_scheme != 'stock' and lane_lines_color:
+        base_color = self._hex_to_color(lane_lines_color)
+        color = rl.Color(base_color.r, base_color.g, base_color.b, int(alpha * 255))
+      else:
+        color = rl.Color(255, 255, 255, int(alpha * 255))
       draw_polygon(self._rect, lane_line.projected_points, color)
 
     for i, road_edge in enumerate(self._road_edges):
@@ -294,8 +364,8 @@ class ModelRenderer(Widget):
     allow_throttle = sm['longitudinalPlan'].allowThrottle or not self._longitudinal_control
     self._blend_filter.update(int(allow_throttle))
 
-    if self._experimental_mode:
-      # Draw with acceleration coloring
+    use_accel_path = self._params.get_bool('AccelerationPath')
+    if self._experimental_mode or use_accel_path:
       if len(self._exp_gradient.colors) > 1:
         draw_polygon(self._rect, self._path.projected_points, gradient=self._exp_gradient)
       else:
@@ -320,6 +390,135 @@ class ModelRenderer(Widget):
 
       rl.draw_triangle_fan(lead.glow, len(lead.glow), rl.Color(218, 202, 37, 255))
       rl.draw_triangle_fan(lead.chevron, len(lead.chevron), rl.Color(201, 34, 49, lead.fill_alpha))
+
+  def _update_adjacent_paths(self, max_idx: int, max_distance: float):
+    """Compute adjacent lane path polygons by averaging lane line pairs."""
+    sm = ui_state.sm
+    if sm.recv_frame.get("starpilotPlan", 0) < ui_state.started_frame:
+      self._adjacent_path_vertices = [np.empty((0, 2), dtype=np.float32), np.empty((0, 2), dtype=np.float32)]
+      return
+
+    plan = sm["starpilotPlan"]
+    lane_width_left = float(plan.laneWidthLeft) if plan.laneWidthLeft > 0 else 0.0
+    lane_width_right = float(plan.laneWidthRight) if plan.laneWidthRight > 0 else 0.0
+
+    if lane_width_left <= 0 or lane_width_right <= 0:
+      self._adjacent_path_vertices = [np.empty((0, 2), dtype=np.float32), np.empty((0, 2), dtype=np.float32)]
+      return
+
+    # Left adjacent: average of lane_lines[0] and lane_lines[1]
+    self._adjacent_path_vertices[0] = self._map_averaged_line_to_polygon(
+      self._lane_lines[0].raw_points, self._lane_lines[1].raw_points,
+      lane_width_left / 2.0, 0.0, max_idx, max_distance
+    )
+
+    # Right adjacent: average of lane_lines[2] and lane_lines[3]
+    self._adjacent_path_vertices[1] = self._map_averaged_line_to_polygon(
+      self._lane_lines[2].raw_points, self._lane_lines[3].raw_points,
+      lane_width_right / 2.0, 0.0, max_idx, max_distance
+    )
+
+  def _map_averaged_line_to_polygon(self, line1: np.ndarray, line2: np.ndarray, y_off: float, z_off: float, max_idx: int, max_distance: float) -> np.ndarray:
+    """Convert averaged 3D line pair to 2D polygon for adjacent path rendering.
+
+    Averages the Y coordinates of two lane lines, uses X from line1, Z from line1.
+    Then projects to screen space like _map_line_to_polygon.
+    Grounds the path to the bottom of the screen.
+    """
+    if line1.shape[0] == 0 or line2.shape[0] == 0:
+      return np.empty((0, 2), dtype=np.float32)
+
+    # Use the shorter of the two lines
+    min_len = min(line1.shape[0], line2.shape[0], max_idx + 1)
+    if min_len == 0:
+      return np.empty((0, 2), dtype=np.float32)
+
+    # Average Y, use X from line1, Z from line1
+    avg_x = line1[:min_len, 0]
+    avg_y = (line1[:min_len, 1] + line2[:min_len, 1]) / 2.0
+    avg_z = line1[:min_len, 2]
+
+    # Filter non-negative x
+    valid = avg_x >= 0
+    if not np.any(valid):
+      return np.empty((0, 2), dtype=np.float32)
+
+    points = np.column_stack([avg_x[valid], avg_y[valid], avg_z[valid]])
+    N = points.shape[0]
+
+    # Generate left and right 3D points
+    offsets = np.array([[0, -y_off, z_off], [0, y_off, z_off]], dtype=np.float32)
+    points_3d = points[None, :, :] + offsets[:, None, :]
+    points_3d = points_3d.reshape(2 * N, 3)
+
+    # Transform
+    proj = self._car_space_transform @ points_3d.T
+    proj = proj.reshape(3, 2, N)
+    left_proj = proj[:, 0, :]
+    right_proj = proj[:, 1, :]
+
+    # Filter valid z
+    valid_proj = (np.abs(left_proj[2]) >= 1e-6) & (np.abs(right_proj[2]) >= 1e-6)
+    if not np.any(valid_proj):
+      return np.empty((0, 2), dtype=np.float32)
+
+    left_screen = left_proj[:2, valid_proj] / left_proj[2, valid_proj][None, :]
+    right_screen = right_proj[:2, valid_proj] / right_proj[2, valid_proj][None, :]
+
+    # Clip region filter
+    clip = self._clip_region
+    x_min, x_max = clip.x, clip.x + clip.width
+    y_min, y_max = clip.y, clip.y + clip.height
+
+    left_in_clip = (left_screen[0] >= x_min) & (left_screen[0] <= x_max) & (left_screen[1] >= y_min) & (left_screen[1] <= y_max)
+    right_in_clip = (right_screen[0] >= x_min) & (right_screen[0] <= x_max) & (right_screen[1] >= y_min) & (right_screen[1] <= y_max)
+    both_in_clip = left_in_clip & right_in_clip
+
+    if not np.any(both_in_clip):
+      return np.empty((0, 2), dtype=np.float32)
+
+    left_screen = left_screen[:, both_in_clip]
+    right_screen = right_screen[:, both_in_clip]
+
+    # No inversion check for adjacent paths (allow_invert=True equivalent)
+    polygon = np.vstack((left_screen.T, right_screen[:, ::-1].T)).astype(np.float32)
+
+    # Ground to bottom of screen
+    if polygon.shape[0] >= 4:
+      height = self._rect.y + self._rect.height
+
+      # Extend left_near (index 0) using slope from left_near → left_2nd
+      p0 = polygon[0]
+      p1 = polygon[1]
+      dy = p0[1] - p1[1]
+      if abs(dy) > 0.1:
+        slope = (p0[0] - p1[0]) / dy
+        p0[0] = p0[0] + (height - p0[1]) * slope
+        p0[1] = height
+
+      # Extend right_near (index -1) using slope from right_near → right_2nd
+      p0 = polygon[-1]
+      p1 = polygon[-2]
+      dy = p0[1] - p1[1]
+      if abs(dy) > 0.1:
+        slope = (p0[0] - p1[0]) / dy
+        p0[0] = p0[0] + (height - p0[1]) * slope
+        p0[1] = height
+
+    return polygon
+
+  @staticmethod
+  def _hex_to_color(hex_str: str) -> rl.Color:
+    """Convert hex color string to rl.Color."""
+    hex_str = hex_str.lstrip('#')
+    if len(hex_str) == 6:
+      return rl.Color(
+        int(hex_str[0:2], 16),
+        int(hex_str[2:4], 16),
+        int(hex_str[4:6], 16),
+        255
+      )
+    return rl.Color(255, 255, 255, 255)
 
   @staticmethod
   def _get_path_length_idx(pos_x_array: np.ndarray, path_distance: float) -> int:
