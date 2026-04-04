@@ -265,7 +265,9 @@ def starpilot_thread():
     run_update_checks |= periodic_update_due
     run_update_checks &= time_validated
 
-    if run_update_checks:
+    # Defer repository/model/theme/map update work until offroad. This keeps
+    # Wi-Fi availability from triggering extra background activity while driving.
+    if run_update_checks and not started:
       theme_manager.update_active_theme(time_validated, starpilot_toggles)
       thread_manager.run_with_lock(update_checks, (now, model_manager, theme_manager, thread_manager, params, params_memory, starpilot_toggles))
 
@@ -279,7 +281,9 @@ def starpilot_thread():
 
       if not started:
         thread_manager.run_with_lock(send_stats)
-      thread_manager.run_with_lock(update_checks, (now, model_manager, theme_manager, thread_manager, params, params_memory, starpilot_toggles, True))
+        thread_manager.run_with_lock(update_checks, (now, model_manager, theme_manager, thread_manager, params, params_memory, starpilot_toggles, True))
+      else:
+        run_update_checks = True
 
     rate_keeper.keep_time()
 
