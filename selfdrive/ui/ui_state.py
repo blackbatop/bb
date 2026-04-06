@@ -141,7 +141,8 @@ class UIState:
     elif not self.sm.alive["wideRoadCameraState"] or not self.sm.valid["wideRoadCameraState"]:
       self.light_sensor = -1
 
-    started = self.sm["deviceState"].started and self.ignition
+    # Trust hardwared's filtered started state; raw ignition can flap on Toyota.
+    started = self.sm["deviceState"].started
     started |= self.params.get_bool("ForceOnroad")
     started &= not self.params.get_bool("ForceOffroad")
     self.started = started

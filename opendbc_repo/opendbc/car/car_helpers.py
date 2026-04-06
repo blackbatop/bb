@@ -11,7 +11,6 @@ from opendbc.car.structs import CarParams, CarParamsT
 from opendbc.car.fingerprints import eliminate_incompatible_cars, all_legacy_fingerprint_cars
 from opendbc.car.fw_versions import ObdCallback, get_fw_versions_ordered, get_present_ecus, match_fw_to_car
 from opendbc.car.mock.values import CAR as MOCK
-from opendbc.car.toyota.values import ToyotaStarPilotFlags
 from opendbc.car.values import BRANDS
 from opendbc.car.vin import get_vin, is_valid_vin, VIN_UNKNOWN
 from openpilot.common.params import Params
@@ -300,10 +299,6 @@ def get_car(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multip
   CP.fuzzyFingerprint = not exact_match
 
   FPCP: StarPilotCarParams = CarInterface.get_starpilot_params(candidate, fingerprints, car_fw, CP, starpilot_toggles)
-
-  if CP.brand == "toyota" and FPCP.flags & ToyotaStarPilotFlags.SMART_DSU.value:
-    CP.minEnableSpeed = -1
-    CP.openpilotLongitudinalControl = True
 
   if not CP.alphaLongitudinalAvailable and starpilot_toggles.disable_openpilot_long:
     CP.openpilotLongitudinalControl = False

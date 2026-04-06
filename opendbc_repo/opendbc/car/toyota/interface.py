@@ -50,6 +50,11 @@ class CarInterface(CarInterfaceBase):
 
     stop_and_go = candidate in TSS2_CAR
 
+    # Detect smartDSU, which intercepts ACC_CMD from the DSU (or radar) allowing
+    # openpilot to send it. 0x2AA is sent by a similar device which intercepts
+    # the radar instead of DSU on NO_DSU_CARs.
+    use_sdsu = bool(0x2FF in fingerprint[0] or (0x2AA in fingerprint[0] and candidate in NO_DSU_CAR))
+
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
 
@@ -104,21 +109,27 @@ class CarInterface(CarInterfaceBase):
     # TODO: make an adas dbc file for dsu-less models
     ret.radarUnavailable = Bus.radar not in DBC[candidate] or candidate in (NO_DSU_CAR - TSS2_CAR)
 
-    # since we don't yet parse radar on TSS2/TSS-P radar-based ACC cars, gate longitudinal behind experimental toggle
+    # Since we don't yet parse radar on TSS2/TSS-P radar-based ACC cars, gate
+    # longitudinal behind the alpha-long toggle.
     if candidate in (RADAR_ACC_CAR | NO_DSU_CAR):
-      ret.alphaLongitudinalAvailable = candidate in RADAR_ACC_CAR
+      ret.alphaLongitudinalAvailable = use_sdsu or candidate in RADAR_ACC_CAR
 
-      # Disabling radar is only supported on TSS2 radar-ACC cars
-      if alpha_long and candidate in RADAR_ACC_CAR:
-        ret.flags |= ToyotaFlags.DISABLE_RADAR.value
+      if not use_sdsu:
+        # Disabling radar is only supported on TSS2 radar-ACC cars.
+        if alpha_long and candidate in RADAR_ACC_CAR:
+          ret.flags |= ToyotaFlags.DISABLE_RADAR.value
+      else:
+        use_sdsu = use_sdsu and alpha_long
 
     # openpilot longitudinal enabled by default:
-    #  - cars w/ DSU disconnected
+    #  - non-(TSS2 radar ACC cars) w/ smartDSU or radar filter installed
     #  - TSS2 cars with camera sending ACC_CONTROL where we can block it
     # openpilot longitudinal behind experimental long toggle:
+    #  - TSS2 radar ACC cars w/ smartDSU or radar filter installed
     #  - TSS2 radar ACC cars (disables radar)
 
-    ret.openpilotLongitudinalControl = (candidate in (TSS2_CAR - RADAR_ACC_CAR) or
+    ret.openpilotLongitudinalControl = (use_sdsu or
+                                        candidate in (TSS2_CAR - RADAR_ACC_CAR) or
                                         bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value))
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl and candidate in NO_STOP_TIMER_CAR
