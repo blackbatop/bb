@@ -40,6 +40,7 @@ from openpilot.system.hardware import HARDWARE, PC
 from openpilot.system.hardware.hw import Paths
 from openpilot.system.loggerd.deleter import PRESERVE_ATTR_NAME, PRESERVE_ATTR_VALUE, PRESERVE_COUNT
 from openpilot.system.version import get_build_metadata
+from openpilot.tools.longitudinal_maneuvers.capabilities import get_longitudinal_maneuver_support
 from panda import Panda
 
 from openpilot.starpilot.assets.theme_manager import HOLIDAY_THEME_PATH, THEME_COMPONENT_PARAMS
@@ -2824,6 +2825,9 @@ def _default_longitudinal_maneuver_status():
     "uiText1": "Long Maneuvers",
     "uiText2": "",
     "updatedAtSec": 0.0,
+    "support": {},
+    "caveats": [],
+    "skippedManeuvers": [],
     "history": [],
   }
 
@@ -2868,15 +2872,32 @@ def _append_longitudinal_maneuver_history(status, line):
   status["history"] = history[-120:]
   return status
 
+def _get_longitudinal_maneuver_support_snapshot():
+  cp_bytes = _safe_params_get_live_raw("CarParamsPersistent")
+  if not cp_bytes:
+    return None
+
+  try:
+    with car.CarParams.from_bytes(cp_bytes) as cp:
+      return get_longitudinal_maneuver_support(cp).to_dict()
+  except Exception:
+    return None
+
 def _serialize_longitudinal_maneuver_status(status):
   updated_at = _safe_float(status.get("updatedAtSec"), 0.0)
   age_seconds = max(0.0, time.time() - updated_at) if updated_at > 0 else None
   mode_enabled = params.get_bool("LongitudinalManeuverMode")
   paddle_mode = params.get("LongitudinalManeuverPaddleMode", encoding="utf-8") or str(status.get("paddleMode") or "auto")
+  support = _get_longitudinal_maneuver_support_snapshot() or status.get("support") or {}
+  caveats = support.get("caveats", status.get("caveats") or [])
+  skipped_maneuvers = support.get("skippedManeuvers", status.get("skippedManeuvers") or [])
   return {
     **status,
     "modeEnabled": mode_enabled,
     "paddleMode": paddle_mode,
+    "support": support,
+    "caveats": list(caveats),
+    "skippedManeuvers": list(skipped_maneuvers),
     "isOnroad": params.get_bool("IsOnroad"),
     "isEngaged": params.get_bool("IsEngaged"),
     "updatedAgeSec": age_seconds,

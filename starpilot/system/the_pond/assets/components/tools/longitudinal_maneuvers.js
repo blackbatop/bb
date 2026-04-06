@@ -156,13 +156,41 @@ export function LongitudinalManeuvers() {
             <p><strong>Popup Text:</strong> ${state.data.uiText1 || ""} ${state.data.uiText2 ? `| ${state.data.uiText2}` : ""}</p>
           </div>
 
+          <div class="longManeuverStatusGrid">
+            ${statusLine("openpilot Long", state.data.support?.openpilotLongitudinalControl ? "Yes" : "No")}
+            ${statusLine("Full Stop + Go", state.data.support?.fullStopAndGo ? "Yes" : "No")}
+            ${statusLine("Auto Resume", state.data.support?.autoResumeFromStop ? "Yes" : "No")}
+            ${statusLine("Resume Assist", state.data.support?.requiresResumeAssist ? "Yes" : "No")}
+            ${statusLine("Expected Zero", state.data.support?.expectedToReachZero ? "Yes" : "No")}
+            ${statusLine("Min Enable", Number.isFinite(Number(state.data.support?.minEnableSpeed)) ? `${Number(state.data.support.minEnableSpeed).toFixed(2)} m/s` : "n/a")}
+            ${statusLine("Stop Accel", Number.isFinite(Number(state.data.support?.stopAccel)) ? `${Number(state.data.support.stopAccel).toFixed(2)} m/s²` : "n/a")}
+          </div>
+
+          ${(state.data.caveats || []).length ? html`
+            <div class="longManeuverInstructions">
+              <h3>Platform Caveats</h3>
+              <ul>
+                ${(state.data.caveats || []).map((line) => html`<li>${line}</li>`)}
+              </ul>
+            </div>
+          ` : ""}
+
+          ${(state.data.skippedManeuvers || []).length ? html`
+            <div class="longManeuverInstructions">
+              <h3>Expected Skips</h3>
+              <ul>
+                ${(state.data.skippedManeuvers || []).map((line) => html`<li>${line}</li>`)}
+              </ul>
+            </div>
+          ` : ""}
+
           <div class="longManeuverInstructions">
             <h3>Quick Guide</h3>
             <ol>
               <li>Find a large, empty, straight road or lot with no traffic.</li>
               <li>Press <strong>Start / Arm</strong> here, then engage openpilot with SET.</li>
               <li>Keep full supervision and be ready to disengage at all times.</li>
-              <li>For GM pedal-long cars, the suite runs both pedal-only and pedal+paddle phases automatically.</li>
+              <li>Review the platform caveats before starting. Low-speed maneuvers can be skipped automatically on cars that do not fully stop.</li>
               <li>When the status says complete, collect logs and generate your HTML report.</li>
             </ol>
           </div>

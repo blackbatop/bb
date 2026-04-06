@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 from openpilot.tools.lib.logreader import LogReader
+from openpilot.tools.longitudinal_maneuvers.capabilities import get_longitudinal_maneuver_support
 from openpilot.system.hardware.hw import Paths
 
 
@@ -19,11 +20,42 @@ def format_car_params(CP):
   return pprint.pformat({k: v for k, v in CP.to_dict().items() if not k.endswith('DEPRECATED')}, indent=2)
 
 
+def format_support_section(support):
+  rows = [
+    ("openpilot longitudinal", "yes" if support.openpilotLongitudinalControl else "no"),
+    ("full stop and go", "yes" if support.fullStopAndGo else "no"),
+    ("auto resume from stop", "yes" if support.autoResumeFromStop else "no"),
+    ("resume assist expected", "yes" if support.requiresResumeAssist else "no"),
+    ("expected to reach zero", "yes" if support.expectedToReachZero else "no"),
+    ("min enable speed", f"{support.minEnableSpeed:.2f} m/s"),
+    ("stop accel", f"{support.stopAccel:.2f} m/s^2"),
+  ]
+
+  builder = ["<details><summary><h3 style='display: inline-block;'>Platform Caveats</h3></summary>\n"]
+  builder.append(tabulate(rows, headers=("capability", "value"), tablefmt="html") + "\n")
+
+  if support.caveats:
+    builder.append("<h4>Caveats</h4><ul>\n")
+    for caveat in support.caveats:
+      builder.append(f"<li>{caveat}</li>\n")
+    builder.append("</ul>\n")
+
+  if support.skippedManeuvers:
+    builder.append("<h4>Expected skipped maneuvers</h4><ul>\n")
+    for description in support.skippedManeuvers:
+      builder.append(f"<li>{description}</li>\n")
+    builder.append("</ul>\n")
+
+  builder.append("</details>\n")
+  return ''.join(builder)
+
+
 def report(platform, route, _description, CP, ID, maneuvers):
   output_path = Path(__file__).resolve().parent / "longitudinal_reports"
   output_fn = output_path / f"{platform}_{route.replace('/', '_')}.html"
   output_path.mkdir(exist_ok=True)
   target_cross_times = defaultdict(list)
+  support = get_longitudinal_maneuver_support(CP)
 
   builder = [
     "<style>summary { cursor: pointer; }\n td, th { padding: 8px; } </style>\n",
@@ -35,6 +67,7 @@ def report(platform, route, _description, CP, ID, maneuvers):
   if _description is not None:
     builder.append(f"<h3>Description: {_description}</h3>\n")
   builder.append(f"<details><summary><h3 style='display: inline-block;'>CarParams</h3></summary><pre>{format_car_params(CP)}</pre></details>\n")
+  builder.append(format_support_section(support))
   builder.append('{ summary }')  # to be replaced below
   for description, runs in maneuvers:
     print(f'plotting maneuver: {description}, runs: {len(runs)}')
@@ -56,7 +89,7 @@ def report(platform, route, _description, CP, ID, maneuvers):
 
       # maneuver validity
       longActive = [m.longActive for m in carControl]
-      maneuver_valid = all(longActive) and (not any(cs.cruiseState.standstill for cs in carState) or CP.autoResumeSng)
+      maneuver_valid = all(longActive)
 
       _open = 'open' if maneuver_valid else ''
       title = f'Run #{int(run)+1}' + (' <span style="color: red">(invalid maneuver!)</span>' if not maneuver_valid else '')
