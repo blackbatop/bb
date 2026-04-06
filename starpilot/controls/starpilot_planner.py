@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import math
 
 import cereal.messaging as messaging
 
@@ -19,6 +20,16 @@ from openpilot.starpilot.controls.lib.starpilot_events import StarPilotEvents
 from openpilot.starpilot.controls.lib.starpilot_following import StarPilotFollowing
 from openpilot.starpilot.controls.lib.starpilot_vcruise import StarPilotVCruise
 from openpilot.starpilot.controls.lib.weather_checker import WeatherChecker
+
+
+def _sanitize_json_value(value):
+  if isinstance(value, float):
+    return value if math.isfinite(value) else None
+  if isinstance(value, dict):
+    return {k: _sanitize_json_value(v) for k, v in value.items()}
+  if isinstance(value, (list, tuple)):
+    return [_sanitize_json_value(v) for v in value]
+  return value
 
 
 class StarPilotPlanner:
@@ -166,7 +177,7 @@ class StarPilotPlanner:
 
     starpilotPlan.starpilotEvents = self.starpilot_events.events.to_msg()
 
-    starpilotPlan.starpilotToggles = json.dumps(vars(starpilot_toggles))
+    starpilotPlan.starpilotToggles = json.dumps(_sanitize_json_value(vars(starpilot_toggles)), allow_nan=False)
 
     if sm["starpilotCarState"].trafficModeEnabled:
       starpilotPlan.increasedStoppedDistance = 0

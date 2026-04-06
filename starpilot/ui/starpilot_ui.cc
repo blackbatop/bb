@@ -3,6 +3,9 @@
 #include <cstdlib>
 #include <string>
 
+#include <QDebug>
+#include <QJsonParseError>
+
 #include "system/hardware/hw.h"
 
 static void update_state(StarPilotUIState *fs) {
@@ -39,7 +42,18 @@ static void update_state(StarPilotUIState *fs) {
     QByteArray current_toggles(toggles.cStr(), toggles.size());
     static QByteArray previous_toggles;
     if (previous_toggles != current_toggles) {
-      starpilot_scene.starpilot_toggles = QJsonDocument::fromJson(current_toggles).object();
+      QJsonParseError parse_error;
+      QJsonDocument toggles_doc = QJsonDocument::fromJson(current_toggles, &parse_error);
+      if (parse_error.error == QJsonParseError::NoError && toggles_doc.isObject()) {
+        QJsonObject updated_toggles = starpilot_scene.starpilot_toggles;
+        const QJsonObject parsed_toggles = toggles_doc.object();
+        for (auto it = parsed_toggles.begin(); it != parsed_toggles.end(); ++it) {
+          updated_toggles.insert(it.key(), it.value());
+        }
+        starpilot_scene.starpilot_toggles = updated_toggles;
+      } else {
+        qWarning() << "Ignoring invalid StarPilot toggles JSON:" << parse_error.errorString();
+      }
       previous_toggles = current_toggles;
     }
   }
