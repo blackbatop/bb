@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from cereal import messaging, car
 from openpilot.common.constants import CV
-from openpilot.common.realtime import DT_MDL
+from openpilot.common.realtime import DT_MDL, Priority, config_realtime_process
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.tools.longitudinal_maneuvers.capabilities import (
@@ -134,6 +134,8 @@ def build_maneuvers():
 
 
 def main():
+  config_realtime_process(5, Priority.CTRL_LOW)
+
   params = Params()
   cloudlog.info("joystickd is waiting for CarParams")
   CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
@@ -147,7 +149,7 @@ def main():
       continue
     supported_maneuvers.append(maneuver)
 
-  sm = messaging.SubMaster(['carState', 'carControl', 'controlsState', 'selfdriveState', 'modelV2'], poll='modelV2')
+  sm = messaging.SubMaster(['carState', 'carControl', 'modelV2'], poll='modelV2')
   pm = messaging.PubMaster(['longitudinalPlan', 'driverAssistance', 'alertDebug'])
 
   maneuvers = iter(supported_maneuvers)
@@ -163,7 +165,7 @@ def main():
     alert_msg.valid = True
 
     plan_send = messaging.new_message('longitudinalPlan')
-    plan_send.valid = sm.all_checks()
+    plan_send.valid = sm.all_checks(['carState', 'carControl', 'modelV2'])
 
     longitudinalPlan = plan_send.longitudinalPlan
     accel = 0
@@ -184,6 +186,8 @@ def main():
 
     longitudinalPlan.aTarget = accel
     longitudinalPlan.shouldStop = v_ego < CP.vEgoStopping and accel < 1e-2
+    longitudinalPlan.modelMonoTime = sm.logMonoTime['modelV2']
+    longitudinalPlan.processingDelay = (plan_send.logMonoTime / 1e9) - sm.logMonoTime['modelV2']
 
     longitudinalPlan.allowBrake = True
     longitudinalPlan.allowThrottle = True
@@ -194,7 +198,7 @@ def main():
     pm.send('longitudinalPlan', plan_send)
 
     assistance_send = messaging.new_message('driverAssistance')
-    assistance_send.valid = True
+    assistance_send.valid = sm.all_checks(['carState', 'carControl', 'modelV2'])
     pm.send('driverAssistance', assistance_send)
 
     if maneuver is not None and maneuver.finished:

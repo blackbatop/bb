@@ -9,7 +9,7 @@ const state = reactive({
 
 let initialized = false
 let pollHandle = null
-const POLL_INTERVAL_MS = 1000
+const POLL_INTERVAL_MS = 3000
 
 function isLongitudinalManeuversRouteActive() {
   return window.location.pathname === "/longitudinal_maneuvers"

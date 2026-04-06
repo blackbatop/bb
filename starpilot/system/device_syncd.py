@@ -203,9 +203,10 @@ def pond_thread():
 
     parked = sm["starpilotCarState"].isParked
     started = sm["deviceState"].started
+    long_maneuver_mode = params.get_bool("LongitudinalManeuverMode")
     state_changed = started != previous_started or parked != previous_parked
 
-    if params.get_bool("PondPaired"):
+    if params.get_bool("PondPaired") and not long_maneuver_mode:
       presence_interval = POND_PRESENCE_INTERVAL_ACTIVE if started or pond_active else POND_PRESENCE_INTERVAL_IDLE
       ping_pond_presence(presence_interval, parked, started, state_changed)
 
@@ -219,13 +220,15 @@ def pond_thread():
     if state_changed and parked:
       next_toggle_check_at = 0.0
 
-    if boot_sync_complete and now >= next_toggle_check_at:
+    if long_maneuver_mode:
+      next_toggle_check_at = max(next_toggle_check_at, now + REMOTE_TOGGLE_CHECK_INTERVAL_IDLE)
+    elif boot_sync_complete and now >= next_toggle_check_at:
       latest_pond_active = check_toggles(started, params, sm)
       if latest_pond_active is not None:
         pond_active = latest_pond_active
       next_toggle_check_at = now + REMOTE_TOGGLE_CHECK_INTERVAL_ACTIVE if pond_active else REMOTE_TOGGLE_CHECK_INTERVAL_IDLE
 
-    if params.get_bool("PondUploadPending"):
+    if params.get_bool("PondUploadPending") and not long_maneuver_mode:
       if not params.get_bool("PondPaired"):
         params.put_bool("PondUploadPending", False)
       elif upload_toggles(params):

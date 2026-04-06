@@ -432,7 +432,9 @@ function renderActions(model) {
   if (model.installed) {
     return html`
       <button class="mm-btn mm-btn-secondary" data-mm-action="select" data-model="${modelKey}">Set Active</button>
-      <button class="mm-btn mm-btn-danger" data-mm-action="delete" data-model="${modelKey}">Delete</button>
+      ${model.builtin
+        ? ""
+        : html`<button class="mm-btn mm-btn-danger" data-mm-action="delete" data-model="${modelKey}">Delete</button>`}
     `;
   }
 
@@ -451,6 +453,7 @@ function renderModelRow(model) {
         </div>
         <div class="mm-row-meta">
           <span class="mm-chip">${key}</span>
+          ${model.builtin ? html`<span class="mm-chip">Built-in</span>` : ""}
           ${state.sortMode === "release_date" ? "" : model.series ? html`<span class="mm-chip">${safeText(model.series)}</span>` : ""}
           ${model.version ? html`<span class="mm-chip">Version ${safeText(model.version)}</span>` : ""}
           ${model.released ? html`<span class="mm-chip">Released ${safeText(model.released)}</span>` : ""}

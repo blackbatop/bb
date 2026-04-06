@@ -43,6 +43,7 @@ from openpilot.system.version import get_build_metadata
 from openpilot.tools.longitudinal_maneuvers.capabilities import get_longitudinal_maneuver_support
 from panda import Panda
 
+from openpilot.starpilot.assets.model_manager import canonical_model_key, is_builtin_model_key, model_key_aliases
 from openpilot.starpilot.assets.theme_manager import HOLIDAY_THEME_PATH, THEME_COMPONENT_PARAMS
 from openpilot.starpilot.common.accel_profile import (
   CUSTOM_ACCEL_PROFILE_INITIALIZED_KEY,
@@ -60,7 +61,7 @@ from openpilot.starpilot.common.maps_catalog import (
   schedule_param_value,
 )
 from openpilot.starpilot.common.starpilot_utilities import delete_file, get_lock_status, run_cmd
-from openpilot.starpilot.common.starpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, LEGACY_STARPILOT_PARAM_RENAMES, MAPS_PATH, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, STOCK_THEME_PATH, THEME_SAVE_PATH,\
+from openpilot.starpilot.common.starpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, LEGACY_STARPILOT_PARAM_RENAMES, MAPS_PATH, MODELS_PATH, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, STOCK_THEME_PATH, THEME_SAVE_PATH,\
                                                            default_ev_tuning_enabled, update_starpilot_toggles
 from openpilot.starpilot.common.testing_grounds import (
   DEFAULT_TESTING_GROUND_VARIANT as SHARED_DEFAULT_TESTING_GROUND_VARIANT,
@@ -1971,7 +1972,10 @@ def _get_current_param_value(key, value_type, defaults_lookup=None):
     if defaults_lookup is None:
       defaults_lookup = _get_default_param_values()
     raw_value = defaults_lookup.get(key)
-  return _coerce_param_value(raw_value, value_type)
+  value = _coerce_param_value(raw_value, value_type)
+  if key in ("Model", "DrivingModel") and isinstance(value, str):
+    return canonical_model_key(value)
+  return value
 
 
 def _get_custom_accel_profile_initialized():
@@ -3355,7 +3359,7 @@ def setup(app):
         }), 200
 
       if key in ("Model", "DrivingModel"):
-        selected_model = str_val.strip()
+        selected_model = canonical_model_key(str_val.strip())
         if not selected_model:
           return jsonify({"error": "Driving model cannot be empty."}), 400
 
@@ -3366,25 +3370,40 @@ def setup(app):
         available_names = [entry.strip() for entry in (params.get("AvailableModelNames", encoding="utf-8") or "").split(",")]
         model_versions = [entry.strip() for entry in (params.get("ModelVersions", encoding="utf-8") or "").split(",")]
 
-        if selected_model in available_models:
-          selected_index = available_models.index(selected_model)
+        selected_index = next((i for i, model_key in enumerate(available_models) if canonical_model_key(model_key) == selected_model), -1)
+        if selected_index != -1:
           if selected_index < len(available_names) and available_names[selected_index]:
             params.put("DrivingModelName", available_names[selected_index])
+          elif is_builtin_model_key(selected_model):
+            params.put("DrivingModelName", _default_model_name())
 
           if selected_index < len(model_versions) and model_versions[selected_index]:
             resolved_version = model_versions[selected_index]
             params.put("ModelVersion", resolved_version)
             params.put("DrivingModelVersion", resolved_version)
+          elif is_builtin_model_key(selected_model):
+            resolved_version = _default_model_version()
+            params.put("ModelVersion", resolved_version)
+            params.put("DrivingModelVersion", resolved_version)
+        elif is_builtin_model_key(selected_model):
+          params.put("DrivingModelName", _default_model_name())
+          resolved_version = _default_model_version()
+          params.put("ModelVersion", resolved_version)
+          params.put("DrivingModelVersion", resolved_version)
         else:
           # Fallback to cached version map if this model isn't in the current manifest list yet.
           try:
-            with open("/data/models/.model_versions.json", "r") as f:
+            with open(MODELS_PATH / ".model_versions.json", "r") as f:
               versions = json.load(f)
-              if selected_model in versions:
-                resolved_version = str(versions[selected_model]).strip()
+              for alias in model_key_aliases(selected_model):
+                if alias not in versions:
+                  continue
+
+                resolved_version = str(versions[alias]).strip()
                 if resolved_version:
                   params.put("ModelVersion", resolved_version)
                   params.put("DrivingModelVersion", resolved_version)
+                  break
           except Exception:
             pass
       elif key in ("ModelVersion", "DrivingModelVersion"):
@@ -3434,7 +3453,12 @@ def setup(app):
       return _serialize_param_write_value(defaults_lookup.get(request_key)), 200
     if request_key == CUSTOM_ACCEL_PROFILE_INITIALIZED_KEY:
       return _serialize_param_write_value(_get_custom_accel_profile_initialized()), 200
-    return params.get(request_key) or "", 200
+    value = params.get(request_key) or ""
+    if request_key in ("Model", "DrivingModel"):
+      if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="replace")
+      return canonical_model_key(str(value).strip()), 200
+    return value, 200
 
   @app.route("/api/params/all", methods=["GET"])
   def get_all_params():
@@ -3517,7 +3541,7 @@ def setup(app):
     installed = [{"value": model["value"], "label": model["label"]} for model in catalog if model["installed"]]
 
     # Keep current model selectable even if local files are currently inconsistent.
-    current_model = params.get("Model", encoding="utf-8") or ""
+    current_model = _current_model_key()
     if current_model and all(model["value"] != current_model for model in installed):
       for model in catalog:
         if model["value"] == current_model:
@@ -3531,7 +3555,7 @@ def setup(app):
     models = get_model_catalog()
     return jsonify({
       "models": models,
-      "currentModel": params.get("Model", encoding="utf-8") or "",
+      "currentModel": _current_model_key(),
       "summary": {
         "installed": sum(1 for model in models if model["installed"]),
         "missing": sum(1 for model in models if not model["installed"]),
@@ -3572,13 +3596,13 @@ def setup(app):
   @app.route("/api/models/status", methods=["GET"])
   def get_models_status():
     models = get_model_catalog()
-    model_to_download = params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""
+    model_to_download = canonical_model_key(params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or "")
     download_all = params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM)
     progress = params_memory.get(MODEL_DOWNLOAD_PROGRESS_PARAM, encoding="utf-8") or ""
     cancelling = params_memory.get_bool(MODEL_CANCEL_DOWNLOAD_PARAM)
 
     downloading = bool(model_to_download) or download_all
-    current_model = params.get("Model", encoding="utf-8") or ""
+    current_model = _current_model_key()
     sort_mode = read_legacy_param_file(MODEL_SORT_MODE_PARAM, "alphabetical")
     terminal = progress in ("Downloaded!", "All models downloaded!") or bool(re.search(r"cancelled|exists|failed|offline|invalid|error", progress, re.IGNORECASE))
     summary = {
@@ -3665,7 +3689,7 @@ def setup(app):
       return jsonify({"error": "A model download is already in progress."}), 409
 
     data = request.get_json() or {}
-    model_key = (data.get("model") or "").strip()
+    model_key = canonical_model_key((data.get("model") or "").strip())
     if not model_key:
       return jsonify({"error": "Missing model key."}), 400
 
@@ -3722,11 +3746,11 @@ def setup(app):
       return jsonify({"error": "Cannot delete model files while a download is in progress."}), 409
 
     data = request.get_json() or {}
-    model_key = (data.get("model") or "").strip()
+    model_key = canonical_model_key((data.get("model") or "").strip())
     if not model_key:
       return jsonify({"error": "Missing model key."}), 400
 
-    current_model = params.get("Model", encoding="utf-8") or ""
+    current_model = _current_model_key()
     if model_key == current_model:
       return jsonify({"error": "Cannot delete the currently active model."}), 409
 
@@ -3734,8 +3758,10 @@ def setup(app):
     model = catalog.get(model_key)
     if model is None:
       return jsonify({"error": f"Unknown model '{model_key}'."}), 404
+    if model.get("builtin"):
+      return jsonify({"error": "Cannot delete the built-in default model."}), 409
 
-    models_dir = Path("/data/models")
+    models_dir = MODELS_PATH
     if not models_dir.is_dir():
       return jsonify({"message": "No model directory exists yet."}), 200
 
@@ -3882,7 +3908,32 @@ def setup(app):
   def get_param_memory():
     return params_memory.get(request.args.get("key")) or "", 200
 
+  def _param_text(value):
+    if value is None:
+      return ""
+    if isinstance(value, bytes):
+      return value.decode("utf-8", errors="ignore").strip()
+    return str(value).strip()
+
+  def _default_model_key():
+    default_key = _param_text(params.get_default_value("Model") or params.get_default_value("DrivingModel"))
+    return canonical_model_key(default_key) or "sc2"
+
+  def _default_model_name():
+    return _param_text(params.get_default_value("DrivingModelName")) or "South Carolina"
+
+  def _default_model_version():
+    default_version = _param_text(params.get_default_value("ModelVersion") or params.get_default_value("DrivingModelVersion"))
+    return default_version or "v11"
+
+  def _current_model_key():
+    current_model = _param_text(params.get("Model", encoding="utf-8") or params.get("DrivingModel", encoding="utf-8"))
+    return canonical_model_key(current_model) or _default_model_key()
+
   def is_model_installed(model_key, model_version, on_disk_files):
+    if is_builtin_model_key(model_key):
+      return True
+
     if f"{model_key}.thneed" in on_disk_files:
       return True
 
@@ -3913,18 +3964,18 @@ def setup(app):
     versions = [entry.strip() for entry in (params.get("ModelVersions", encoding="utf-8") or "").split(",")]
     released_dates = [entry.strip() for entry in (params.get("ModelReleasedDates", encoding="utf-8") or "").split(",")]
 
-    community_favorites = {entry.strip() for entry in (params.get("CommunityFavorites", encoding="utf-8") or "").split(",") if entry.strip()}
-    user_favorites = {entry.strip() for entry in (params.get(MODEL_USER_FAVORITES_PARAM, encoding="utf-8") or "").split(",") if entry.strip()}
+    community_favorites = {canonical_model_key(entry.strip()) for entry in (params.get("CommunityFavorites", encoding="utf-8") or "").split(",") if entry.strip()}
+    user_favorites = {canonical_model_key(entry.strip()) for entry in (params.get(MODEL_USER_FAVORITES_PARAM, encoding="utf-8") or "").split(",") if entry.strip()}
 
-    models_dir = "/data/models"
     try:
-      on_disk_files = set(os.listdir(models_dir)) if os.path.isdir(models_dir) else set()
+      on_disk_files = {entry.name for entry in MODELS_PATH.iterdir()} if MODELS_PATH.is_dir() else set()
     except Exception:
       on_disk_files = set()
 
-    models = []
+    models_by_key = {}
     for i, key in enumerate(available):
-      if not key:
+      canonical_key = canonical_model_key(key)
+      if not canonical_key:
         continue
 
       label = names[i] if i < len(names) and names[i] else key
@@ -3932,19 +3983,57 @@ def setup(app):
       model_series = series[i] if i < len(series) and series[i] else "Custom Series"
       released = released_dates[i] if i < len(released_dates) else ""
 
-      installed = is_model_installed(key, model_version, on_disk_files)
-      partial = not installed and any(file.startswith(f"{key}.") or file.startswith(f"{key}_") for file in on_disk_files)
+      existing = models_by_key.get(canonical_key)
+      if existing is None:
+        models_by_key[canonical_key] = {
+          "value": canonical_key,
+          "label": label,
+          "series": model_series,
+          "version": model_version,
+          "released": released,
+          "builtin": is_builtin_model_key(canonical_key),
+          "communityFavorite": canonical_key in community_favorites,
+          "userFavorite": canonical_key in user_favorites,
+        }
+        continue
 
+      if (not existing["label"] or existing["label"] == existing["value"]) and label:
+        existing["label"] = label
+      if (not existing["series"] or existing["series"] == "Custom Series") and model_series:
+        existing["series"] = model_series
+      if not existing["version"] and model_version:
+        existing["version"] = model_version
+      if not existing["released"] and released:
+        existing["released"] = released
+      existing["builtin"] = existing["builtin"] or is_builtin_model_key(canonical_key)
+      existing["communityFavorite"] = existing["communityFavorite"] or canonical_key in community_favorites
+      existing["userFavorite"] = existing["userFavorite"] or canonical_key in user_favorites
+
+    default_key = _default_model_key()
+    default_entry = models_by_key.setdefault(default_key, {
+      "value": default_key,
+      "label": _default_model_name(),
+      "series": "Custom Series",
+      "version": _default_model_version(),
+      "released": "",
+      "builtin": True,
+      "communityFavorite": default_key in community_favorites,
+      "userFavorite": default_key in user_favorites,
+    })
+    default_entry["builtin"] = True
+    if not default_entry["label"] or default_entry["label"] == default_entry["value"]:
+      default_entry["label"] = _default_model_name()
+    if not default_entry["version"]:
+      default_entry["version"] = _default_model_version()
+
+    models = []
+    for key, model in models_by_key.items():
+      installed = is_model_installed(key, model["version"], on_disk_files)
+      partial = (not model["builtin"]) and (not installed) and any(file.startswith(f"{key}.") or file.startswith(f"{key}_") for file in on_disk_files)
       models.append({
-        "value": key,
-        "label": label,
-        "series": model_series,
-        "version": model_version,
-        "released": released,
+        **model,
         "installed": installed,
         "partial": partial,
-        "communityFavorite": key in community_favorites,
-        "userFavorite": key in user_favorites,
       })
 
     models.sort(key=lambda model: (model["series"].lower(), model["label"].lower()))
