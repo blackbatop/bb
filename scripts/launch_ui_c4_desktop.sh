@@ -189,6 +189,8 @@ import openpilot.common.transformations.transformations  # noqa: F401
 import msgq.ipc_pyx  # noqa: F401
 import msgq.visionipc.visionipc_pyx  # noqa: F401
 PY
+  [[ -f "${ROOT_DIR}/selfdrive/controls/lib/lateral_mpc_lib/c_generated_code/acados_ocp_solver_pyx.so" ]] &&
+  [[ -f "${ROOT_DIR}/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_code/acados_ocp_solver_pyx.so" ]]
 }
 
 sync_deps() {
@@ -257,6 +259,11 @@ if ! python_ui_runtime_ok >/dev/null 2>&1; then
   remove_if_elf "msgq/visionipc/visionipc_pyx.so"
 
   run_scons "${jobs}" common/params_pyx.so common/transformations/transformations.so
+  run_scons "${jobs}" \
+    selfdrive/controls/lib/lateral_mpc_lib/c_generated_code/acados_ocp_solver_pyx.so \
+    selfdrive/controls/lib/lateral_mpc_lib/c_generated_code/libacados_ocp_solver_lat.so \
+    selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_code/acados_ocp_solver_pyx.so \
+    selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_code/libacados_ocp_solver_long.so
   (
     cd "${ROOT_DIR}/msgq_repo"
     local_scons_bin="${ROOT_DIR}/.venv/bin/scons"
