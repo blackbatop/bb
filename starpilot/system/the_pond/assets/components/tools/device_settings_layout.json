@@ -1754,6 +1754,32 @@
         "is_parent_toggle": true
       },
       {
+        "key": "CameraView",
+        "label": "Camera View",
+        "description": "Choose which camera feed the driving screen uses: Auto, Driver, Standard, or Wide.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "Auto"
+          },
+          {
+            "value": 1,
+            "label": "Driver"
+          },
+          {
+            "value": 2,
+            "label": "Standard"
+          },
+          {
+            "value": 3,
+            "label": "Wide"
+          }
+        ],
+        "parent_key": "QOLVisuals"
+      },
+      {
         "key": "DriverCamera",
         "label": "Show Driver Camera When In Reverse",
         "description": "Show the driver camera feed when the vehicle is in reverse.",

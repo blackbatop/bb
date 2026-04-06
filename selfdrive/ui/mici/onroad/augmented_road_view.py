@@ -11,7 +11,13 @@ from openpilot.selfdrive.ui.mici.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.mici.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.mici.onroad.model_renderer import ModelRenderer
 from openpilot.selfdrive.ui.mici.onroad.confidence_ball import ConfidenceBall
-from openpilot.selfdrive.ui.mici.onroad.starpilot_status import get_border_color, get_experimental_mode_banner_text
+from openpilot.selfdrive.ui.mici.onroad.starpilot_status import (
+  ENGAGED_COLOR,
+  EXPERIMENTAL_COLOR,
+  TRAFFIC_COLOR,
+  get_border_color,
+  get_experimental_mode_banner_text,
+)
 from openpilot.selfdrive.ui.mici.onroad.cameraview import CameraView
 from openpilot.system.ui.lib.application import FontWeight, gui_app, MousePos, MouseEvent
 from openpilot.system.ui.widgets.label import UnifiedLabel
@@ -25,7 +31,13 @@ OpState = log.SelfdriveState.OpenpilotState
 CALIBRATED = log.LiveCalibrationData.Status.calibrated
 ROAD_CAM = VisionStreamType.VISION_STREAM_ROAD
 WIDE_CAM = VisionStreamType.VISION_STREAM_WIDE_ROAD
+DRIVER_CAM = VisionStreamType.VISION_STREAM_DRIVER
 DEFAULT_DEVICE_CAMERA = DEVICE_CAMERAS["tici", "ar0231"]
+
+CAMERA_VIEW_AUTO = 0
+CAMERA_VIEW_DRIVER = 1
+CAMERA_VIEW_STANDARD = 2
+CAMERA_VIEW_WIDE = 3
 
 
 class BookmarkState(IntEnum):
@@ -33,8 +45,8 @@ class BookmarkState(IntEnum):
   DRAGGING = 1
   TRIGGERED = 2
 
-WIDE_CAM_MAX_SPEED = 5.0  # m/s (10 mph)
-ROAD_CAM_MIN_SPEED = 10  # m/s (25 mph)
+WIDE_CAM_MAX_SPEED = 10.0  # m/s
+ROAD_CAM_MIN_SPEED = 15.0  # m/s
 
 CAM_Y_OFFSET = 20
 
@@ -273,6 +285,100 @@ class MinSteerSpeedBanner(Widget):
     self._label.render(text_rect)
 
 
+class StandstillTimerOverlay:
+  def __init__(self):
+    self._last_started_frame = -1
+    self._standstill_duration = 0
+    self._standstill_started_at: float | None = None
+    self._font_bold = gui_app.font(FontWeight.BOLD)
+    self._font_medium = gui_app.font(FontWeight.MEDIUM)
+
+  def _reset(self):
+    self._standstill_duration = 0
+    self._standstill_started_at = None
+
+  @staticmethod
+  def _blend_colors(start: rl.Color, end: rl.Color, transition: float) -> rl.Color:
+    transition = float(np.clip(transition, 0.0, 1.0))
+    return rl.Color(
+      int(start.r + transition * (end.r - start.r)),
+      int(start.g + transition * (end.g - start.g)),
+      int(start.b + transition * (end.b - start.b)),
+      255,
+    )
+
+  def _get_duration_color(self) -> rl.Color:
+    if self._standstill_duration < 60:
+      return ENGAGED_COLOR
+    if self._standstill_duration < 150:
+      transition = (self._standstill_duration - 60) / 90.0
+      return self._blend_colors(ENGAGED_COLOR, EXPERIMENTAL_COLOR, transition)
+    if self._standstill_duration < 300:
+      transition = (self._standstill_duration - 150) / 150.0
+      return self._blend_colors(EXPERIMENTAL_COLOR, TRAFFIC_COLOR, transition)
+    return TRAFFIC_COLOR
+
+  def _update_state(self, in_reverse: bool) -> None:
+    if not ui_state.started:
+      self._last_started_frame = -1
+      self._reset()
+      return
+
+    if ui_state.started_frame != self._last_started_frame:
+      self._last_started_frame = ui_state.started_frame
+      self._reset()
+
+    if ui_state.sm.recv_frame["carState"] < ui_state.started_frame:
+      self._reset()
+      return
+
+    if in_reverse or not ui_state.params.get_bool("StoppedTimer"):
+      self._reset()
+      return
+
+    if not ui_state.sm["carState"].standstill:
+      self._reset()
+      return
+
+    now = time.monotonic()
+    if self._standstill_started_at is None:
+      self._standstill_started_at = now
+      self._standstill_duration = 0
+      return
+
+    if now - ui_state.started_time < 60.0:
+      self._standstill_duration = 0
+      return
+
+    self._standstill_duration = int(now - self._standstill_started_at)
+
+  @staticmethod
+  def _format_duration_text(total_seconds: int) -> tuple[str, str]:
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
+    minute_text = f"{minutes} minute" if minutes == 1 else f"{minutes} minutes"
+    second_text = f"{seconds} second" if seconds == 1 else f"{seconds} seconds"
+    return minute_text, second_text
+
+  def _draw_centered_text(self, rect: rl.Rectangle, text: str, y: float, font: rl.Font, font_size: int, color: rl.Color) -> None:
+    text_size = rl.measure_text_ex(font, text, font_size, 0)
+    text_pos = rl.Vector2(rect.x + rect.width / 2 - text_size.x / 2, rect.y + y - text_size.y / 2)
+    shadow_pos = rl.Vector2(text_pos.x + 2, text_pos.y + 2)
+    rl.draw_text_ex(font, text, shadow_pos, font_size, 0, rl.Color(0, 0, 0, 170))
+    rl.draw_text_ex(font, text, text_pos, font_size, 0, color)
+
+  def render(self, rect: rl.Rectangle, in_reverse: bool) -> bool:
+    self._update_state(in_reverse)
+    if self._standstill_duration == 0:
+      return False
+
+    minute_text, second_text = self._format_duration_text(self._standstill_duration)
+    duration_color = self._get_duration_color()
+    self._draw_centered_text(rect, minute_text, 210, self._font_bold, 176, duration_color)
+    self._draw_centered_text(rect, second_text, 290, self._font_medium, 66, rl.Color(255, 255, 255, 242))
+    return True
+
+
 class AugmentedRoadView(CameraView):
   def __init__(self, bookmark_callback=None, stream_type: VisionStreamType = VisionStreamType.VISION_STREAM_ROAD):
     super().__init__("camerad", stream_type)
@@ -300,6 +406,7 @@ class AugmentedRoadView(CameraView):
     self._confidence_ball = ConfidenceBall()
     self._experimental_mode_banner = ExperimentalModeBanner()
     self._min_steer_speed_banner = MinSteerSpeedBanner()
+    self._standstill_timer = StandstillTimerOverlay()
     self._offroad_label = UnifiedLabel("start the car to\nuse openpilot", 54, FontWeight.DISPLAY,
                                        text_color=rl.Color(255, 255, 255, int(255 * 0.9)),
                                        alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
@@ -377,36 +484,42 @@ class AugmentedRoadView(CameraView):
       return
 
     in_reverse = self._is_in_reverse()
+    is_driver_stream = self.stream_type == DRIVER_CAM
     self._hud_renderer.prepare(self._content_rect)
 
     # Draw all UI overlays
-    if not in_reverse:
+    if not in_reverse and not is_driver_stream:
       self._model_renderer.render(self._content_rect)
 
     # Fade out bottom of overlays for looks
     rl.draw_texture_ex(self._fade_texture, rl.Vector2(self._content_rect.x, self._content_rect.y), 0.0, 1.0, rl.WHITE)
-    if not in_reverse:
+    if not in_reverse and not is_driver_stream:
       self._hud_renderer.render_background()
 
     alert_to_render, not_animating_out = self._alert_renderer.will_render()
 
-    should_draw_dmoji = (not in_reverse) and (not self._hud_renderer.drawing_top_icons()) and ui_state.is_onroad()
+    should_draw_dmoji = ui_state.is_onroad() and (
+      is_driver_stream or ((not in_reverse) and (not self._hud_renderer.drawing_top_icons()))
+    )
     self._driver_state_renderer.set_should_draw(should_draw_dmoji)
     self._driver_state_renderer.set_position(self._rect.x + 16, self._rect.y + 10)
     if not in_reverse:
       self._driver_state_renderer.render()
 
-    self._hud_renderer.set_can_draw_top_icons((not in_reverse) and (alert_to_render is None))
-    self._hud_renderer.set_wheel_critical_icon((not in_reverse) and alert_to_render is not None and not not_animating_out and
+    self._hud_renderer.set_can_draw_top_icons((not in_reverse) and (not is_driver_stream) and (alert_to_render is None))
+    self._hud_renderer.set_wheel_critical_icon((not in_reverse) and (not is_driver_stream) and alert_to_render is not None and not not_animating_out and
                                                alert_to_render.visual_alert == car.CarControl.HUDControl.VisualAlert.steerRequired)
     # TODO: have alert renderer draw offroad mici label below
     if ui_state.started:
       self._alert_renderer.render(self._content_rect)
-    if not in_reverse:
+    if not in_reverse and not is_driver_stream:
       self._hud_renderer.render_foreground()
-    if (not in_reverse) and alert_to_render is None:
+    if (not in_reverse) and (not is_driver_stream) and alert_to_render is None:
       self._experimental_mode_banner.render(self._content_rect)
-    if not in_reverse:
+    rendered_standstill_timer = False
+    if not in_reverse and not is_driver_stream:
+      rendered_standstill_timer = self._standstill_timer.render(self._content_rect, in_reverse)
+    if not in_reverse and not is_driver_stream and not rendered_standstill_timer:
       self._min_steer_speed_banner.render(self._content_rect)
 
     # End clipping region
@@ -414,8 +527,9 @@ class AugmentedRoadView(CameraView):
 
     # Custom UI extension point - add custom overlays here
     # Use self._content_rect for positioning within camera bounds
-    if not in_reverse:
+    if not in_reverse and not is_driver_stream:
       self._confidence_ball.render(self.rect)
+    if not in_reverse:
       self._draw_border()
 
     self._bookmark_icon.render(self.rect)
@@ -454,16 +568,29 @@ class AugmentedRoadView(CameraView):
 
     return str(gear).lower().endswith("reverse")
 
+  def is_in_reverse(self) -> bool:
+    return self._is_in_reverse()
+
   def _switch_stream_if_needed(self, sm):
-    if sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
+    camera_view = ui_state.params.get_int("CameraView", return_default=True, default=CAMERA_VIEW_WIDE)
+    if camera_view not in (CAMERA_VIEW_AUTO, CAMERA_VIEW_DRIVER, CAMERA_VIEW_STANDARD, CAMERA_VIEW_WIDE):
+      camera_view = CAMERA_VIEW_WIDE
+
+    if camera_view == CAMERA_VIEW_DRIVER:
+      target = DRIVER_CAM
+    elif camera_view == CAMERA_VIEW_STANDARD:
+      target = ROAD_CAM
+    elif camera_view == CAMERA_VIEW_WIDE:
+      target = WIDE_CAM
+    elif sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
       v_ego = sm['carState'].vEgo
       if v_ego < WIDE_CAM_MAX_SPEED:
         target = WIDE_CAM
       elif v_ego > ROAD_CAM_MIN_SPEED:
         target = ROAD_CAM
       else:
-        # Hysteresis zone - keep current stream
-        target = self.stream_type
+        # Hysteresis zone - keep the current road camera selection.
+        target = WIDE_CAM if self.stream_type == WIDE_CAM else ROAD_CAM
     else:
       target = ROAD_CAM
 
@@ -494,6 +621,9 @@ class AugmentedRoadView(CameraView):
       self.view_from_wide_calib = view_frame_from_device_frame @ wide_from_device @ device_from_calib
 
   def _calc_frame_matrix(self, rect: rl.Rectangle) -> np.ndarray:
+    if self.stream_type == DRIVER_CAM:
+      return CameraView._calc_frame_matrix(self, rect)
+
     # Get camera configuration
     # TODO: cache with vEgo?
     calib_time = ui_state.sm.recv_frame['liveCalibration']
