@@ -223,7 +223,7 @@ class CarInterfaceBase(ABC):
         fp_ret.canUseSDSU = candidate not in UNSUPPORTED_DSU_CAR and candidate not in TSS2_CAR
 
         if 0x2AA in fingerprint[0] and candidate in NO_DSU_CAR:
-          fp_ret.flags |= ToyotaFlags.RADAR_CAN_FILTER.value
+          fp_ret.flags |= ToyotaStarPilotFlags.RADAR_CAN_FILTER.value
 
         if 0x2FF in fingerprint[0] or (0x2AA in fingerprint[0] and candidate in NO_DSU_CAR):
           fp_ret.flags |= ToyotaStarPilotFlags.SMART_DSU.value
