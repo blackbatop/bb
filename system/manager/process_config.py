@@ -10,6 +10,7 @@ from openpilot.system.hardware import HARDWARE, PC, TICI
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
+UI_WATCHDOG_MAX_DT = int(os.getenv("UI_WATCHDOG_MAX_DT", "60"))
 
 def driverview(started: bool, params: Params, CP: car.CarParams, starpilot_toggles: SimpleNamespace) -> bool:
   return started or params.get_bool("IsDriverViewEnabled")
@@ -132,10 +133,10 @@ procs = [
 # StarPilot variables
 device_type = HARDWARE.get_device_type()
 if device_type in ("tici", "tizi"):
-  procs.append(NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=10))
+  procs.append(NativeProcess("ui", "selfdrive/ui", ["./ui"], always_run, watchdog_max_dt=UI_WATCHDOG_MAX_DT))
 else:
-  # C4 (mici) runs the Python raylib UI path; keep watchdog parity with C3/C3X.
-  procs.append(PythonProcess("ui", "selfdrive.ui.ui", always_run, watchdog_max_dt=10))
+  # C4 (mici) runs the Python raylib UI path.
+  procs.append(PythonProcess("ui", "selfdrive.ui.ui", always_run, watchdog_max_dt=UI_WATCHDOG_MAX_DT))
 procs += [
   PythonProcess("device_syncd", "starpilot.system.device_syncd", always_run),
   PythonProcess("starpilot_process", "starpilot.starpilot_process", always_run),
