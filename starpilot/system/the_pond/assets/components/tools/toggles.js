@@ -6,6 +6,8 @@ export function ToggleControl() {
   const state = reactive({
     showResetDefaultModal: false,
     showResetStockModal: false,
+    showSaveMeModal: false,
+    factoryResetBusy: false,
   });
 
   const fileInput = document.createElement("input")
@@ -76,6 +78,30 @@ export function ToggleControl() {
     fileInput.click()
   }
 
+  function confirmSaveMe() {
+    state.showSaveMeModal = true;
+  }
+
+  async function runFactoryReset() {
+    if (state.factoryResetBusy) return
+
+    state.showSaveMeModal = false
+    state.factoryResetBusy = true
+    try {
+      const response = await fetch("/api/update/factory_reset", { method: "POST" })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.error || response.statusText || "Failed to start factory reset")
+      }
+
+      showSnackbar(payload.message || "Factory reset started.")
+    } catch (error) {
+      showSnackbar(error?.message || "Failed to start factory reset", "error")
+    } finally {
+      state.factoryResetBusy = false
+    }
+  }
+
   return html`
     <div class="toggle-control-wrapper">
       <section class="toggle-control-widget">
@@ -98,6 +124,18 @@ export function ToggleControl() {
         <button class="toggle-control-button" @click="${confirmResetStock}">
           Reset Toggles to Stock
         </button>
+        <div class="toggle-control-danger-zone">
+          <div class="toggle-control-danger-title">WARNING: Factory Reset</div>
+          <p class="toggle-control-danger-text">
+            Last resort only. This wipes params, backups, themes, models, maps, and route data, then reboots the device.
+          </p>
+          <button
+            class="toggle-control-button toggle-control-button-danger toggle-control-button-save-me"
+            @click="${confirmSaveMe}"
+            disabled="${() => state.factoryResetBusy}">
+            ${() => state.factoryResetBusy ? "Starting..." : "SAVE ME"}
+          </button>
+        </div>
       </section>
 
       ${TailscaleControl()}
@@ -115,6 +153,13 @@ export function ToggleControl() {
     onConfirm: resetTogglesToStock,
     onCancel: () => { state.showResetStockModal = false; },
     confirmText: "Reset to Stock"
+  }) : ""}
+    ${() => state.showSaveMeModal ? Modal({
+    title: "SAVE ME",
+    message: "This will factory reset the device by wiping params, backups, themes, models, maps, and route data. The device will reboot when the wipe is complete. This cannot be undone.",
+    onConfirm: runFactoryReset,
+    onCancel: () => { state.showSaveMeModal = false; },
+    confirmText: "Factory Reset"
   }) : ""}
   `
 }

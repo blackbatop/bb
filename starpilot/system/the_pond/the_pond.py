@@ -535,6 +535,7 @@ _FAST_UPDATE_PROGRESS_UPDATE_INTERVAL_S = 5.0
 _FAST_UPDATE_REBOOT_NOTICE_SECONDS = 6.0
 _FAST_UPDATE_FETCH_TIMEOUT_S = 60
 _FAST_BRANCH_SWITCH_FETCH_TIMEOUT_S = 60
+_FACTORY_RESET_DELETE_TIMEOUT_S = 1800
 _GIT_PROGRESS_PERCENT_RE = re.compile(r'([A-Za-z][A-Za-z /_-]+):\s*([0-9]{1,3})%')
 _GIT_SUBMODULE_SECTION_RE = re.compile(r'^\s*\[submodule\s+"[^"]+"\]\s*$', re.MULTILINE)
 _TESTING_GROUNDS_SCHEMA_VERSION = SHARED_TESTING_GROUNDS_SCHEMA_VERSION
@@ -565,6 +566,22 @@ _fast_update_state = {
   "progressLabel": "Idle",
   "progressDetail": "",
 }
+
+_FACTORY_RESET_WIPE_PATHS = [
+  "/data/params",
+  "/persist/params",
+  "/cache/params",
+  "/data/media/0/realdata",
+  "/data/media/0/realdata_HD",
+  "/data/media/0/realdata_konik",
+  "/data/models",
+  "/data/toggle_backups",
+  "/data/backups",
+  "/data/themes",
+  "/data/media/0/osm/offline",
+  "/cache/use_HD",
+  "/cache/use_konik",
+]
 
 _PLOTS_POLL_INTERVAL_S = 0.75
 _PLOTS_BOOT_STABILIZATION_WINDOW_S = 45.0
@@ -1376,6 +1393,53 @@ def _set_fast_update_error_state(message, exception):
     progressLabel="Failed",
     progressDetail="Update failed. See Last Error below.",
   )
+
+def _run_factory_reset_delete(path):
+  result = subprocess.run(
+    ["sudo", "rm", "-rf", path],
+    capture_output=True,
+    text=True,
+    timeout=_FACTORY_RESET_DELETE_TIMEOUT_S,
+    check=False,
+  )
+  if result.returncode != 0:
+    error_text = (result.stderr or result.stdout or "sudo rm -rf failed").strip()
+    raise RuntimeError(f"Failed to remove {path}: {error_text}")
+
+def _factory_reset_worker():
+  started_at = time.time()
+
+  try:
+    _set_fast_update_progress(1, "Preparing factory reset", 10.0, "Cleaning up legacy device state...")
+    _set_fast_update_state(
+      running=True,
+      stage="factory-resetting",
+      message="Factory reset started. Wiping device state...",
+      lastError="",
+      lastMode="factory-reset",
+      startedAt=started_at,
+      finishedAt=0.0,
+    )
+    _set_fast_update_progress(1, "Preparing factory reset", 100.0, "Factory reset initialized.")
+
+    total_paths = max(1, len(_FACTORY_RESET_WIPE_PATHS))
+    for index, path in enumerate(_FACTORY_RESET_WIPE_PATHS, start=1):
+      step_percent = ((index - 1) / total_paths) * 100.0
+      _set_fast_update_progress(2, "Wiping device data", step_percent, f"Removing {path}...")
+      _run_factory_reset_delete(path)
+      _set_fast_update_progress(2, "Wiping device data", (index / total_paths) * 100.0, f"Removed {path}.")
+
+    _set_fast_update_progress(3, "Resetting factory state", 100.0, "Legacy device state removed.")
+
+    _set_fast_update_progress(4, "Finalizing reset", 50.0, "Syncing filesystem before reboot...")
+    subprocess.run(["sync"], capture_output=True, text=True, timeout=60, check=False)
+    _set_fast_update_progress(4, "Finalizing reset", 100.0, "Filesystem sync complete.")
+
+    _finish_update_and_reboot(
+      "Factory reset complete. Device is rebooting now. Please wait for reconnection."
+    )
+  except Exception as exception:
+    _set_fast_update_error_state("Factory reset failed.", exception)
 
 def _collect_fast_update_info(include_remote=True):
   repo_path = str(_get_openpilot_root())
@@ -4365,8 +4429,8 @@ def setup(app):
     return jsonify({
       **state_data,
       **git_data,
-      "isOnroad": params.get_bool("IsOnroad"),
-      "automaticUpdates": params.get_bool("AutomaticUpdates"),
+      "isOnroad": _safe_params_get_bool("IsOnroad"),
+      "automaticUpdates": _safe_params_get_bool("AutomaticUpdates"),
       "warning": "Fast update skips backup creation and finalization safeguards.",
     }), 200
 
@@ -4388,7 +4452,7 @@ def setup(app):
       "currentBranch": current_branch,
       "branches": branches,
       "remoteError": remote_error,
-      "isOnroad": params.get_bool("IsOnroad"),
+      "isOnroad": _safe_params_get_bool("IsOnroad"),
       "running": state_data.get("running", False),
     }), 200
 
@@ -4461,6 +4525,38 @@ def setup(app):
     return jsonify({
       "message": f"Branch switch started for '{target_branch}'. Device will reboot when complete.",
       "warning": "Fast update skips backup creation and finalization safeguards.",
+    }), 202
+
+  @app.route("/api/update/factory_reset", methods=["POST"])
+  def run_factory_reset():
+    if _safe_params_get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot run a factory reset while driving."}), 409
+
+    with _fast_update_lock:
+      if _fast_update_state.get("running"):
+        return jsonify({"error": "Another update action is already in progress."}), 409
+      _fast_update_state.update({
+        "running": True,
+        "stage": "starting",
+        "message": "Starting factory reset...",
+        "lastError": "",
+        "lastBranch": "",
+        "lastMode": "factory-reset",
+        "startedAt": time.time(),
+        "finishedAt": 0.0,
+        "progressStep": 1,
+        "progressTotalSteps": _FAST_UPDATE_TOTAL_STEPS,
+        "progressStepPercent": 0.0,
+        "progressPercent": 0.0,
+        "progressLabel": "Preparing factory reset",
+        "progressDetail": "Initializing factory reset...",
+      })
+
+    threading.Thread(target=_factory_reset_worker, daemon=True).start()
+
+    return jsonify({
+      "message": "Factory reset started. Device will reboot when complete.",
+      "warning": "This wipes local params, backups, themes, models, maps, and route data.",
     }), 202
 
   # ── Galaxy pairing (mirrors settings.cc L262-282) ──────────────────
