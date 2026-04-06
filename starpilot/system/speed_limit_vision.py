@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 
 from openpilot.common.constants import CV
+from openpilot.common.realtime import set_core_affinity
+from openpilot.system.hardware import PC
 
 INFERENCE_INTERVAL = 0.2
 FOLLOWUP_INFERENCE_INTERVAL = 0.1
@@ -161,6 +163,7 @@ SCHOOL_ZONE_SHORT_CIRCUIT_CONFIDENCE = 0.78
 DEBUG_BASE_DIR = Path("/data/media/0/vision_speed_limit_debug")
 DEBUG_CAPTURE_DIRNAME = "captures"
 SNAPSHOT_JPEG_QUALITY = 85
+SPEED_LIMIT_VISION_AFFINITY_CORES = [0, 1, 2, 3]
 
 
 @dataclass
@@ -1783,6 +1786,14 @@ class SpeedLimitVisionDaemon:
 
 
 def main():
+  # Keep this best-effort helper off the critical control/model/camera cores.
+  if not PC:
+    set_core_affinity(SPEED_LIMIT_VISION_AFFINITY_CORES)
+
+  # OpenCV may otherwise fan out across many worker threads and starve more
+  # important daemons during detection bursts.
+  cv2.setNumThreads(1)
+
   daemon = SpeedLimitVisionDaemon()
   daemon.run()
 

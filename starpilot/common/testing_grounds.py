@@ -41,9 +41,8 @@ TESTING_GROUNDS_SLOT_DEFINITIONS = (
   {
     "id": TESTING_GROUND_2,
     "name": "volt test tune",
-    "description": "A/B sandbox for planner-aware GM longitudinal limits and a radar-only far-lead distance guard.",
-    "aLabel": "A - Current behavior",
-    "bLabel": "B - Clamp + guard",
+    "description": "Volt longitudinal tuning sandbox.",
+    "aLabel": "A - Installed tune",
   },
   {
     "id": TESTING_GROUND_3,

@@ -144,7 +144,7 @@ procs += [
   PythonProcess("the_pond", "starpilot.system.the_pond.the_pond", always_run, nice=19),
   PythonProcess("galaxy", "starpilot.system.galaxy.galaxy", always_run, nice=19),
   PythonProcess("speed_limit_filler", "starpilot.system.speed_limit_filler", run_speed_limit_filler),
-  PythonProcess("speed_limit_vision", "starpilot.system.speed_limit_vision", run_speed_limit_vision),
+  PythonProcess("speed_limit_vision", "starpilot.system.speed_limit_vision", run_speed_limit_vision, nice=19),
 ]
 
 managed_processes = {p.name: p for p in procs}
