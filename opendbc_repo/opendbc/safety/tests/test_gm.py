@@ -460,13 +460,21 @@ class TestGmCcLongitudinalPandaSchedSafety(TestGmCcLongitudinalSafety):
     self.assertTrue(self._tx(self._pcm_status_msg(True)))
     self.assertTrue(self._tx(self._pcm_status_msg(False)))
 
+  def test_paddle_feed_apply_frames_buffered_before_stock_sync(self):
+    paddle_apply = common.make_msg(0, 0xBD, 7, bytes([0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]))
+    prndl_apply = common.make_msg(0, 0x1F5, 8, bytes([0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00]))
+
+    self.safety.set_controls_allowed(True)
+    self.assertFalse(self._tx(paddle_apply))
+    self.assertFalse(self._tx(prndl_apply))
+
   def test_paddle_feed_apply_frames_blocked_after_stock_sync(self):
     paddle_apply = common.make_msg(0, 0xBD, 7, bytes([0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]))
     prndl_apply = common.make_msg(0, 0x1F5, 8, bytes([0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00]))
 
     self.safety.set_controls_allowed(True)
-    self.assertTrue(self._tx(paddle_apply))
-    self.assertTrue(self._tx(prndl_apply))
+    self.assertFalse(self._tx(paddle_apply))
+    self.assertFalse(self._tx(prndl_apply))
 
     self._rx(paddle_apply)
     self._rx(prndl_apply)

@@ -460,10 +460,10 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
           gm_bd_state.next_tx_us = now_us + GM_PADDLE_TX_OFFSET_US;
         }
       }
-      bool scheduler_ready = gm_periodic_scheduler_ready(&gm_bd_state, now_us, GM_PADDLE_STALE_US, GM_PADDLE_FEED_STALE_US);
-      if (scheduler_ready) {
-        tx = false;
-      }
+      // Always buffer external paddle feeds and let panda emit them on the stock-aligned schedule.
+      // Allowing an unsynced apply frame through causes a visible on/off/on stutter when the stock
+      // off frame lands before the scheduler has taken ownership.
+      tx = false;
     }
   }
 
@@ -485,10 +485,7 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
           gm_prndl2_state.next_tx_us = now_us + GM_PADDLE_TX_OFFSET_US;
         }
       }
-      bool scheduler_ready = gm_periodic_scheduler_ready(&gm_prndl2_state, now_us, GM_PADDLE_STALE_US, GM_PADDLE_FEED_STALE_US);
-      if (scheduler_ready) {
-        tx = false;
-      }
+      tx = false;
     }
   }
 
