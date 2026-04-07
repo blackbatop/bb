@@ -89,7 +89,13 @@ class StarPilotPanel(Widget):
           bg_color=cat.get("color"),
         )
       elif tile_type == "toggle":
-        tile = ToggleTile(title=tr(cat["title"]), get_state=cat["get_state"], set_state=cat["set_state"], icon_path=cat.get("icon"), bg_color=cat.get("color"), desc=tr(cat.get("desc", "")), is_enabled=cat.get("is_enabled"), disabled_label=cat.get("disabled_label", ""))
+        raw_set_state = cat["set_state"]
+
+        def on_toggle(state: bool, setter=raw_set_state):
+          setter(state)
+          self._rebuild_grid()
+
+        tile = ToggleTile(title=tr(cat["title"]), get_state=cat["get_state"], set_state=on_toggle, icon_path=cat.get("icon"), bg_color=cat.get("color"), desc=tr(cat.get("desc", "")), is_enabled=cat.get("is_enabled"), disabled_label=cat.get("disabled_label", ""))
       elif tile_type == "value":
         tile = ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], icon_path=cat.get("icon"), bg_color=cat.get("color"), is_enabled=cat.get("is_enabled"), desc=tr(cat.get("desc", "")))
       else:
@@ -136,5 +142,43 @@ def create_tile_panel(categories: list[dict], sub_panels: dict[str, Widget] | No
     if hasattr(child, 'set_back_callback'):
       child.set_back_callback(panel._go_back)
 
+  panel._rebuild_grid()
+  return panel
+
+
+def create_master_toggle_panel(toggle_specs: list[dict], sub_panels: dict[str, Widget] | None = None,
+                              extra_categories: list[dict] | None = None) -> StarPilotPanel:
+  panel = create_tile_panel([], sub_panels)
+  categories: list[dict] = []
+
+  for spec in toggle_specs:
+    get_state = spec["get_state"]
+    visible = spec.get("visible")
+    manage_enabled = spec.get("manage_enabled", get_state)
+
+    categories.append({
+      "title": spec["title"],
+      "desc": spec.get("desc", ""),
+      "type": "toggle",
+      "get_state": get_state,
+      "set_state": spec["set_state"],
+      "icon": spec.get("icon"),
+      "color": spec.get("color"),
+      "visible": visible,
+    })
+
+    categories.append({
+      "title": spec.get("manage_title", "Settings"),
+      "desc": spec.get("manage_desc", ""),
+      "type": "value",
+      "get_value": lambda enabled=get_state, active_label=spec.get("manage_label", "Manage"), inactive_label=spec.get("disabled_label", "Enable First"): tr(active_label) if enabled() else tr(inactive_label),
+      "on_click": lambda sub_panel=spec["panel"]: panel._navigate_to(sub_panel),
+      "is_enabled": manage_enabled,
+      "icon": spec.get("manage_icon", spec.get("icon")),
+      "color": spec.get("color"),
+      "visible": visible,
+    })
+
+  panel.CATEGORIES = categories + list(extra_categories or [])
   panel._rebuild_grid()
   return panel

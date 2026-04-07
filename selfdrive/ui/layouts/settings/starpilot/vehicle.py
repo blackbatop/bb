@@ -1,7 +1,4 @@
 from __future__ import annotations
-import os
-import re
-from pathlib import Path
 
 from openpilot.system.hardware import HARDWARE
 from openpilot.system.ui.lib.application import gui_app
@@ -12,73 +9,11 @@ from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog, TileGrid, HubTile, ToggleTile, ValueTile
 from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state
-
-MAKE_TO_FOLDER = {
-  "acura": "honda",
-  "audi": "volkswagen",
-  "buick": "gm",
-  "cadillac": "gm",
-  "chevrolet": "gm",
-  "chrysler": "chrysler",
-  "cupra": "volkswagen",
-  "dodge": "chrysler",
-  "ford": "ford",
-  "genesis": "hyundai",
-  "gmc": "gm",
-  "holden": "gm",
-  "honda": "honda",
-  "hyundai": "hyundai",
-  "jeep": "chrysler",
-  "kia": "hyundai",
-  "lexus": "toyota",
-  "lincoln": "ford",
-  "man": "volkswagen",
-  "mazda": "mazda",
-  "nissan": "nissan",
-  "peugeot": "psa",
-  "ram": "chrysler",
-  "rivian": "rivian",
-  "seat": "volkswagen",
-  "škoda": "volkswagen",
-  "subaru": "subaru",
-  "tesla": "tesla",
-  "toyota": "toyota",
-  "volkswagen": "volkswagen",
-}
-
-
-def get_car_names(car_make: str):
-  folder = MAKE_TO_FOLDER.get(car_make.lower())
-  if not folder:
-    return [], {}
-
-  # Path to values.py in opendbc
-  values_path = Path(__file__).parents[4] / "opendbc" / "car" / folder / "values.py"
-  if not values_path.exists():
-    return [], {}
-
-  with open(values_path, "r") as f:
-    content = f.read()
-
-  # Clean comments
-  content = re.sub(r'#.*', '', content)
-
-  # Find platforms and car names
-  platforms = re.findall(r'(\w+)\s*=\s*\w+\s*\(', content)
-  car_models = {}
-  car_names = []
-
-  # This is a simplified version of the C++ regex logic
-  # In values.py, CarDocs often appears as CarDocs("Name", ...)
-  matches = re.finditer(r'CarDocs\w*\s*\(\s*"([^"]+)"', content)
-  for match in matches:
-    name = match.group(1)
-    if name.lower().startswith(car_make.lower()):
-      # Find the platform name by looking backwards for the nearest platform assignment
-      # For now, we'll just store the name
-      car_names.append(name)
-
-  return sorted(list(set(car_names))), car_models
+from openpilot.selfdrive.ui.mici.layouts.settings.fingerprint_catalog import (
+  FingerprintModelOption,
+  get_fingerprint_catalog,
+  shorten_model_label,
+)
 
 
 def _lock_doors_timer_labels():
@@ -91,6 +26,7 @@ def _lock_doors_timer_labels():
 class StarPilotVehicleSettingsLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._make_options, self._models_by_make, self._models_by_value, self._make_by_model = get_fingerprint_catalog()
     self._sub_panels = {
       "gm": StarPilotGMVehicleLayout(),
       "hkg": StarPilotHKGVehicleLayout(),
@@ -103,14 +39,14 @@ class StarPilotVehicleSettingsLayout(StarPilotPanel):
       {
         "title": tr_noop("Car Make"),
         "type": "value",
-        "get_value": lambda: self._params.get("CarMake", encoding='utf-8') or tr("None"),
+        "get_value": self._get_display_make,
         "on_click": self._on_select_make,
         "color": "#64748B",
       },
       {
         "title": tr_noop("Car Model"),
         "type": "value",
-        "get_value": lambda: self._params.get("CarModelName", encoding='utf-8') or tr("None"),
+        "get_value": self._get_display_model,
         "on_click": self._on_select_model,
         "color": "#64748B",
       },
@@ -189,37 +125,93 @@ class StarPilotVehicleSettingsLayout(StarPilotPanel):
 
       self._tile_grid.add_tile(tile)
 
+  def _get_display_make(self):
+    make = self._params.get("CarMake", encoding='utf-8') or ""
+    if make:
+      return make
+
+    model = self._params.get("CarModel", encoding='utf-8') or ""
+    if model:
+      return self._make_by_model.get(model, tr("None"))
+    return tr("None")
+
+  def _get_selected_model_option(self) -> FingerprintModelOption | None:
+    model = self._params.get("CarModel", encoding='utf-8') or ""
+    if not model:
+      return None
+
+    model_name = self._params.get("CarModelName", encoding='utf-8') or ""
+    make = self._params.get("CarMake", encoding='utf-8') or self._make_by_model.get(model, "")
+    if make and model_name:
+      for option in self._models_by_make.get(make, ()): 
+        if option.value == model and option.label == model_name:
+          return option
+
+    return self._models_by_value.get(model)
+
+  def _get_display_model(self):
+    selected_option = self._get_selected_model_option()
+    if selected_option is not None:
+      return selected_option.button_label
+
+    model = self._params.get("CarModel", encoding='utf-8') or ""
+    model_name = self._params.get("CarModelName", encoding='utf-8') or ""
+    make = self._params.get("CarMake", encoding='utf-8') or self._make_by_model.get(model, "")
+
+    if model_name:
+      return shorten_model_label(make, model_name) if make else model_name
+    if model and model in self._models_by_value:
+      return self._models_by_value[model].button_label
+    return tr("None")
+
   def _on_select_make(self):
-    makes = sorted(list(MAKE_TO_FOLDER.keys()))
-    makes = [m.capitalize() for m in makes]
+    makes = list(self._make_options)
+    if not makes:
+      gui_app.set_modal_overlay(ConfirmDialog(tr("No fingerprint list available."), tr("OK"), on_close=lambda r: None))
+      return
 
     def on_select(res, val):
       if res == DialogResult.CONFIRM:
         self._params.put("CarMake", val)
-        self._params.remove("CarModel")
-        self._params.remove("CarModelName")
+        current_model = self._params.get("CarModel", encoding='utf-8') or ""
+        available_models = {option.value for option in self._models_by_make.get(val, ())}
+        if current_model not in available_models:
+          self._params.remove("CarModel")
+          self._params.remove("CarModelName")
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Make"), makes, self._params.get("CarMake", encoding='utf-8') or "", on_close=on_select))
+    current_make = self._params.get("CarMake", encoding='utf-8') or ""
+    default_make = current_make if current_make in makes else makes[0]
+    gui_app.set_modal_overlay(SelectionDialog(tr("Select Make"), makes, default_make, on_close=on_select))
 
   def _on_select_model(self):
-    make = self._params.get("CarMake", encoding='utf-8')
+    make = self._params.get("CarMake", encoding='utf-8') or ""
     if not make:
       gui_app.set_modal_overlay(ConfirmDialog(tr("Please select a Car Make first!"), tr("OK"), on_close=lambda r: None))
       return
 
-    models, _ = get_car_names(make)
-    if not models:
-      gui_app.set_modal_overlay(ConfirmDialog(tr("No models found for this make."), tr("OK"), on_close=lambda r: None))
+    model_options = self._models_by_make.get(make, ())
+    if not model_options:
+      gui_app.set_modal_overlay(ConfirmDialog(tr("No models available for this make."), tr("OK"), on_close=lambda r: None))
       return
+
+    option_labels = [option.option_label for option in model_options]
+    selected_by_label = {option.option_label: option for option in model_options}
+    current_model = self._params.get("CarModel", encoding='utf-8') or ""
+    current_model_name = self._params.get("CarModelName", encoding='utf-8') or ""
+    default_option = next((option.option_label for option in model_options if option.value == current_model and option.label == current_model_name), None)
+    if default_option is None:
+      default_option = next((option.option_label for option in model_options if option.value == current_model), option_labels[0])
 
     def on_select(res, val):
       if res == DialogResult.CONFIRM:
-        self._params.put("CarModelName", val)
-        # In a real build we'd map name to platform code here
+        selected_option = selected_by_label[val]
+        self._params.put("CarModel", selected_option.value)
+        self._params.put("CarModelName", selected_option.label)
+        self._params.put("CarMake", make)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Model"), models, self._params.get("CarModelName", encoding='utf-8') or "", on_close=on_select))
+    gui_app.set_modal_overlay(SelectionDialog(tr("Select Model"), option_labels, default_option, on_close=on_select))
 
   def _on_disable_long(self, state):
     if state:

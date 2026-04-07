@@ -6,27 +6,80 @@ from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
 from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.system.ui.widgets.input_dialog import InputDialog
-from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_tile_panel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_master_toggle_panel, create_tile_panel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.tabbed_panel import TabSectionSpec, TabbedSectionHost
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog
+from openpilot.starpilot.common.accel_profile import (
+  ACCELERATION_PROFILES,
+  DECELERATION_PROFILES,
+  normalize_acceleration_profile,
+  normalize_deceleration_profile,
+)
+
+
+ACCELERATION_PROFILE_OPTIONS = [
+  (ACCELERATION_PROFILES["STANDARD"], "Standard"),
+  (ACCELERATION_PROFILES["ECO"], "Eco"),
+  (ACCELERATION_PROFILES["SPORT"], "Sport"),
+  (ACCELERATION_PROFILES["SPORT_PLUS"], "Sport+"),
+]
+
+DECELERATION_PROFILE_OPTIONS = [
+  (DECELERATION_PROFILES["STANDARD"], "Standard"),
+  (DECELERATION_PROFILES["ECO"], "Eco"),
+  (DECELERATION_PROFILES["SPORT"], "Sport"),
+]
 
 
 class StarPilotLongitudinalLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
-    tune_panel = create_tile_panel([
-      {"title": tr_noop("Longitudinal Tuning"), "panel": "tuning", "icon": "toggle_icons/icon_longitudinal_tune.png", "color": "#597497"},
-      {"title": tr_noop("Advanced Tuning"), "panel": "advanced", "icon": "toggle_icons/icon_advanced_longitudinal_tune.png", "color": "#597497"},
-      {"title": tr_noop("Driving Personalities"), "panel": "personalities", "icon": "toggle_icons/icon_personality.png", "color": "#597497"},
+    longitudinal_tune_panel = StarPilotLongitudinalTuneLayout()
+    advanced_longitudinal_panel = StarPilotAdvancedLongitudinalLayout()
+    tune_panel = create_master_toggle_panel([
+      {
+        "title": tr_noop("Longitudinal Tuning"),
+        "desc": tr_noop("Acceleration and braking control changes to fine-tune how openpilot drives."),
+        "manage_title": tr_noop("Longitudinal Settings"),
+        "manage_desc": tr_noop("Open acceleration profiles, human-like behavior, lead detection, and turn-speed controls."),
+        "manage_label": tr_noop("Configure"),
+        "disabled_label": tr_noop("Enable First"),
+        "panel": "tuning",
+        "get_state": lambda: self._params.get_bool("LongitudinalTune"),
+        "set_state": lambda s: self._params.put_bool("LongitudinalTune", s),
+        "icon": "toggle_icons/icon_longitudinal_tune.png",
+        "color": "#597497",
+      },
+      {
+        "title": tr_noop("Advanced Longitudinal Tuning"),
+        "desc": tr_noop("Advanced acceleration and braking changes for refining launch, stopping, and actuator response."),
+        "manage_title": tr_noop("Advanced Settings"),
+        "manage_desc": tr_noop("Adjust actuator delay, launch and stop behavior, and powertrain-specific tuning options."),
+        "manage_label": tr_noop("Configure"),
+        "disabled_label": tr_noop("Enable First"),
+        "panel": "advanced",
+        "get_state": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "set_state": lambda s: self._params.put_bool("AdvancedLongitudinalTune", s),
+        "icon": "toggle_icons/icon_advanced_longitudinal_tune.png",
+        "color": "#597497",
+      },
     ], {
-      "tuning": StarPilotLongitudinalTuneLayout(),
-      "advanced": StarPilotAdvancedLongitudinalLayout(),
+      "tuning": longitudinal_tune_panel,
+      "advanced": advanced_longitudinal_panel,
       "personalities": StarPilotPersonalitiesLayout(),
       "traffic_personality": StarPilotPersonalityProfileLayout("Traffic"),
       "aggressive_personality": StarPilotPersonalityProfileLayout("Aggressive"),
       "standard_personality": StarPilotPersonalityProfileLayout("Standard"),
       "relaxed_personality": StarPilotPersonalityProfileLayout("Relaxed"),
-    })
+    }, extra_categories=[
+      {
+        "title": tr_noop("Driving Personalities"),
+        "desc": tr_noop("Customize the Traffic, Aggressive, Standard, and Relaxed profiles to match your driving style."),
+        "panel": "personalities",
+        "icon": "toggle_icons/icon_personality.png",
+        "color": "#597497",
+      },
+    ])
 
     adaptive_panel = create_tile_panel([
       {"title": tr_noop("Conditional Experimental"), "panel": "conditional", "icon": "toggle_icons/icon_conditional.png", "color": "#597497"},
@@ -74,87 +127,111 @@ class StarPilotAdvancedLongitudinalLayout(StarPilotPanel):
     super().__init__()
     self.CATEGORIES = [
       {
-        "title": tr_noop("Advanced Longitudinal Tuning"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
-        "set_state": lambda s: self._params.put_bool("AdvancedLongitudinalTune", s),
-        "icon": "toggle_icons/icon_advanced_longitudinal_tune.png",
-        "color": "#597497",
-      },
-      {
         "title": tr_noop("EV Tuning"),
+        "desc": tr_noop("Use acceleration tuning intended for EV and direct-drive vehicles."),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("EVTuning"),
-        "set_state": lambda s: self._params.put_bool("EVTuning", s),
+        "set_state": self._set_ev_tuning,
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "is_enabled": lambda: not self._params.get_bool("TruckTuning"),
+        "disabled_label": tr_noop("Truck Active"),
+        "visible": self._advanced_enabled,
       },
       {
         "title": tr_noop("Truck Tuning"),
+        "desc": tr_noop("Use stronger launch and acceleration behavior intended for heavier vehicles."),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("TruckTuning"),
-        "set_state": lambda s: self._params.put_bool("TruckTuning", s),
+        "set_state": self._set_truck_tuning,
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "is_enabled": lambda: not self._params.get_bool("EVTuning"),
+        "disabled_label": tr_noop("EV Active"),
+        "visible": self._advanced_enabled,
       },
       {
         "title": tr_noop("Actuator Delay"),
+        "desc": tr_noop("The time between an acceleration or brake command and the vehicle's response."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('LongitudinalActuatorDelay'):.2f}s",
         "on_click": lambda: self._show_float_selector("LongitudinalActuatorDelay", 0.0, 1.0, 0.01, "s"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": self._advanced_enabled,
       },
       {
-        "title": tr_noop("Max Acceleration"),
+        "title": tr_noop("Maximum Acceleration"),
+        "desc": tr_noop("Limit the strongest acceleration openpilot is allowed to command."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('MaxDesiredAcceleration'):.1f}m/s²",
         "on_click": lambda: self._show_float_selector("MaxDesiredAcceleration", 0.1, 4.0, 0.1, "m/s²"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": self._advanced_enabled,
       },
       {
-        "title": tr_noop("Start Accel"),
+        "title": tr_noop("Start Acceleration"),
+        "desc": tr_noop("Extra acceleration applied when moving away from a stop."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('StartAccel'):.2f}m/s²",
         "on_click": lambda: self._show_float_selector("StartAccel", 0.0, 4.0, 0.01, "m/s²"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": lambda: self._advanced_enabled() and not self._using_human_acceleration(),
       },
       {
-        "title": tr_noop("Stop Accel"),
+        "title": tr_noop("Stop Acceleration"),
+        "desc": tr_noop("Brake force used to hold the vehicle at a complete stop."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('StopAccel'):.2f}m/s²",
         "on_click": lambda: self._show_float_selector("StopAccel", -4.0, 0.0, 0.01, "m/s²"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": self._advanced_enabled,
       },
       {
         "title": tr_noop("Stopping Rate"),
+        "desc": tr_noop("How quickly braking ramps up when openpilot is bringing the car to a stop."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('StoppingDecelRate'):.3f}m/s²",
         "on_click": lambda: self._show_float_selector("StoppingDecelRate", 0.001, 1.0, 0.001, "m/s²"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": self._show_stop_tuning_values,
       },
       {
-        "title": tr_noop("VEgo Starting"),
+        "title": tr_noop("Start Speed"),
+        "desc": tr_noop("The speed where openpilot transitions out of the stopped state."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('VEgoStarting'):.2f}m/s",
         "on_click": lambda: self._show_float_selector("VEgoStarting", 0.01, 1.0, 0.01, "m/s"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": self._show_stop_tuning_values,
       },
       {
-        "title": tr_noop("VEgo Stopping"),
+        "title": tr_noop("Stop Speed"),
+        "desc": tr_noop("The speed where openpilot considers the vehicle fully stopped."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_float('VEgoStopping'):.2f}m/s",
         "on_click": lambda: self._show_float_selector("VEgoStopping", 0.01, 1.0, 0.01, "m/s"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("AdvancedLongitudinalTune"),
+        "visible": self._show_stop_tuning_values,
       },
     ]
     self._rebuild_grid()
+
+  def _advanced_enabled(self):
+    return self._params.get_bool("AdvancedLongitudinalTune")
+
+  def _using_human_acceleration(self):
+    return self._params.get_bool("LongitudinalTune") and self._params.get_bool("HumanAcceleration")
+
+  def _show_stop_tuning_values(self):
+    return self._advanced_enabled() and not (starpilot_state.car_state.isToyota and self._params.get_bool("FrogsGoMoosTweak"))
+
+  def _set_ev_tuning(self, state: bool):
+    self._params.put_bool("EVTuning", state)
+    if state:
+      self._params.put_bool("TruckTuning", False)
+
+  def _set_truck_tuning(self, state: bool):
+    self._params.put_bool("TruckTuning", state)
+    if state:
+      self._params.put_bool("EVTuning", False)
 
   def _show_float_selector(self, key, min_v, max_v, step, unit=""):
     def on_close(res, val):
@@ -471,79 +548,105 @@ class StarPilotLongitudinalTuneLayout(StarPilotPanel):
     super().__init__()
     self.CATEGORIES = [
       {
-        "title": tr_noop("Longitudinal Tuning"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("LongitudinalTune"),
-        "set_state": lambda s: self._params.put_bool("LongitudinalTune", s),
-        "icon": "toggle_icons/icon_longitudinal_tune.png",
-        "color": "#597497",
-      },
-      {
         "title": tr_noop("Acceleration Profile"),
+        "desc": tr_noop("Choose how quickly openpilot speeds up."),
         "type": "value",
-        "get_value": lambda: self._params.get("AccelerationProfile", encoding='utf-8') or "Standard",
-        "on_click": lambda: self._show_selection("AccelerationProfile", ["Standard", "Eco", "Sport", "Sport+"]),
+        "get_value": self._get_acceleration_profile_label,
+        "on_click": self._show_acceleration_profile_selector,
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": self._longitudinal_enabled,
       },
       {
         "title": tr_noop("Deceleration Profile"),
+        "desc": tr_noop("Choose how firmly openpilot slows the car down."),
         "type": "value",
-        "get_value": lambda: self._params.get("DecelerationProfile", encoding='utf-8') or "Standard",
-        "on_click": lambda: self._show_selection("DecelerationProfile", ["Standard", "Eco", "Sport"]),
+        "get_value": self._get_deceleration_profile_label,
+        "on_click": self._show_deceleration_profile_selector,
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": self._longitudinal_enabled,
       },
       {
-        "title": tr_noop("Human Acceleration"),
+        "title": tr_noop("Human-Like Acceleration"),
+        "desc": tr_noop("Smooth throttle behavior at low speed with stronger takeoff from a stop."),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("HumanAcceleration"),
         "set_state": lambda s: self._params.put_bool("HumanAcceleration", s),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": self._longitudinal_enabled,
       },
       {
-        "title": tr_noop("Human Following"),
+        "title": tr_noop("Human-Like Following"),
+        "desc": tr_noop("Adjust following behavior to feel more natural behind other vehicles."),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("HumanFollowing"),
         "set_state": lambda s: self._params.put_bool("HumanFollowing", s),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": self._longitudinal_enabled,
       },
       {
-        "title": tr_noop("Human Lane Changes"),
+        "title": tr_noop("Human-Like Lane Changes"),
+        "desc": tr_noop("Use radar-informed behavior during lane changes when radar support is available."),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("HumanLaneChanges"),
         "set_state": lambda s: self._params.put_bool("HumanLaneChanges", s),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": lambda: self._longitudinal_enabled() and starpilot_state.car_state.hasRadar,
       },
       {
-        "title": tr_noop("Lead Detection"),
+        "title": tr_noop("Lead Detection Sensitivity"),
+        "desc": tr_noop("Control how aggressively openpilot detects and reacts to vehicles ahead."),
         "type": "value",
         "get_value": lambda: f"{self._params.get_int('LeadDetectionThreshold')}%",
         "on_click": lambda: self._show_int_selector("LeadDetectionThreshold", 25, 50, "%"),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": self._longitudinal_enabled,
       },
       {
-        "title": tr_noop("Taco Tune"),
+        "title": tr_noop("\"Taco Bell Run\" Turn Speed Hack"),
+        "desc": tr_noop("Slow down more assertively for turns."),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("TacoTune"),
         "set_state": lambda s: self._params.put_bool("TacoTune", s),
         "color": "#597497",
-        "visible": lambda: self._params.get_bool("LongitudinalTune"),
+        "visible": self._longitudinal_enabled,
       },
     ]
     self._rebuild_grid()
 
-  def _show_selection(self, key, options):
+  def _longitudinal_enabled(self):
+    return self._params.get_bool("LongitudinalTune")
+
+  def _get_acceleration_profile_label(self):
+    value = normalize_acceleration_profile(self._params.get("AccelerationProfile", encoding='utf-8'))
+    return self._profile_label_for_value(value, ACCELERATION_PROFILE_OPTIONS)
+
+  def _get_deceleration_profile_label(self):
+    value = normalize_deceleration_profile(self._params.get("DecelerationProfile", encoding='utf-8'))
+    return self._profile_label_for_value(value, DECELERATION_PROFILE_OPTIONS)
+
+  def _show_acceleration_profile_selector(self):
+    self._show_selection("Acceleration Profile", "AccelerationProfile", ACCELERATION_PROFILE_OPTIONS, normalize_acceleration_profile(self._params.get("AccelerationProfile", encoding='utf-8')))
+
+  def _show_deceleration_profile_selector(self):
+    self._show_selection("Deceleration Profile", "DecelerationProfile", DECELERATION_PROFILE_OPTIONS, normalize_deceleration_profile(self._params.get("DecelerationProfile", encoding='utf-8')))
+
+  def _profile_label_for_value(self, value, options):
+    for option_value, option_label in options:
+      if option_value == value:
+        return tr(option_label)
+    return tr(options[0][1])
+
+  def _show_selection(self, title, key, options, current_value):
+    option_labels = [tr(option_label) for _, option_label in options]
+    label_to_value = {tr(option_label): option_value for option_value, option_label in options}
+    default_option = next((tr(option_label) for option_value, option_label in options if option_value == current_value), option_labels[0])
+
     def on_select(res, val):
       if res == DialogResult.CONFIRM:
-        self._params.put(key, val)
+        self._params.put_int(key, label_to_value[val])
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr(key), options, self._params.get(key, encoding='utf-8') or "Standard", on_close=on_select))
+    gui_app.set_modal_overlay(SelectionDialog(tr(title), option_labels, default_option, on_close=on_select))
 
   def _show_int_selector(self, key, min_v, max_v, unit=""):
     def on_close(res, val):
