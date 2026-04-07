@@ -30,7 +30,7 @@ class StarPilotDataLayout(StarPilotPanel):
     self.CATEGORIES = [
       {"title": tr_noop("Manage Backups"), "panel": "backups", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
       {"title": tr_noop("Toggle Backups"), "panel": "toggle_backups", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
-      {"title": tr_noop("Manage Storage"), "panel": "storage", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
+      {"title": tr_noop("Driving Data Storage"), "type": "value", "get_value": self._get_storage, "on_click": lambda: None, "icon": "toggle_icons/icon_system.png", "color": "#D43D8A", "is_enabled": lambda: False},
       {
         "title": tr_noop("Delete Driving Data"),
         "type": "hub",
@@ -50,7 +50,6 @@ class StarPilotDataLayout(StarPilotPanel):
     self._sub_panels = {
       "backups": StarPilotBackupsLayout(),
       "toggle_backups": StarPilotToggleBackupsLayout(),
-      "storage": StarPilotStorageLayout(),
     }
     self._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
 
@@ -88,6 +87,18 @@ class StarPilotDataLayout(StarPilotPanel):
         gui_app.set_modal_overlay(alert_dialog(tr("Error logs deleted.")))
 
     gui_app.set_modal_overlay(ConfirmDialog(tr("Delete all error logs?"), tr("Delete"), on_close=_do_delete))
+
+  def _get_storage(self):
+    paths = ["/data/media/0/osm/offline", "/data/media/0/realdata", "/data/backups"]
+    total = 0
+    for p in paths:
+      pp = Path(p)
+      if pp.exists():
+        total += sum(f.stat().st_size for f in pp.rglob('*') if f.is_file())
+    mb = total / (1024 * 1024)
+    if mb > 1024:
+      return f"{(mb / 1024):.2f} GB"
+    return f"{mb:.2f} MB"
 
 
 class StarPilotBackupsLayout(StarPilotPanel):
@@ -231,25 +242,3 @@ class StarPilotToggleBackupsLayout(StarPilotPanel):
         self._rebuild_grid()
 
     gui_app.set_modal_overlay(SelectionDialog(tr("Delete Toggle Backup"), backups, on_close=_on_select))
-
-
-class StarPilotStorageLayout(StarPilotPanel):
-  def __init__(self):
-    super().__init__()
-    self._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
-    self.CATEGORIES = [
-      {"title": tr_noop("Driving Data"), "type": "value", "get_value": self._get_storage, "on_click": lambda: None, "color": "#D43D8A", "is_enabled": lambda: False},
-    ]
-    self._rebuild_grid()
-
-  def _get_storage(self):
-    paths = ["/data/media/0/osm/offline", "/data/media/0/realdata", "/data/backups"]
-    total = 0
-    for p in paths:
-      pp = Path(p)
-      if pp.exists():
-        total += sum(f.stat().st_size for f in pp.rglob('*') if f.is_file())
-    mb = total / (1024 * 1024)
-    if mb > 1024:
-      return f"{(mb / 1024):.2f} GB"
-    return f"{mb:.2f} MB"

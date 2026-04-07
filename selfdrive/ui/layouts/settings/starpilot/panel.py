@@ -8,6 +8,7 @@ import pyray as rl
 from openpilot.common.params import Params
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid
 
 
 class StarPilotPanelType(IntEnum):
@@ -121,3 +122,19 @@ class StarPilotPanel(Widget):
       self._sub_panels[self._current_sub_panel].show_event()
     elif self._scroller:
       self._scroller.show_event()
+
+
+def create_tile_panel(categories: list[dict], sub_panels: dict[str, Widget] | None = None) -> StarPilotPanel:
+  panel = StarPilotPanel()
+  panel.CATEGORIES = categories
+  panel._sub_panels = sub_panels or {}
+  panel._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
+
+  for name, child in panel._sub_panels.items():
+    if hasattr(child, 'set_navigate_callback'):
+      child.set_navigate_callback(panel._navigate_to)
+    if hasattr(child, 'set_back_callback'):
+      child.set_back_callback(panel._go_back)
+
+  panel._rebuild_grid()
+  return panel

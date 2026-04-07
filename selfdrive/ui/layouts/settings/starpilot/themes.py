@@ -105,6 +105,7 @@ class StarPilotThemesLayout(StarPilotPanel):
         "icon": "toggle_icons/icon_frog.png",
         "color": "#542A71",
         "desc": tr_noop("Customize the overall look and feel."),
+        "visible": lambda: self._params.get_bool("CustomThemes"),
       },
       {
         "title": tr_noop("Holiday Themes"),
@@ -179,13 +180,6 @@ class StarPilotPersonalizeLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self.CATEGORIES = [
-      {
-        "title": tr_noop("Custom Themes"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("CustomThemes"),
-        "set_state": lambda s: self._params.put_bool("CustomThemes", s),
-        "color": "#542A71",
-      },
       {
         "title": tr_noop("Boot Logo"),
         "type": "value",

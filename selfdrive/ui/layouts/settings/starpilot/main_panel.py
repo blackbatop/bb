@@ -110,6 +110,9 @@ class StarPilotLayout(Widget):
       StarPilotPanelType.LATERAL,
       StarPilotPanelType.NAVIGATION,
       StarPilotPanelType.MAPS,
+      StarPilotPanelType.VISUALS,
+      StarPilotPanelType.THEMES,
+      StarPilotPanelType.VEHICLE,
     )
 
     self._main_grid = TileGrid(columns=None, padding=20)
@@ -162,7 +165,11 @@ class StarPilotLayout(Widget):
       self._depth_callback(depth)
 
   def _push_sub_panel(self, sub_panel_name: str):
-    self._panel_stack.append((self._current_panel, sub_panel_name))
+    if sub_panel_name:
+      self._panel_stack.append((self._current_panel, sub_panel_name))
+    else:
+      while self._panel_stack and self._panel_stack[-1][0] == self._current_panel:
+        self._panel_stack.pop()
     self._update_sub_panel_visibility()
     self._update_depth()
 

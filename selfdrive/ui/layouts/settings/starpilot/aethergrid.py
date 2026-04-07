@@ -568,8 +568,8 @@ class RadioTileGroup(Widget):
       self._option_targets.append(0.0)
     for i in range(len(self._option_offsets)):
       self._option_offsets[i] += (self._option_targets[i] - self._option_offsets[i]) * (1 - math.exp(-dt / PLATE_TAU))
-    padding = 20
-    option_w = 240 if len(self.options) <= 3 else 200
+    padding = 16
+    option_w = 240 if len(self.options) <= 3 else 188
     total_width = len(self.options) * option_w + max(0, len(self.options) - 1) * padding
     if self.title:
       title_size = measure_text_cached(self._font_title, self.title, 40)
@@ -591,10 +591,17 @@ class RadioTileGroup(Widget):
       rl.draw_rectangle_rounded(face_rect, TILE_RADIUS, 10, color)
       rl.draw_rectangle_rounded(rl.Rectangle(face_rect.x + 1, face_rect.y + 1, face_rect.width - 2, face_rect.height - 2), TILE_RADIUS, 10, rl.Color(0, 0, 0, 80))
       rl.draw_rectangle_rounded(rl.Rectangle(face_rect.x, face_rect.y, face_rect.width - 1.5, face_rect.height - 1.5), TILE_RADIUS, 10, rl.Color(255, 255, 255, 110))
-      ts = measure_text_cached(self._font, opt.upper(), 35)
+      font_size = 30
+      spacing = round(font_size * 0.08)
+      max_width = r.width - 28
+      ts = measure_text_cached(self._font, opt, font_size, spacing=spacing)
+      while font_size > 22 and ts.x > max_width:
+        font_size -= 1
+        spacing = round(font_size * 0.08)
+        ts = measure_text_cached(self._font, opt, font_size, spacing=spacing)
       text_pos = rl.Vector2(face_x + (r.width - ts.x) / 2, face_y + (r.height - ts.y) / 2)
-      rl.draw_text_ex(self._font, opt.upper(), rl.Vector2(round(text_pos.x + 1), round(text_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 90))
-      rl.draw_text_ex(self._font, opt.upper(), rl.Vector2(round(text_pos.x), round(text_pos.y)), 35, 0, rl.WHITE)
+      rl.draw_text_ex(self._font, opt, rl.Vector2(round(text_pos.x + 1), round(text_pos.y + 2)), font_size, spacing, rl.Color(0, 0, 0, 90))
+      rl.draw_text_ex(self._font, opt, rl.Vector2(round(text_pos.x), round(text_pos.y)), font_size, spacing, rl.WHITE)
 
 
 class TileGrid(Widget):

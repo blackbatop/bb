@@ -58,7 +58,13 @@ class StarPilotSoundsLayout(StarPilotPanel):
 
   def _on_section_change(self, index: int):
     if 0 <= index < len(self._section_names):
-      self._set_active_section(self._section_names[index])
+      previous_panel = self._sub_panels[self._active_section]
+      if hasattr(previous_panel, 'set_current_sub_panel'):
+        previous_panel.set_current_sub_panel("")
+      self._current_sub_panel = ""
+      self._set_active_section(self._section_names[index], "")
+      if self._navigate_callback:
+        self._navigate_callback("")
 
   def _set_active_section(self, section_name: str, child_panel: str = ""):
     if section_name not in self._sub_panels:

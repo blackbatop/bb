@@ -6,55 +6,67 @@ from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
 from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.system.ui.widgets.input_dialog import InputDialog
-from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_tile_panel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.tabbed_panel import TabSectionSpec, TabbedSectionHost
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog
 
 
 class StarPilotLongitudinalLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
-    self._sub_panels = {
-      "advanced": StarPilotAdvancedLongitudinalLayout(),
-      "conditional": StarPilotConditionalExperimentalLayout(),
-      "curve": StarPilotCurveSpeedLayout(),
-      "personalities": StarPilotPersonalitiesLayout(),
+    tune_panel = create_tile_panel([
+      {"title": tr_noop("Longitudinal Tuning"), "panel": "tuning", "icon": "toggle_icons/icon_longitudinal_tune.png", "color": "#597497"},
+      {"title": tr_noop("Advanced Tuning"), "panel": "advanced", "icon": "toggle_icons/icon_advanced_longitudinal_tune.png", "color": "#597497"},
+      {"title": tr_noop("Driving Personalities"), "panel": "personalities", "icon": "toggle_icons/icon_personality.png", "color": "#597497"},
+    ], {
       "tuning": StarPilotLongitudinalTuneLayout(),
-      "qol": StarPilotLongitudinalQOLLayout(),
-      "slc": StarPilotSpeedLimitControllerLayout(),
-      "weather": StarPilotWeatherLayout(),
-      # Personality Sub-panels
+      "advanced": StarPilotAdvancedLongitudinalLayout(),
+      "personalities": StarPilotPersonalitiesLayout(),
       "traffic_personality": StarPilotPersonalityProfileLayout("Traffic"),
       "aggressive_personality": StarPilotPersonalityProfileLayout("Aggressive"),
       "standard_personality": StarPilotPersonalityProfileLayout("Standard"),
       "relaxed_personality": StarPilotPersonalityProfileLayout("Relaxed"),
-      # SLC Sub-panels
-      "slc_offsets": StarPilotSLCOffsetsLayout(),
-      "slc_qol": StarPilotSLCQOLLayout(),
-      "slc_visuals": StarPilotSLCVisualsLayout(),
-      # Weather Sub-panels
+    })
+
+    adaptive_panel = create_tile_panel([
+      {"title": tr_noop("Conditional Experimental"), "panel": "conditional", "icon": "toggle_icons/icon_conditional.png", "color": "#597497"},
+      {"title": tr_noop("Curve Speed"), "panel": "curve", "icon": "toggle_icons/icon_speed_map.png", "color": "#597497"},
+      {"title": tr_noop("Weather"), "panel": "weather", "icon": "toggle_icons/icon_rainbow.png", "color": "#597497"},
+    ], {
+      "conditional": StarPilotConditionalExperimentalLayout(),
+      "curve": StarPilotCurveSpeedLayout(),
+      "weather": StarPilotWeatherLayout(),
       "low_visibility": StarPilotWeatherBase("LowVisibility"),
       "rain": StarPilotWeatherBase("Rain"),
       "rainstorm": StarPilotWeatherBase("RainStorm"),
       "snow": StarPilotWeatherBase("Snow"),
-    }
+    })
 
-    self.CATEGORIES = [
-      {"title": tr_noop("Advanced Longitudinal Tuning"), "panel": "advanced", "icon": "toggle_icons/icon_advanced_longitudinal_tune.png", "color": "#597497"},
-      {"title": tr_noop("Conditional Experimental Mode"), "panel": "conditional", "icon": "toggle_icons/icon_conditional.png", "color": "#597497"},
-      {"title": tr_noop("Curve Speed Controller"), "panel": "curve", "icon": "toggle_icons/icon_speed_map.png", "color": "#597497"},
-      {"title": tr_noop("Driving Personalities"), "panel": "personalities", "icon": "toggle_icons/icon_personality.png", "color": "#597497"},
-      {"title": tr_noop("Longitudinal Tuning"), "panel": "tuning", "icon": "toggle_icons/icon_longitudinal_tune.png", "color": "#597497"},
-      {"title": tr_noop("Quality of Life"), "panel": "qol", "icon": "toggle_icons/icon_quality_of_life.png", "color": "#597497"},
-      {"title": tr_noop("Speed Limit Controller"), "panel": "slc", "icon": "toggle_icons/icon_speed_limit.png", "color": "#597497"},
-      {"title": tr_noop("Weather"), "panel": "weather", "icon": "toggle_icons/icon_rainbow.png", "color": "#597497"},
-    ]
-
-    for name, panel in self._sub_panels.items():
-      if hasattr(panel, 'set_navigate_callback'):
-        panel.set_navigate_callback(self._navigate_to)
-      if hasattr(panel, 'set_back_callback'):
-        panel.set_back_callback(self._go_back)
+    self._section_tabs = TabbedSectionHost([
+      TabSectionSpec("tune", "Tune", tune_panel),
+      TabSectionSpec("adaptive", "Adaptive", adaptive_panel),
+      TabSectionSpec("limits", "Limits", StarPilotSpeedLimitControllerLayout()),
+      TabSectionSpec("daily", "Daily", StarPilotLongitudinalQOLLayout()),
+    ])
     self._rebuild_grid()
+
+  def set_navigate_callback(self, callback):
+    self._section_tabs.set_navigate_callback(callback)
+
+  def set_back_callback(self, callback):
+    self._section_tabs.set_back_callback(callback)
+
+  def _render(self, rect):
+    self._section_tabs.render(rect)
+
+  def set_current_sub_panel(self, sub_panel: str):
+    self._section_tabs.set_current_sub_panel(sub_panel)
+
+  def show_event(self):
+    self._section_tabs.show_event()
+
+  def hide_event(self):
+    self._section_tabs.hide_event()
 
 
 class StarPilotAdvancedLongitudinalLayout(StarPilotPanel):
@@ -164,15 +176,6 @@ class StarPilotConditionalExperimentalLayout(StarPilotPanel):
         "set_state": lambda s: self._params.put_bool("ConditionalExperimental", s),
         "icon": "toggle_icons/icon_conditional.png",
         "color": "#597497",
-      },
-      {
-        "title": tr_noop("Conditional Experimental"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("ConditionalExperimental"),
-        "set_state": lambda s: self._params.put_bool("ConditionalExperimental", s),
-        "icon": "toggle_icons/icon_conditional.png",
-        "color": "#597497",
-        "visible": lambda: self._params.get_bool("ConditionalExperimental"),
       },
       {
         "title": tr_noop("Below Speed"),
@@ -301,16 +304,6 @@ class StarPilotCurveSpeedLayout(StarPilotPanel):
         "set_state": lambda s: self._params.put_bool("CurveSpeedController", s),
         "icon": "toggle_icons/icon_speed_map.png",
         "color": "#597497",
-      },
-      {
-        "title": tr_noop("Curve Speed Controller"),
-        "desc": tr_noop("Automatically slow down for upcoming curves using data learned from your driving style."),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("CurveSpeedController"),
-        "set_state": lambda s: self._params.put_bool("CurveSpeedController", s),
-        "icon": "toggle_icons/icon_speed_map.png",
-        "color": "#597497",
-        "visible": lambda: self._params.get_bool("CurveSpeedController"),
       },
       {
         "title": tr_noop("Status Widget"),
@@ -677,6 +670,11 @@ class StarPilotLongitudinalQOLLayout(StarPilotPanel):
 class StarPilotSpeedLimitControllerLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._sub_panels = {
+      "slc_offsets": StarPilotSLCOffsetsLayout(),
+      "slc_qol": StarPilotSLCQOLLayout(),
+      "slc_visuals": StarPilotSLCVisualsLayout(),
+    }
     self.CATEGORIES = [
       {
         "title": tr_noop("Speed Limit Controller"),
@@ -712,6 +710,13 @@ class StarPilotSpeedLimitControllerLayout(StarPilotPanel):
         "color": "#597497",
       },
     ]
+
+    for panel in self._sub_panels.values():
+      if hasattr(panel, 'set_navigate_callback'):
+        panel.set_navigate_callback(self._navigate_to)
+      if hasattr(panel, 'set_back_callback'):
+        panel.set_back_callback(self._go_back)
+
     self._rebuild_grid()
 
   def _get_priority_value(self):

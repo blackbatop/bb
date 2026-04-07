@@ -4,108 +4,44 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
-from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_tile_panel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.tabbed_panel import TabSectionSpec, TabbedSectionHost
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, ToggleTile, AetherSliderDialog
-
-
-class StarPilotThemesLayout(StarPilotPanel):
-  def __init__(self):
-    super().__init__()
-    self._sub_panels = {
-      "personalize": StarPilotPersonalizeLayout(),
-    }
-    self.CATEGORIES = [
-      {"title": tr_noop("Personalize openpilot"), "panel": "personalize", "icon": "toggle_icons/icon_frog.png", "color": "#8B5CF6"},
-      {
-        "title": tr_noop("Holiday Themes"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("HolidayThemes"),
-        "set_state": lambda s: self._params.put_bool("HolidayThemes", s),
-        "icon": "toggle_icons/icon_calendar.png",
-        "color": "#8B5CF6",
-      },
-      {
-        "title": tr_noop("Rainbow Path"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("RainbowPath"),
-        "set_state": lambda s: self._params.put_bool("RainbowPath", s),
-        "icon": "toggle_icons/icon_rainbow.png",
-        "color": "#8B5CF6",
-      },
-      {
-        "title": tr_noop("Random Events"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("RandomEvents"),
-        "set_state": lambda s: self._params.put_bool("RandomEvents", s),
-        "icon": "toggle_icons/icon_random.png",
-        "color": "#8B5CF6",
-      },
-      {
-        "title": tr_noop("Random Themes"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("RandomThemes"),
-        "set_state": lambda s: self._params.put_bool("RandomThemes", s),
-        "icon": "toggle_icons/icon_random_themes.png",
-        "color": "#8B5CF6",
-      },
-    ]
-    for name, panel in self._sub_panels.items():
-      if hasattr(panel, 'set_navigate_callback'):
-        panel.set_navigate_callback(self._navigate_to)
-      if hasattr(panel, 'set_back_callback'):
-        panel.set_back_callback(self._go_back)
-    self._rebuild_grid()
-
-
-class StarPilotPersonalizeLayout(StarPilotPanel):
-  def __init__(self):
-    super().__init__()
-    self.CATEGORIES = [
-      {"title": tr_noop("Boot Logo"), "type": "hub", "on_click": lambda: self._show_theme_selector("BootLogo"), "color": "#8B5CF6"},
-      {"title": tr_noop("Color Scheme"), "type": "hub", "on_click": lambda: self._show_theme_selector("ColorScheme"), "color": "#8B5CF6"},
-      {"title": tr_noop("Distance Icons"), "type": "hub", "on_click": lambda: self._show_theme_selector("DistanceIconPack"), "color": "#8B5CF6"},
-      {"title": tr_noop("Icon Pack"), "type": "hub", "on_click": lambda: self._show_theme_selector("IconPack"), "color": "#8B5CF6"},
-      {"title": tr_noop("Turn Signals"), "type": "hub", "on_click": lambda: self._show_theme_selector("SignalAnimation"), "color": "#8B5CF6"},
-      {"title": tr_noop("Sound Pack"), "type": "hub", "on_click": lambda: self._show_theme_selector("SoundPack"), "color": "#8B5CF6"},
-      {"title": tr_noop("Steering Wheel"), "type": "hub", "on_click": lambda: self._show_theme_selector("WheelIcon"), "color": "#8B5CF6"},
-    ]
-    self._rebuild_grid()
-
-  def _show_theme_selector(self, key):
-    themes = ["Stock", "Frog", "Cyberpunk", "Minimal"]
-    current = self._params.get(key, encoding='utf-8') or "Stock"
-
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        self._params.put(key, val)
-        self._rebuild_grid()
-
-    gui_app.set_modal_overlay(SelectionDialog(tr(key), themes, current, on_close=on_select))
-
-
 class StarPilotVisualsLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
-    self._sub_panels = {
-      "advanced": StarPilotAdvancedVisualsLayout(),
-      "widgets": StarPilotVisualWidgetsLayout(),
-      "model": StarPilotModelUILayout(),
-      "navigation": StarPilotNavigationVisualsLayout(),
-      "qol": StarPilotVisualQOLLayout(),
-    }
-    self.CATEGORIES = [
+    display_panel = create_tile_panel([
       {"title": tr_noop("Advanced UI Controls"), "panel": "advanced", "icon": "toggle_icons/icon_advanced_device.png", "color": "#8B5CF6"},
-      {"title": tr_noop("Driving Screen Widgets"), "panel": "widgets", "icon": "toggle_icons/icon_display.png", "color": "#8B5CF6"},
-      {"title": tr_noop("Model UI"), "panel": "model", "icon": "toggle_icons/icon_road.png", "color": "#8B5CF6"},
-      {"title": tr_noop("Navigation Widgets"), "panel": "navigation", "icon": "toggle_icons/icon_map.png", "color": "#8B5CF6"},
       {"title": tr_noop("Quality of Life"), "panel": "qol", "icon": "toggle_icons/icon_quality_of_life.png", "color": "#8B5CF6"},
-    ]
-    for name, panel in self._sub_panels.items():
-      if hasattr(panel, 'set_navigate_callback'):
-        panel.set_navigate_callback(self._navigate_to)
-      if hasattr(panel, 'set_back_callback'):
-        panel.set_back_callback(self._go_back)
-    self._rebuild_grid()
+    ], {
+      "advanced": StarPilotAdvancedVisualsLayout(),
+      "qol": StarPilotVisualQOLLayout(),
+    })
+
+    self._section_tabs = TabbedSectionHost([
+      TabSectionSpec("display", "Display", display_panel),
+      TabSectionSpec("widgets", "Widgets", StarPilotVisualWidgetsLayout()),
+      TabSectionSpec("model", "Model", StarPilotModelUILayout()),
+      TabSectionSpec("navigation", "Nav", StarPilotNavigationVisualsLayout()),
+    ])
+
+  def set_navigate_callback(self, callback):
+    self._section_tabs.set_navigate_callback(callback)
+
+  def set_back_callback(self, callback):
+    self._section_tabs.set_back_callback(callback)
+
+  def _render(self, rect):
+    self._section_tabs.render(rect)
+
+  def set_current_sub_panel(self, sub_panel: str):
+    self._section_tabs.set_current_sub_panel(sub_panel)
+
+  def show_event(self):
+    self._section_tabs.show_event()
+
+  def hide_event(self):
+    self._section_tabs.hide_event()
 
 
 class StarPilotAdvancedVisualsLayout(StarPilotPanel):
@@ -557,15 +493,6 @@ class StarPilotNavigationVisualsLayout(StarPilotPanel):
         "icon": "toggle_icons/icon_speed_limit.png",
         "color": "#8B5CF6",
         "visible": lambda: self._params.get_bool("NavigationUI"),
-      },
-      {
-        "title": tr_noop("Mapbox Limits"),
-        "type": "toggle",
-        "get_state": lambda: self._params.get_bool("SLCMapboxFiller"),
-        "set_state": lambda s: self._params.put_bool("SLCMapboxFiller", s),
-        "icon": "toggle_icons/icon_speed_limit.png",
-        "color": "#8B5CF6",
-        "visible": lambda: self._params.get_bool("NavigationUI") and self._params.get_bool("ShowSpeedLimits"),
       },
       {
         "title": tr_noop("Vienna Signs"),

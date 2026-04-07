@@ -5,7 +5,8 @@ from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
 from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
-from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_tile_panel
+from openpilot.selfdrive.ui.layouts.settings.starpilot.tabbed_panel import TabSectionSpec, TabbedSectionHost
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog
 
 class StarPilotAdvancedLateralLayout(StarPilotPanel):
@@ -124,21 +125,41 @@ class StarPilotLateralQOLLayout(StarPilotPanel):
 class StarPilotLateralLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
-    self._sub_panels = {
-      "advanced_lateral": StarPilotAdvancedLateralLayout(),
-      "always_on_lateral": StarPilotAlwaysOnLateralLayout(),
-      "lane_changes": StarPilotLaneChangesLayout(),
-      "lateral_tune": StarPilotLateralTuneLayout(),
-      "qol": StarPilotLateralQOLLayout(),
-    }
-    self.CATEGORIES = [
-      {"title": tr_noop("Advanced Lateral Tuning"), "panel": "advanced_lateral", "icon": "toggle_icons/icon_advanced_lateral_tune.png", "color": "#597497"},
+    steering_panel = create_tile_panel([
       {"title": tr_noop("Always On Lateral"), "panel": "always_on_lateral", "icon": "toggle_icons/icon_always_on_lateral.png", "color": "#597497"},
-      {"title": tr_noop("Lane Changes"), "panel": "lane_changes", "icon": "toggle_icons/icon_lane.png", "color": "#597497"},
-      {"title": tr_noop("Lateral Tuning"), "panel": "lateral_tune", "icon": "toggle_icons/icon_lateral_tune.png", "color": "#597497"},
       {"title": tr_noop("Quality of Life"), "panel": "qol", "icon": "toggle_icons/icon_quality_of_life.png", "color": "#597497"},
-    ]
-    for name, panel in self._sub_panels.items():
-      if hasattr(panel, 'set_navigate_callback'): panel.set_navigate_callback(self._navigate_to)
-      if hasattr(panel, 'set_back_callback'): panel.set_back_callback(self._go_back)
-    self._rebuild_grid()
+    ], {
+      "always_on_lateral": StarPilotAlwaysOnLateralLayout(),
+      "qol": StarPilotLateralQOLLayout(),
+    })
+    tune_panel = create_tile_panel([
+      {"title": tr_noop("Advanced Tuning"), "panel": "advanced_lateral", "icon": "toggle_icons/icon_advanced_lateral_tune.png", "color": "#597497"},
+      {"title": tr_noop("Lateral Tuning"), "panel": "lateral_tune", "icon": "toggle_icons/icon_lateral_tune.png", "color": "#597497"},
+    ], {
+      "advanced_lateral": StarPilotAdvancedLateralLayout(),
+      "lateral_tune": StarPilotLateralTuneLayout(),
+    })
+
+    self._section_tabs = TabbedSectionHost([
+      TabSectionSpec("steering", "Steering", steering_panel),
+      TabSectionSpec("lane", "Lane", StarPilotLaneChangesLayout()),
+      TabSectionSpec("tune", "Tune", tune_panel),
+    ])
+
+  def set_navigate_callback(self, callback):
+    self._section_tabs.set_navigate_callback(callback)
+
+  def set_back_callback(self, callback):
+    self._section_tabs.set_back_callback(callback)
+
+  def _render(self, rect):
+    self._section_tabs.render(rect)
+
+  def set_current_sub_panel(self, sub_panel: str):
+    self._section_tabs.set_current_sub_panel(sub_panel)
+
+  def show_event(self):
+    self._section_tabs.show_event()
+
+  def hide_event(self):
+    self._section_tabs.hide_event()
