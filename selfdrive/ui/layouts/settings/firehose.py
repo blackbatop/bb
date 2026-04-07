@@ -49,7 +49,7 @@ class FirehoseLayout(FirehoseLayoutBase):
     title_font = gui_app.font(FontWeight.MEDIUM)
     text_width = measure_text_cached(title_font, title_text, 100).x
     title_x = rect.x + (rect.width - text_width) / 2
-    rl.draw_text_ex(title_font, title_text, rl.Vector2(title_x, y), 100, 0, rl.WHITE)
+    rl.draw_text_ex(title_font, title_text, rl.Vector2(round(title_x), round(y)), 100, 0, rl.WHITE)
     y += 200
 
     # Description
@@ -85,6 +85,6 @@ class FirehoseLayout(FirehoseLayoutBase):
   def _draw_wrapped_text(self, x, y, width, text, font, font_size, color):
     wrapped = wrap_text(font, text, font_size, width)
     for line in wrapped:
-      rl.draw_text_ex(font, line, rl.Vector2(x, y), font_size, 0, color)
+      rl.draw_text_ex(font, line, rl.Vector2(round(x), round(y)), font_size, 0, color)
       y += font_size * FONT_SCALE
     return round(y)

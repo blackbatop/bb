@@ -162,7 +162,7 @@ class SettingsLayout(Widget):
       panel_name = tr(panel_info.name)
       text_size = measure_text_cached(self._font_medium, panel_name, 65)
       text_pos = rl.Vector2(button_rect.x + button_rect.width - text_size.x, button_rect.y + (button_rect.height - text_size.y) / 2)
-      rl.draw_text_ex(self._font_medium, panel_name, text_pos, 65, 0, text_color)
+      rl.draw_text_ex(self._font_medium, panel_name, rl.Vector2(round(text_pos.x), round(text_pos.y)), 65, 0, text_color)
 
       # Store button rect for click detection
       panel_info.button_rect = button_rect

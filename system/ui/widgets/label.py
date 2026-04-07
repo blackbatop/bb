@@ -167,11 +167,11 @@ class MiciLabel(Widget):
       }.get(self.alignment_vertical, 0)
       text_y += text_y_offset
 
-      rl.draw_text_ex(font, display_text, rl.Vector2(round(text_x), text_y), self.font_size, self.spacing, self.color)
+      rl.draw_text_ex(font, display_text, rl.Vector2(round(text_x), round(text_y)), self.font_size, self.spacing, self.color)
       # Draw 2nd instance for scrolling
       if self._needs_scroll and self._scroll_state != ScrollState.STARTING:
         text2_scroll_offset = text_size.x + self._rect.width / 3
-        rl.draw_text_ex(font, display_text, rl.Vector2(round(text_x + text2_scroll_offset), text_y), self.font_size, self.spacing, self.color)
+        rl.draw_text_ex(font, display_text, rl.Vector2(round(text_x + text2_scroll_offset), round(text_y)), self.font_size, self.spacing, self.color)
       if self.alignment_vertical == rl.GuiTextAlignmentVertical.TEXT_ALIGN_BOTTOM:
         text_y_offset -= self.line_height
       else:
@@ -233,7 +233,7 @@ def gui_label(
 
   # Draw the text in the specified rectangle
   # TODO: add wrapping and proper centering for multiline text
-  rl.draw_text_ex(font, display_text, rl.Vector2(text_x, text_y), font_size, 0, color)
+  rl.draw_text_ex(font, display_text, rl.Vector2(round(text_x), round(text_y)), font_size, 0, color)
 
 
 def gui_text_box(

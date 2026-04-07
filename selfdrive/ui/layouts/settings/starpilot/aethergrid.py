@@ -120,12 +120,15 @@ class AetherTile(Widget):
   def _draw_text_fit(self, font: rl.Font, text: str, pos: rl.Vector2, max_width: float, font_size: float, align_center: bool = False, align_right: bool = False, letter_spacing: float = 0, uppercase: bool = False):
     if uppercase:
       text = text.upper()
-    spacing = letter_spacing if letter_spacing > 0 else font_size * 0.15
-    size = measure_text_cached(font, text, int(font_size), spacing=spacing)
-    actual_font_size = font_size
+    spacing = round(letter_spacing if letter_spacing > 0 else font_size * 0.15)
+    base_font_size = max(1, int(round(font_size)))
+    size = measure_text_cached(font, text, base_font_size, spacing=spacing)
+    actual_font_size = base_font_size
     if size.x > max_width:
-      actual_font_size = font_size * (max_width / size.x)
-      render_width = max_width
+      actual_font_size = max(1, int(round(font_size * (max_width / size.x))))
+      while actual_font_size > 1 and measure_text_cached(font, text, actual_font_size, spacing=spacing).x > max_width:
+        actual_font_size -= 1
+      render_width = measure_text_cached(font, text, actual_font_size, spacing=spacing).x
     else:
       render_width = size.x
     nudge_y = (font_size - actual_font_size) / 2
@@ -134,9 +137,9 @@ class AetherTile(Widget):
       draw_x = pos.x + (max_width - render_width) / 2
     elif align_right:
       draw_x = pos.x + max_width - render_width
-    shadow_pos = rl.Vector2(draw_x + 1, pos.y + nudge_y + 2)
+    shadow_pos = rl.Vector2(round(draw_x + 1), round(pos.y + nudge_y + 2))
     rl.draw_text_ex(font, text, shadow_pos, actual_font_size, spacing, rl.Color(0, 0, 0, 90))
-    rl.draw_text_ex(font, text, rl.Vector2(draw_x, pos.y + nudge_y), actual_font_size, spacing, rl.WHITE)
+    rl.draw_text_ex(font, text, rl.Vector2(round(draw_x), round(pos.y + nudge_y)), actual_font_size, spacing, rl.WHITE)
 
   def _centered_content(self, face: rl.Rectangle, icon: rl.Texture2D | None, icon_scale: float, title_font_size: float, text_lines: int, line_heights: list[float]):
     line_spacing = 8
@@ -322,8 +325,8 @@ class AetherSlider(Widget):
     rl.draw_rectangle_rounded(rl.Rectangle(face_rect.x, face_rect.y, face_rect.width - 1.5, face_rect.height - 1.5), 0.2, 10, rl.Color(255, 255, 255, 110))
     ts = measure_text_cached(self._font, label, 35)
     label_pos = rl.Vector2(face_x + (rect.width - ts.x) / 2, face_y + (rect.height - ts.y) / 2)
-    rl.draw_text_ex(self._font, label, rl.Vector2(label_pos.x + 2, label_pos.y + 2), 35, 0, rl.Color(0, 0, 0, 70))
-    rl.draw_text_ex(self._font, label, label_pos, 35, 0, rl.WHITE)
+    rl.draw_text_ex(self._font, label, rl.Vector2(round(label_pos.x + 2), round(label_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 70))
+    rl.draw_text_ex(self._font, label, rl.Vector2(round(label_pos.x), round(label_pos.y)), 35, 0, rl.WHITE)
 
   def _render(self, rect: rl.Rectangle):
     self.set_rect(rect)
@@ -364,8 +367,8 @@ class AetherSlider(Widget):
     val_str = self.labels.get(self.current_val, f"{self.current_val:.2f}".rstrip('0').rstrip('.') + self.unit)
     ts = measure_text_cached(self._font, val_str, 35)
     val_pos = rl.Vector2(thumb_x + (thumb_w - ts.x) / 2, thumb_y - 45)
-    rl.draw_text_ex(self._font, val_str, rl.Vector2(val_pos.x + 2, val_pos.y + 2), 35, 0, rl.Color(0, 0, 0, 70))
-    rl.draw_text_ex(self._font, val_str, val_pos, 35, 0, rl.WHITE)
+    rl.draw_text_ex(self._font, val_str, rl.Vector2(round(val_pos.x + 2), round(val_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 70))
+    rl.draw_text_ex(self._font, val_str, rl.Vector2(round(val_pos.x), round(val_pos.y)), 35, 0, rl.WHITE)
 
   def _handle_mouse_press(self, mouse_pos: MousePos):
     if not rl.check_collision_point_rec(mouse_pos, self._rect):
@@ -481,7 +484,7 @@ class AetherSliderDialog(Widget):
     rl.draw_rectangle_rounded(d_rect, 0.05, 10, rl.Color(30, 30, 30, 255))
     rl.draw_rectangle_rounded_lines_ex(d_rect, 0.05, 10, 2, self._color)
     ts = measure_text_cached(self._font_title, self.title, 50)
-    rl.draw_text_ex(self._font_title, self.title, rl.Vector2(dx + (dialog_w - ts.x) / 2, dy + 40), 50, 0, rl.WHITE)
+    rl.draw_text_ex(self._font_title, self.title, rl.Vector2(round(dx + (dialog_w - ts.x) / 2), round(dy + 40)), 50, 0, rl.WHITE)
     slider_rect = rl.Rectangle(dx + 100, dy + 200, dialog_w - 200, 100)
     self._slider.render(slider_rect)
     c_shadow_alpha = int(255 * (1.0 - 0.9 * self._cancel_offset))
@@ -494,8 +497,8 @@ class AetherSliderDialog(Widget):
     rl.draw_rectangle_rounded(rl.Rectangle(c_face.x, c_face.y, c_face.width - 1.5, c_face.height - 1.5), 0.2, 10, rl.Color(255, 255, 255, 110))
     cts = measure_text_cached(self._font_btn, tr("CANCEL"), 35)
     cancel_text_pos = rl.Vector2(c_face_x + (350 - cts.x) / 2, c_face_y + (80 - cts.y) / 2)
-    rl.draw_text_ex(self._font_btn, tr("CANCEL"), rl.Vector2(cancel_text_pos.x + 1, cancel_text_pos.y + 2), 35, 0, rl.Color(0, 0, 0, 90))
-    rl.draw_text_ex(self._font_btn, tr("CANCEL"), cancel_text_pos, 35, 0, rl.WHITE)
+    rl.draw_text_ex(self._font_btn, tr("CANCEL"), rl.Vector2(round(cancel_text_pos.x + 1), round(cancel_text_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 90))
+    rl.draw_text_ex(self._font_btn, tr("CANCEL"), rl.Vector2(round(cancel_text_pos.x), round(cancel_text_pos.y)), 35, 0, rl.WHITE)
     o_shadow_alpha = int(255 * (1.0 - 0.9 * self._ok_offset))
     rl.draw_rectangle_rounded(rl.Rectangle(self._ok_rect.x + GEOMETRY_OFFSET, self._ok_rect.y + GEOMETRY_OFFSET, 350, 80), 0.2, 10, rl.Color(self._color.r, self._color.g, self._color.b, int(o_shadow_alpha * 0.4)))
     o_face_x = self._ok_rect.x + GEOMETRY_OFFSET * self._ok_offset
@@ -506,8 +509,8 @@ class AetherSliderDialog(Widget):
     rl.draw_rectangle_rounded(rl.Rectangle(o_face.x, o_face.y, o_face.width - 1.5, o_face.height - 1.5), 0.2, 10, rl.Color(255, 255, 255, 110))
     ots = measure_text_cached(self._font_btn, tr("OK"), 35)
     ok_text_pos = rl.Vector2(o_face_x + (350 - ots.x) / 2, o_face_y + (80 - ots.y) / 2)
-    rl.draw_text_ex(self._font_btn, tr("OK"), rl.Vector2(ok_text_pos.x + 1, ok_text_pos.y + 2), 35, 0, rl.Color(0, 0, 0, 90))
-    rl.draw_text_ex(self._font_btn, tr("OK"), ok_text_pos, 35, 0, rl.WHITE)
+    rl.draw_text_ex(self._font_btn, tr("OK"), rl.Vector2(round(ok_text_pos.x + 1), round(ok_text_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 90))
+    rl.draw_text_ex(self._font_btn, tr("OK"), rl.Vector2(round(ok_text_pos.x), round(ok_text_pos.y)), 35, 0, rl.WHITE)
     return DialogResult.NO_ACTION
 
 
@@ -555,7 +558,7 @@ class RadioTileGroup(Widget):
     for i in range(len(self._option_offsets)):
       self._option_offsets[i] += (self._option_targets[i] - self._option_offsets[i]) * (1 - math.exp(-dt / PLATE_TAU))
     title_size = measure_text_cached(self._font_title, self.title, 40)
-    rl.draw_text_ex(self._font_title, self.title, rl.Vector2(rect.x, rect.y + (rect.height - title_size.y) / 2), 40, 0, rl.WHITE)
+    rl.draw_text_ex(self._font_title, self.title, rl.Vector2(round(rect.x), round(rect.y + (rect.height - title_size.y) / 2)), 40, 0, rl.WHITE)
     padding, option_w = 20, 200
     start_x = rect.x + rect.width - (len(self.options) * (option_w + padding))
     for i, opt in enumerate(self.options):
@@ -574,8 +577,8 @@ class RadioTileGroup(Widget):
       rl.draw_rectangle_rounded(rl.Rectangle(face_rect.x, face_rect.y, face_rect.width - 1.5, face_rect.height - 1.5), TILE_RADIUS, 10, rl.Color(255, 255, 255, 110))
       ts = measure_text_cached(self._font, opt.upper(), 35)
       text_pos = rl.Vector2(face_x + (r.width - ts.x) / 2, face_y + (r.height - ts.y) / 2)
-      rl.draw_text_ex(self._font, opt.upper(), rl.Vector2(text_pos.x + 1, text_pos.y + 2), 35, 0, rl.Color(0, 0, 0, 90))
-      rl.draw_text_ex(self._font, opt.upper(), text_pos, 35, 0, rl.WHITE)
+      rl.draw_text_ex(self._font, opt.upper(), rl.Vector2(round(text_pos.x + 1), round(text_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 90))
+      rl.draw_text_ex(self._font, opt.upper(), rl.Vector2(round(text_pos.x), round(text_pos.y)), 35, 0, rl.WHITE)
 
 
 class TileGrid(Widget):
