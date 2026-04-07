@@ -12,7 +12,7 @@ from openpilot.starpilot.assets.model_manager import CANCEL_DOWNLOAD_PARAM, DOWN
 from openpilot.starpilot.common.starpilot_utilities import delete_file, run_cmd
 from openpilot.starpilot.common.starpilot_variables import MODELS_PATH, RESOURCES_REPO
 
-METADATA_SCRIPT = Path(BASEDIR) / "starpilot/tinygrad_modeld/get_model_metadata.py"
+METADATA_SCRIPT = Path(BASEDIR) / "selfdrive/modeld/get_model_metadata.py"
 TINYGRAD_REPO_PATH = Path(BASEDIR) / "tinygrad_repo"
 
 MODELS_SOURCE = f"https://api.github.com/repos/{RESOURCES_REPO}/contents/uncompiled?ref=Models"

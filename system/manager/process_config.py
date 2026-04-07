@@ -92,8 +92,8 @@ procs = [
   PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
-  PythonProcess("modeld", "starpilot.tinygrad_modeld.tinygrad_modeld", only_onroad),
-  PythonProcess("dmonitoringmodeld", "starpilot.tinygrad_modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
+  PythonProcess("modeld", "selfdrive.modeld.modeld", only_onroad),
+  PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
 
   PythonProcess("sensord", "system.sensord.sensord", only_onroad, enabled=not PC),
   PythonProcess("soundd", "selfdrive.ui.soundd", driverview),
