@@ -2864,7 +2864,7 @@ def _save_longitudinal_maneuver_status(status):
   if not isinstance(history, list):
     history = []
   status_copy["history"] = [str(line) for line in history if str(line).strip()][-120:]
-  status_copy["updatedAtSec"] = float(status_copy.get("updatedAtSec") or time.time())
+  status_copy["updatedAtSec"] = float(status_copy.get("updatedAtSec") or time.monotonic())
   params.put("LongitudinalManeuverStatus", json.dumps(status_copy, separators=(",", ":")))
   return status_copy
 
@@ -2889,7 +2889,7 @@ def _get_longitudinal_maneuver_support_snapshot():
 
 def _serialize_longitudinal_maneuver_status(status):
   updated_at = _safe_float(status.get("updatedAtSec"), 0.0)
-  age_seconds = max(0.0, time.time() - updated_at) if updated_at > 0 else None
+  age_seconds = max(0.0, time.monotonic() - updated_at) if updated_at > 0 else None
   mode_enabled = params.get_bool("LongitudinalManeuverMode")
   paddle_mode = params.get("LongitudinalManeuverPaddleMode", encoding="utf-8") or str(status.get("paddleMode") or "auto")
   support = _get_longitudinal_maneuver_support_snapshot() or status.get("support") or {}
@@ -2924,7 +2924,7 @@ def _set_longitudinal_maneuver_mode(enabled):
       "uiSize": "small",
       "uiText1": "Long Maneuvers Armed",
       "uiText2": "Engage with SET to start the test suite.",
-      "updatedAtSec": time.time(),
+      "updatedAtSec": time.monotonic(),
     })
     _append_longitudinal_maneuver_history(status, "Armed from The Pond. Engage with SET to start.")
   else:
@@ -2936,11 +2936,124 @@ def _set_longitudinal_maneuver_mode(enabled):
       "uiSize": "small",
       "uiText1": "Long Maneuvers Stopped",
       "uiText2": "Test mode disabled.",
-      "updatedAtSec": time.time(),
+      "updatedAtSec": time.monotonic(),
     })
     _append_longitudinal_maneuver_history(status, "Stopped from The Pond.")
 
   return _save_longitudinal_maneuver_status(status)
+
+
+def _default_lateral_maneuver_status():
+  return {
+    "state": "idle",
+    "phase": "",
+    "maneuver": "",
+    "runIndex": 0,
+    "runTotal": 0,
+    "stepIndex": 0,
+    "stepTotal": 0,
+    "phaseStepIndex": 0,
+    "phaseStepTotal": 0,
+    "uiShow": False,
+    "uiSize": "small",
+    "uiText1": "Lateral Maneuvers",
+    "uiText2": "",
+    "updatedAtSec": 0.0,
+    "history": [],
+  }
+
+
+def _load_lateral_maneuver_status():
+  status = _default_lateral_maneuver_status()
+  raw = params.get("LateralManeuverStatus", encoding="utf-8") or ""
+  if raw:
+    try:
+      payload = json.loads(raw)
+      if isinstance(payload, dict):
+        status.update(payload)
+    except Exception:
+      pass
+
+  history = status.get("history")
+  if not isinstance(history, list):
+    history = []
+  status["history"] = [str(line) for line in history if str(line).strip()][-120:]
+
+  try:
+    status["updatedAtSec"] = float(status.get("updatedAtSec") or 0.0)
+  except Exception:
+    status["updatedAtSec"] = 0.0
+
+  return status
+
+
+def _save_lateral_maneuver_status(status):
+  status_copy = dict(status)
+  history = status_copy.get("history")
+  if not isinstance(history, list):
+    history = []
+  status_copy["history"] = [str(line) for line in history if str(line).strip()][-120:]
+  status_copy["updatedAtSec"] = float(status_copy.get("updatedAtSec") or time.monotonic())
+  params.put("LateralManeuverStatus", json.dumps(status_copy, separators=(",", ":")))
+  return status_copy
+
+
+def _append_lateral_maneuver_history(status, line):
+  if not line:
+    return status
+  history = list(status.get("history", []))
+  history.append(str(line))
+  status["history"] = history[-120:]
+  return status
+
+
+def _serialize_lateral_maneuver_status(status):
+  updated_at = _safe_float(status.get("updatedAtSec"), 0.0)
+  age_seconds = max(0.0, time.monotonic() - updated_at) if updated_at > 0 else None
+  return {
+    **status,
+    "modeEnabled": params.get_bool("LateralManeuverMode"),
+    "isOnroad": params.get_bool("IsOnroad"),
+    "isEngaged": params.get_bool("IsEngaged"),
+    "updatedAgeSec": age_seconds,
+  }
+
+
+def _set_lateral_maneuver_mode(enabled):
+  status = _load_lateral_maneuver_status()
+  if enabled:
+    params.put_bool("LateralManeuverMode", True)
+    params.put_bool("LongitudinalManeuverMode", False)
+    status.update({
+      "state": "armed",
+      "phase": "",
+      "maneuver": "",
+      "runIndex": 0,
+      "runTotal": 0,
+      "stepIndex": 0,
+      "stepTotal": 0,
+      "phaseStepIndex": 0,
+      "phaseStepTotal": 0,
+      "uiShow": True,
+      "uiSize": "small",
+      "uiText1": "Lateral Maneuvers Armed",
+      "uiText2": "Stabilize on a straight, flat road to start.",
+      "updatedAtSec": time.monotonic(),
+    })
+    _append_lateral_maneuver_history(status, "Armed from The Pond. Stabilize on a straight, flat road to start.")
+  else:
+    params.put_bool("LateralManeuverMode", False)
+    status.update({
+      "state": "stopped",
+      "uiShow": True,
+      "uiSize": "small",
+      "uiText1": "Lateral Maneuvers Stopped",
+      "uiText2": "Test mode disabled.",
+      "updatedAtSec": time.monotonic(),
+    })
+    _append_lateral_maneuver_history(status, "Stopped from The Pond.")
+
+  return _save_lateral_maneuver_status(status)
 
 def setup(app):
   model_status_debug = {
@@ -4518,6 +4631,8 @@ def setup(app):
 
   @app.route("/api/longitudinal_maneuvers/start", methods=["POST"])
   def start_longitudinal_maneuvers():
+    if params.get_bool("LateralManeuverMode"):
+      _set_lateral_maneuver_mode(False)
     status = _set_longitudinal_maneuver_mode(True)
     return jsonify({
       "message": "Longitudinal maneuver mode armed. Engage with SET to start.",
@@ -4530,6 +4645,29 @@ def setup(app):
     return jsonify({
       "message": "Longitudinal maneuver mode disabled.",
       **_serialize_longitudinal_maneuver_status(status),
+    }), 200
+
+  @app.route("/api/lateral_maneuvers/status", methods=["GET"])
+  def get_lateral_maneuvers_status():
+    status = _load_lateral_maneuver_status()
+    return jsonify(_serialize_lateral_maneuver_status(status)), 200
+
+  @app.route("/api/lateral_maneuvers/start", methods=["POST"])
+  def start_lateral_maneuvers():
+    if params.get_bool("LongitudinalManeuverMode"):
+      _set_longitudinal_maneuver_mode(False)
+    status = _set_lateral_maneuver_mode(True)
+    return jsonify({
+      "message": "Lateral maneuver mode armed. Stabilize on a straight, flat road to start.",
+      **_serialize_lateral_maneuver_status(status),
+    }), 200
+
+  @app.route("/api/lateral_maneuvers/stop", methods=["POST"])
+  def stop_lateral_maneuvers():
+    status = _set_lateral_maneuver_mode(False)
+    return jsonify({
+      "message": "Lateral maneuver mode disabled.",
+      **_serialize_lateral_maneuver_status(status),
     }), 200
 
   @app.route("/api/update/fast/status", methods=["GET"])

@@ -31,10 +31,36 @@ class Maneuver:
 
   _active: bool = False
   _finished: bool = False
+  _run_completed: bool = False
   _action_index: int = 0
   _action_frames: int = 0
   _ready_cnt: int = 0
   _repeated: int = 0
+
+  def _step(self) -> float:
+    self._run_completed = False
+    action = self.actions[self._action_index]
+    action_accel = np.interp(self._action_frames * DT_MDL, action.time_bp, action.accel_bp)
+
+    self._action_frames += 1
+
+    # reached duration of action
+    if self._action_frames > (action.time_bp[-1] / DT_MDL):
+      # next action
+      if self._action_index < len(self.actions) - 1:
+        self._action_index += 1
+        self._action_frames = 0
+      # repeat maneuver
+      elif self._repeated < self.repeat:
+        self._repeated += 1
+        self._run_completed = True
+        self.reset()
+      # finish maneuver
+      else:
+        self._run_completed = True
+        self._finished = True
+
+    return float(action_accel)
 
   def get_accel(self, v_ego: float, long_active: bool, standstill: bool, cruise_standstill: bool) -> float:
     ready = abs(v_ego - self.initial_speed) < 0.3 and long_active
@@ -50,28 +76,12 @@ class Maneuver:
     if not self._active:
       return min(max(self.initial_speed - v_ego, -2.), 2.)
 
-    action = self.actions[self._action_index]
-    action_accel = np.interp(self._action_frames * DT_MDL, action.time_bp, action.accel_bp)
+    return self._step()
 
-    self._action_frames += 1
-
-    # reached duration of action
-    if self._action_frames > (action.time_bp[-1] / DT_MDL):
-      # next action
-      if self._action_index < len(self.actions) - 1:
-        self._action_index += 1
-        self._action_frames = 0
-      # repeat maneuver
-      elif self._repeated < self.repeat:
-        self._repeated += 1
-        self._action_index = 0
-        self._action_frames = 0
-        self._active = False
-      # finish maneuver
-      else:
-        self._finished = True
-
-    return float(action_accel)
+  def reset(self):
+    self._active = False
+    self._action_frames = 0
+    self._action_index = 0
 
   @property
   def finished(self):

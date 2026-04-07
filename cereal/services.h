@@ -32,6 +32,7 @@ static std::map<std::string, service> services = {
   { "carControl", {"carControl", true, 100.000000, 10, 256000}},
   { "carOutput", {"carOutput", true, 100.000000, 10, 256000}},
   { "longitudinalPlan", {"longitudinalPlan", true, 20.000000, 10, 256000}},
+  { "lateralManeuverPlan", {"lateralManeuverPlan", true, 20.000000, -1, 256000}},
   { "driverAssistance", {"driverAssistance", true, 20.000000, 20, 256000}},
   { "procLog", {"procLog", true, 0.500000, 15, 10485760}},
   { "gpsLocationExternal", {"gpsLocationExternal", true, 10.000000, 10, 256000}},

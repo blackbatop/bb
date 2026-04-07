@@ -14,6 +14,7 @@ const MENU_ITEMS = {
     { name: "Download Speed Limits", link: "/download_speed_limits", icon: "bi-download" },
     { name: "Error Logs", link: "/manage_error_logs", icon: "bi-exclamation-triangle" },
     { name: "Galaxy", link: "/galaxy", icon: "bi-globe2" },
+    { name: "Lateral Maneuvers", link: "/lateral_maneuvers", icon: "bi-sign-turn-right" },
     { name: "Long Maneuvers", link: "/longitudinal_maneuvers", icon: "bi-signpost-split" },
     { name: "Maps", link: "/manage_maps", icon: "bi-map" },
     { name: "Navigation Keys", link: "/manage_navigation_keys", icon: "bi-key-fill" },
