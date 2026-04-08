@@ -139,7 +139,7 @@ class TestGmSafetyBase(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTe
 
 
 class TestGmEVSafetyBase(TestGmSafetyBase):
-  EXTRA_SAFETY_PARAM = GMSafetyFlags.EV
+  EXTRA_SAFETY_PARAM = 0
 
   # existence of _user_regen_msg adds regen tests
   def _user_regen_msg(self, regen):
@@ -233,8 +233,21 @@ class TestGmCameraSafety(TestGmCameraSafetyBase):
       self.assertEqual(enabled, self._tx(self._button_msg(Buttons.CANCEL)))
 
 
-def _prime_gm_ascm_int_stock_cam_rx_checks(safety, f1_bus: int) -> None:
-  # This path should only accept the Volt/Malibu ASCM_INT stock-camera status on bus 0.
+class TestGmSdgmSafety(TestGmSafetyBase):
+  TX_MSGS = [[0x180, 0], [0x370, 0], [0x200, 0], [0x1E1, 0], [0x3D1, 0], [0xBD, 0], [0x1F5, 0],  # pt bus
+             [0x1E1, 2], [0x184, 2]]  # camera bus
+  FWD_BLACKLISTED_ADDRS = {2: [0x180], 0: [0x184]}  # block LKAS message and PSCMStatus
+  BUTTONS_BUS = 2  # tx only
+
+  def setUp(self):
+    self.packer = CANPackerSafety("gm_global_a_powertrain_generated")
+    self.packer_chassis = CANPackerSafety("gm_global_a_chassis")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_SDGM | self.EXTRA_SAFETY_PARAM)
+    self.safety.init_tests()
+
+
+def _prime_gm_base_rx_checks(safety, f1_bus: int) -> None:
   for bus, addr, length in (
     (0, 0x184, 8),
     (0, 0x34A, 5),
@@ -244,6 +257,20 @@ def _prime_gm_ascm_int_stock_cam_rx_checks(safety, f1_bus: int) -> None:
     (0, 0xC9, 8),
   ):
     safety.safety_rx_hook(common.make_msg(bus, addr, length))
+
+
+def test_gm_camera_stock_acc_uses_base_rx_checks():
+  safety = libsafety_py.libsafety
+  safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_CAM)
+  safety.init_tests()
+
+  _prime_gm_base_rx_checks(safety, 0)
+  assert safety.safety_config_valid()
+
+
+def _prime_gm_ascm_int_stock_cam_rx_checks(safety, f1_bus: int) -> None:
+  # This path should only accept the Volt/Malibu ASCM_INT stock-camera status on bus 0.
+  _prime_gm_base_rx_checks(safety, f1_bus)
 
 
 def test_gm_ascm_int_stock_cam_f1_rx_pinning():
@@ -275,6 +302,17 @@ class TestGmCameraEVSafety(GmCameraAccEVRegenMixin, TestGmCameraSafety, TestGmEV
   pass
 
 
+class TestGmCameraNoCameraSafety(TestGmCameraSafety):
+  RELAY_MALFUNCTION_ADDRS = {0: (), 2: ()}
+
+  def setUp(self):
+    self.packer = CANPackerSafety("gm_global_a_powertrain_generated")
+    self.packer_chassis = CANPackerSafety("gm_global_a_chassis")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_CAM | GMSafetyFlags.FLAG_GM_NO_CAMERA)
+    self.safety.init_tests()
+
+
 class TestGmCameraLongitudinalSafety(GmLongitudinalBase, TestGmCameraSafetyBase):
   TX_MSGS = [[0x180, 0], [0x315, 0], [0x2CB, 0], [0x370, 0], [0x200, 0], [0x1E1, 0], [0x3D1, 0], [0xBD, 0], [0x1F5, 0],  # pt bus
              [0x184, 2]]  # camera bus
@@ -296,6 +334,17 @@ class TestGmCameraLongitudinalSafety(GmLongitudinalBase, TestGmCameraSafetyBase)
 
 class TestGmCameraLongitudinalEVSafety(GmCameraAccEVRegenMixin, TestGmCameraLongitudinalSafety, TestGmEVSafetyBase):
   pass
+
+
+class TestGmCameraLongitudinalNoCameraSafety(TestGmCameraLongitudinalSafety):
+  RELAY_MALFUNCTION_ADDRS = {0: (), 2: ()}
+
+  def setUp(self):
+    self.packer = CANPackerSafety("gm_global_a_powertrain_generated")
+    self.packer_chassis = CANPackerSafety("gm_global_a_chassis")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_CAM | GMSafetyFlags.HW_CAM_LONG | GMSafetyFlags.FLAG_GM_NO_CAMERA)
+    self.safety.init_tests()
 
 
 def interceptor_msg(gas, addr):
@@ -398,6 +447,18 @@ class TestGmCcLongitudinalSafety(TestGmCameraSafety):
       for btn in (Buttons.RES_ACCEL, Buttons.DECEL_SET, Buttons.CANCEL):
         self._rx(self._pcm_status_msg(enabled))
         self.assertEqual(enabled, self._tx(self._button_msg(btn)))
+
+
+class TestGmCcLongitudinalNoCameraSafety(TestGmCcLongitudinalSafety):
+  RELAY_MALFUNCTION_ADDRS = {0: (), 2: ()}
+
+  def setUp(self):
+    self.packer = CANPackerPanda("gm_global_a_powertrain_generated")
+    self.packer_chassis = CANPackerPanda("gm_global_a_chassis")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_CAM | GMSafetyFlags.FLAG_GM_NO_ACC |
+                                 GMSafetyFlags.FLAG_GM_CC_LONG | GMSafetyFlags.FLAG_GM_NO_CAMERA)
+    self.safety.init_tests()
 
 
 class TestGmCcLongitudinalPandaSchedSafety(TestGmCcLongitudinalSafety):

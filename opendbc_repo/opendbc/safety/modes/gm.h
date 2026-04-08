@@ -522,7 +522,7 @@ static bool gm_fwd_hook(int bus_num, int addr) {
 static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_HW_CAM = 1;
   const uint16_t GM_PARAM_HW_CAM_LONG = 2;
-  const uint16_t GM_PARAM_EV = 4;
+  const uint16_t GM_PARAM_NO_CAMERA = 4;
   const uint16_t GM_PARAM_CC_LONG = 8;
   const uint16_t GM_PARAM_PEDAL_INTERCEPTOR = 16;
   const uint16_t GM_PARAM_NO_ACC = 32;
@@ -566,18 +566,23 @@ static safety_config gm_init(uint16_t param) {
                                                {0x200, 0, 6, .check_relay = false}, {0x1E1, 0, 7, .check_relay = false},
                                                {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false}};  // pt bus
 
+  static const CanMsg GM_CAM_LONG_NO_CAMERA_TX_MSGS[] = {{0x180, 0, 4, .check_relay = false}, {0x315, 0, 5, .check_relay = false}, {0x2CB, 0, 8, .check_relay = false}, {0x370, 0, 6, .check_relay = false}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
+                                                         {0x184, 2, 8, .check_relay = false},  // camera bus
+                                                         {0x200, 0, 6, .check_relay = false}, {0x1E1, 0, 7, .check_relay = false},
+                                                         {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false}};  // pt bus
+
 
   static RxCheck gm_rx_checks[] = {
-    GM_COMMON_RX_CHECKS
-
-    GM_ACC_RX_CHECKS
-  };
-
-  static RxCheck gm_ev_rx_checks[] = {
-    GM_COMMON_RX_CHECKS
-    {.msg = {{0xBD, 0, 7, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-
-    GM_ACC_RX_CHECKS
+    {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             {0x1E1, 2, 7, 100000U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             { 0 }}},
+    {.msg = {{0xF1, 0, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             {0xF1, 2, 6, 100000U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
+             { 0 }}},
+    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
   static RxCheck gm_ascm_int_stock_cam_rx_checks[] = {
@@ -591,11 +596,11 @@ static safety_config gm_init(uint16_t param) {
                                           {0x1E1, 0, 7, .check_relay = false},
                                           {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false}};  // pt bus
 
-  static RxCheck gm_no_acc_ev_rx_checks[] = {
-    GM_COMMON_RX_CHECKS
-    {.msg = {{0xBD, 0, 7, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{0x3D1, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // Non-ACC PCM
-  };
+  static const CanMsg GM_CAM_NO_CAMERA_TX_MSGS[] = {{0x180, 0, 4, .check_relay = false}, {0x370, 0, 6, .check_relay = false}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
+                                                    {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = false},  // camera bus
+                                                    {0x200, 0, 6, .check_relay = false},
+                                                    {0x1E1, 0, 7, .check_relay = false},
+                                                    {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false}};  // pt bus
 
   static RxCheck gm_no_acc_rx_checks[] = {
     GM_COMMON_RX_CHECKS
@@ -615,26 +620,7 @@ static safety_config gm_init(uint16_t param) {
     {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
-  static RxCheck gm_cam_acc_rx_checks[] = {
-    GM_COMMON_RX_CHECKS
-    GM_ACC_RX_CHECKS
-    {.msg = {{0x370, 2, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // camera ACC status
-  };
-
   static RxCheck gm_cam_acc_pedal_rx_checks[] = {
-    {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
-             {0x1E1, 2, 7, 100000U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
-             { 0 }}},
-    {.msg = {{0xF1, 0, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
-             {0xF1, 2, 6, 100000U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
-             { 0 }}},
-    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-    {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
-  };
-
-  static RxCheck gm_sdgm_acc_rx_checks[] = {
     {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},
@@ -651,9 +637,14 @@ static safety_config gm_init(uint16_t param) {
                                               {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false},
                                               {0x184, 2, 8, .check_relay = true}, {0x1E1, 2, 7, .check_relay = false}};  // camera bus
 
+  static const CanMsg GM_CC_LONG_NO_CAMERA_TX_MSGS[] = {{0x180, 0, 4, .check_relay = false}, {0x370, 0, 6, .check_relay = false}, {0x1E1, 0, 7, .check_relay = false}, {0x3D1, 0, 8, .check_relay = false},  // pt bus
+                                                        {0xBD, 0, 7, .check_relay = false}, {0x1F5, 0, 8, .check_relay = false},
+                                                        {0x184, 2, 8, .check_relay = false}, {0x1E1, 2, 7, .check_relay = false}};  // camera bus
+
   gm_hw = GET_FLAG(param, GM_PARAM_HW_CAM) ? GM_CAM : GM_ASCM;
   gm_sdgm = GET_FLAG(param, GM_PARAM_HW_SDGM);
   gm_ascm_int = GET_FLAG(param, GM_PARAM_HW_ASCM_INT);
+  const bool gm_no_camera = GET_FLAG(param, GM_PARAM_NO_CAMERA);
 
   gm_cc_long = GET_FLAG(param, GM_PARAM_CC_LONG);
   gm_has_acc = !GET_FLAG(param, GM_PARAM_NO_ACC);
@@ -704,46 +695,50 @@ static safety_config gm_init(uint16_t param) {
   }
 
   safety_config ret;
-  if (gm_hw == GM_CAM) {
+  // SDGM behaves like a forwarding camera path for whitelist/forwarding purposes.
+  if ((gm_hw == GM_CAM) || gm_sdgm) {
     // FIXME: cppcheck thinks that gm_cam_long is always false. This is not true
     // if ALLOW_DEBUG is defined but cppcheck is run without ALLOW_DEBUG
     // cppcheck-suppress knownConditionTrueFalse
     if (gm_cc_long) {
-      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CC_LONG_TX_MSGS);
+      if (gm_no_camera) {
+        ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CC_LONG_NO_CAMERA_TX_MSGS);
+      } else {
+        ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CC_LONG_TX_MSGS);
+      }
     } else if (gm_cam_long) {
-      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_LONG_TX_MSGS);
+      if (gm_no_camera) {
+        ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_LONG_NO_CAMERA_TX_MSGS);
+      } else {
+        ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_LONG_TX_MSGS);
+      }
     } else {
-      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_TX_MSGS);
+      if (gm_no_camera) {
+        ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_NO_CAMERA_TX_MSGS);
+      } else {
+        ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_TX_MSGS);
+      }
     }
   } else {
     ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_ASCM_TX_MSGS);
   }
 
-  const bool gm_ev = GET_FLAG(param, GM_PARAM_EV);
   if (enable_gas_interceptor) {
     if (gm_has_acc && (gm_hw == GM_CAM || gm_sdgm)) {
       SET_RX_CHECKS(gm_cam_acc_pedal_rx_checks, ret);
     } else {
       SET_RX_CHECKS(gm_pedal_rx_checks, ret);
     }
-  } else if (gm_has_acc && gm_sdgm) {
-    SET_RX_CHECKS(gm_sdgm_acc_rx_checks, ret);
-  } else if (gm_has_acc && (gm_hw == GM_CAM || gm_sdgm)) {
-    SET_RX_CHECKS(gm_cam_acc_rx_checks, ret);
-  } else if (!gm_has_acc && gm_ev) {
-    SET_RX_CHECKS(gm_no_acc_ev_rx_checks, ret);
-  } else if (!gm_has_acc && !gm_ev) {
+  } else if (!gm_has_acc) {
     SET_RX_CHECKS(gm_no_acc_rx_checks, ret);
-  } else if (gm_ev) {
-    SET_RX_CHECKS(gm_ev_rx_checks, ret);
   }
 
   if (gm_ascm_int_stock_cam || gm_ascm_int_no_accel_pos) {
     SET_RX_CHECKS(gm_ascm_int_stock_cam_rx_checks, ret);
   }
 
-  // ASCM does not forward any messages
-  if (gm_hw == GM_ASCM) {
+  // ASCM does not forward any messages. SDGM still forwards between PT and camera.
+  if ((gm_hw == GM_ASCM) && !gm_sdgm) {
     ret.disable_forwarding = true;
   }
   return ret;

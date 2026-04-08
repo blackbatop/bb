@@ -200,7 +200,6 @@ class CarInterface(CarInterfaceBase):
 
     if candidate in EV_CAR:
       ret.transmissionType = TransmissionType.direct
-      ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.EV.value
     else:
       ret.transmissionType = TransmissionType.automatic
 
@@ -615,6 +614,7 @@ class CarInterface(CarInterfaceBase):
 
     if (ret.networkLocation == NetworkLocation.fwdCamera or candidate in CC_ONLY_CAR) and CAM_MSG not in fingerprint[CanBus.CAMERA] and candidate not in SDGM_CAR:
       ret.flags |= GMFlags.NO_CAMERA.value
+      ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.FLAG_GM_NO_CAMERA.value
 
     if ACCELERATOR_POS_MSG not in fingerprint[CanBus.POWERTRAIN]:
       ret.flags |= GMFlags.NO_ACCELERATOR_POS_MSG.value

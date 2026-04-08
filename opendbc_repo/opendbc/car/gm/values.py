@@ -157,7 +157,8 @@ class CarControllerParams:
 class GMSafetyFlags(IntFlag):
   HW_CAM = 1
   HW_CAM_LONG = 2
-  EV = 4
+  # Reuses the retired EV safety bit. EV-specific safety handling is no longer needed.
+  FLAG_GM_NO_CAMERA = 4
 
   FLAG_GM_CC_LONG = 8
   FLAG_GM_GAS_INTERCEPTOR = 16
