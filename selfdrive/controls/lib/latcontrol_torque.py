@@ -75,14 +75,21 @@ BOLT_2018_2021_TORQUE_CUTOFF_WIDTH = 0.24
 BOLT_2018_2021_JERK_TAPER_CUTOFF = 0.42
 BOLT_2018_2021_TRANSITION_SPEED = 8.5
 BOLT_2018_2021_PHASE_SCALE = 0.10
-BOLT_2018_2021_UNWIND_TAPER_GAIN = 0.65
+BOLT_2018_2021_TURN_IN_BOOST_LEFT = 0.22
+BOLT_2018_2021_TURN_IN_BOOST_RIGHT = 0.12
+BOLT_2018_2021_UNWIND_TAPER_GAIN_LEFT = 0.72
+BOLT_2018_2021_UNWIND_TAPER_GAIN_RIGHT = 0.84
 BOLT_2018_2021_FRICTION_MULT = 1.03
 BOLT_2018_2021_FRICTION_LAT_RISE = 0.24
 BOLT_2018_2021_FRICTION_JERK_RISE = 0.28
-BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION = 0.12
-BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE = 0.10
-BOLT_2018_2021_TURN_IN_FRICTION_BOOST = 0.06
-BOLT_2018_2021_UNWIND_FRICTION_REDUCTION = 0.12
+BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_LEFT = 0.16
+BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_RIGHT = 0.13
+BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_LEFT = 0.12
+BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.17
+BOLT_2018_2021_TURN_IN_FRICTION_BOOST_LEFT = 0.08
+BOLT_2018_2021_TURN_IN_FRICTION_BOOST_RIGHT = 0.06
+BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_LEFT = 0.14
+BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_RIGHT = 0.19
 
 
 def get_friction_threshold(v_ego: float) -> float:
@@ -118,6 +125,10 @@ def _bolt_2018_2021_transition_phase(desired_lateral_accel: float, desired_later
   return math.tanh((desired_lateral_accel * desired_lateral_jerk) / BOLT_2018_2021_PHASE_SCALE)
 
 
+def _bolt_2018_2021_side_value(desired_lateral_accel: float, left_value: float, right_value: float) -> float:
+  return left_value if desired_lateral_accel >= 0.0 else right_value
+
+
 def _bolt_2018_2021_transition_envelope(v_ego: float, desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
   lat_factor = 1.0 - math.exp(-abs(desired_lateral_accel) / BOLT_2018_2021_FRICTION_LAT_RISE)
   jerk_factor = 1.0 - math.exp(-abs(desired_lateral_jerk) / BOLT_2018_2021_FRICTION_JERK_RISE)
@@ -138,10 +149,16 @@ def get_bolt_2018_2021_torque_scale(desired_lateral_accel: float) -> float:
 def get_bolt_2018_2021_dynamic_torque_scale(desired_lateral_accel: float, desired_lateral_jerk: float, v_ego: float) -> float:
   base_scale = get_bolt_2018_2021_torque_scale(desired_lateral_accel)
   extra_scale = max(base_scale - 1.0, 0.0)
+  low_speed_factor = _bolt_2018_2021_low_speed_factor(v_ego)
+  phase = _bolt_2018_2021_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
   jerk_taper = 1.0 / (1.0 + (abs(desired_lateral_jerk) / BOLT_2018_2021_JERK_TAPER_CUTOFF) ** 2)
-  unwind_weight = max(-_bolt_2018_2021_transition_phase(desired_lateral_accel, desired_lateral_jerk), 0.0)
-  unwind_taper = 1.0 - (BOLT_2018_2021_UNWIND_TAPER_GAIN * unwind_weight * (0.55 + 0.45 * _bolt_2018_2021_low_speed_factor(v_ego)))
-  return 1.0 + (extra_scale * jerk_taper * max(unwind_taper, 0.0))
+  turn_in_boost = 1.0 + (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_TURN_IN_BOOST_LEFT, BOLT_2018_2021_TURN_IN_BOOST_RIGHT) *
+                          turn_in_weight * low_speed_factor)
+  unwind_weight = max(-phase, 0.0)
+  unwind_taper = 1.0 - (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_UNWIND_TAPER_GAIN_LEFT, BOLT_2018_2021_UNWIND_TAPER_GAIN_RIGHT) *
+                         unwind_weight * (0.55 + 0.45 * low_speed_factor))
+  return 1.0 + (extra_scale * jerk_taper * turn_in_boost * max(unwind_taper, 0.0))
 
 
 def get_bolt_2018_2021_friction_threshold(v_ego: float, desired_lateral_accel: float = 0.0, desired_lateral_jerk: float = 0.0) -> float:
@@ -150,8 +167,10 @@ def get_bolt_2018_2021_friction_threshold(v_ego: float, desired_lateral_accel: f
   phase = _bolt_2018_2021_transition_phase(desired_lateral_accel, desired_lateral_jerk)
   turn_in_weight = max(phase, 0.0)
   unwind_weight = max(-phase, 0.0)
-  threshold_scale = 1.0 - (BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION * transition_envelope * turn_in_weight)
-  threshold_scale += BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE * transition_envelope * unwind_weight
+  threshold_scale = 1.0 - (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_LEFT, BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_RIGHT) *
+                           transition_envelope * turn_in_weight)
+  threshold_scale += (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_LEFT, BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_RIGHT) *
+                      transition_envelope * unwind_weight)
   return base_threshold * min(max(threshold_scale, 0.82), 1.12)
 
 
@@ -161,8 +180,10 @@ def get_bolt_2018_2021_friction_scale(v_ego: float, desired_lateral_accel: float
   turn_in_weight = max(phase, 0.0)
   unwind_weight = max(-phase, 0.0)
   friction_scale = BOLT_2018_2021_FRICTION_MULT
-  friction_scale += BOLT_2018_2021_TURN_IN_FRICTION_BOOST * transition_envelope * turn_in_weight
-  friction_scale -= BOLT_2018_2021_UNWIND_FRICTION_REDUCTION * transition_envelope * unwind_weight
+  friction_scale += (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_TURN_IN_FRICTION_BOOST_LEFT, BOLT_2018_2021_TURN_IN_FRICTION_BOOST_RIGHT) *
+                     transition_envelope * turn_in_weight)
+  friction_scale -= (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_LEFT, BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_RIGHT) *
+                     transition_envelope * unwind_weight)
   return min(max(friction_scale, 0.88), 1.10)
 
 
