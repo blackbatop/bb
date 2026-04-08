@@ -15,6 +15,7 @@ from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from openpilot.selfdrive.controls.lib.latcontrol_torque import (
   LatControlTorque,
   get_friction_threshold,
+  get_bolt_2017_base_torque_scale,
   get_bolt_2017_torque_scale,
   get_bolt_2018_2021_dynamic_torque_scale,
   get_bolt_2018_2021_friction_scale,
@@ -48,11 +49,14 @@ class TestLatControl:
     return controller, VM, CS, params, starpilot_toggles
 
   def test_bolt_2017_testing_ground_scale_curve(self):
-    assert get_bolt_2017_torque_scale(0.1) == 1.0
-    assert get_bolt_2017_torque_scale(-0.1) == 1.0
-    assert get_bolt_2017_torque_scale(0.5) > get_bolt_2017_torque_scale(-0.5)
-    assert 1.0 < get_bolt_2017_torque_scale(1.2) < get_bolt_2017_torque_scale(0.5)
-    assert get_bolt_2017_torque_scale(-2.5) == 1.0
+    assert get_bolt_2017_base_torque_scale(0.1) == 1.0
+    assert get_bolt_2017_base_torque_scale(-0.1) == 1.0
+    assert get_bolt_2017_base_torque_scale(0.5) > get_bolt_2017_base_torque_scale(-0.5)
+    assert 1.0 < get_bolt_2017_base_torque_scale(1.2) < get_bolt_2017_base_torque_scale(0.5)
+    assert get_bolt_2017_base_torque_scale(-2.5) < 1.0
+    assert get_bolt_2017_torque_scale(0.6, 0.6, 8.0) > get_bolt_2017_torque_scale(0.6, 0.0, 8.0) > get_bolt_2017_torque_scale(0.6, -0.6, 8.0)
+    assert get_bolt_2017_torque_scale(-0.6, -0.6, 8.0) > get_bolt_2017_torque_scale(-0.6, 0.0, 8.0) > get_bolt_2017_torque_scale(-0.6, 0.6, 8.0)
+    assert get_bolt_2017_torque_scale(0.6, 0.6, 8.0) > get_bolt_2017_torque_scale(-0.6, -0.6, 8.0)
 
   def test_bolt_2018_2021_testing_ground_scale_curve(self):
     assert get_bolt_2018_2021_torque_scale(0.0) == 1.0

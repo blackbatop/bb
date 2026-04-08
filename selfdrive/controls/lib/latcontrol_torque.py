@@ -61,8 +61,14 @@ BOLT_CARS = BOLT_2022_2023_CARS + BOLT_2018_2021_CARS + BOLT_2017_CARS
 BOLT_2017_LATERAL_TESTING_GROUND_ID = testing_ground.id_3
 BOLT_2017_STEER_RATIO_TEST_SCALE = 1.045
 BOLT_2017_TORQUE_SCALE_BP = [0.0, 0.2, 0.5, 1.0, 1.5, 2.5]
-BOLT_2017_TORQUE_SCALE_LEFT = [1.0, 1.0, 1.05, 1.04, 1.03, 1.02]
-BOLT_2017_TORQUE_SCALE_RIGHT = [1.0, 1.0, 1.04, 1.03, 1.01, 1.0]
+BOLT_2017_TORQUE_SCALE_LEFT = [1.0, 1.0, 1.065, 1.060, 1.055, 1.045]
+BOLT_2017_TORQUE_SCALE_RIGHT = [1.0, 1.0, 1.035, 1.020, 0.995, 0.985]
+BOLT_2017_TRANSITION_SPEED = 10.0
+BOLT_2017_PHASE_SCALE = 0.12
+BOLT_2017_TURN_IN_BOOST_LEFT = 0.28
+BOLT_2017_TURN_IN_BOOST_RIGHT = 0.18
+BOLT_2017_UNWIND_TAPER_LEFT = 0.08
+BOLT_2017_UNWIND_TAPER_RIGHT = 0.28
 
 BOLT_2018_2021_LATERAL_TESTING_GROUND_ID = testing_ground.id_4
 BOLT_2018_2021_STEER_RATIO_TEST_SCALE = 1.01
@@ -101,12 +107,40 @@ def bolt_2017_lateral_testing_ground_active() -> bool:
   return testing_ground.use(BOLT_2017_LATERAL_TESTING_GROUND_ID)
 
 
-def get_bolt_2017_torque_scale(desired_lateral_accel: float) -> float:
+def _bolt_2017_low_speed_factor(v_ego: float) -> float:
+  return 1.0 / (1.0 + (max(v_ego, 0.0) / BOLT_2017_TRANSITION_SPEED) ** 2)
+
+
+def _bolt_2017_transition_phase(desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  return math.tanh((desired_lateral_accel * desired_lateral_jerk) / BOLT_2017_PHASE_SCALE)
+
+
+def _bolt_2017_side_value(desired_lateral_accel: float, left_value: float, right_value: float) -> float:
+  return left_value if desired_lateral_accel >= 0.0 else right_value
+
+
+def get_bolt_2017_base_torque_scale(desired_lateral_accel: float) -> float:
   if desired_lateral_accel == 0.0:
     return 1.0
 
   scale_values = BOLT_2017_TORQUE_SCALE_LEFT if desired_lateral_accel > 0.0 else BOLT_2017_TORQUE_SCALE_RIGHT
   return float(np.interp(abs(desired_lateral_accel), BOLT_2017_TORQUE_SCALE_BP, scale_values))
+
+
+def get_bolt_2017_torque_scale(desired_lateral_accel: float, desired_lateral_jerk: float = 0.0, v_ego: float = 30.0) -> float:
+  base_scale = get_bolt_2017_base_torque_scale(desired_lateral_accel)
+  if base_scale <= 1.0 or desired_lateral_jerk == 0.0:
+    return base_scale
+
+  low_speed_factor = _bolt_2017_low_speed_factor(v_ego)
+  phase = _bolt_2017_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  turn_in_boost = 1.0 + (_bolt_2017_side_value(desired_lateral_accel, BOLT_2017_TURN_IN_BOOST_LEFT, BOLT_2017_TURN_IN_BOOST_RIGHT) *
+                          turn_in_weight * (0.35 + 0.65 * low_speed_factor))
+  unwind_taper = 1.0 - (_bolt_2017_side_value(desired_lateral_accel, BOLT_2017_UNWIND_TAPER_LEFT, BOLT_2017_UNWIND_TAPER_RIGHT) *
+                         unwind_weight * (0.45 + 0.55 * low_speed_factor))
+  return 1.0 + ((base_scale - 1.0) * turn_in_boost * max(unwind_taper, 0.0))
 
 
 def bolt_2018_2021_lateral_testing_ground_active() -> bool:
@@ -312,7 +346,7 @@ class LatControlTorque(LatControl):
       output_lataccel = self.pid.update(pid_log.error, error_rate=-measurement_rate, speed=CS.vEgo, feedforward=ff, freeze_integrator=freeze_integrator)
       output_torque = self.torque_from_lateral_accel(output_lataccel, self.torque_params)
       if self.is_bolt_2017 and bolt_2017_lateral_testing_ground_active():
-        output_torque *= get_bolt_2017_torque_scale(setpoint)
+        output_torque *= get_bolt_2017_torque_scale(setpoint, desired_lateral_jerk, CS.vEgo)
       elif bolt_2018_2021_test_active:
         output_torque *= get_bolt_2018_2021_dynamic_torque_scale(setpoint, desired_lateral_jerk, CS.vEgo)
 
