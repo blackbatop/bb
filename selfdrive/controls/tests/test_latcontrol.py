@@ -66,6 +66,7 @@ class TestLatControl:
     assert get_bolt_2018_2021_torque_scale(0.2) > get_bolt_2018_2021_torque_scale(0.08)
     assert get_bolt_2018_2021_torque_scale(0.4) > get_bolt_2018_2021_torque_scale(-0.4)
     assert get_bolt_2018_2021_torque_scale(2.0) < get_bolt_2018_2021_torque_scale(0.8)
+    assert get_bolt_2018_2021_dynamic_torque_scale(0.08, 0.0, 25.0) < get_bolt_2018_2021_dynamic_torque_scale(0.08, 0.0, 8.0)
     assert get_bolt_2018_2021_dynamic_torque_scale(0.4, 0.8, 20.0) < get_bolt_2018_2021_dynamic_torque_scale(0.4, 0.1, 20.0)
     assert get_bolt_2018_2021_dynamic_torque_scale(0.6, -0.6, 8.0) < get_bolt_2018_2021_dynamic_torque_scale(0.6, 0.6, 8.0)
     assert get_bolt_2018_2021_dynamic_torque_scale(-0.6, 0.6, 8.0) < get_bolt_2018_2021_dynamic_torque_scale(-0.6, -0.6, 8.0)
@@ -81,10 +82,12 @@ class TestLatControl:
 
   def test_bolt_2018_2021_friction_scale_curve(self):
     base = get_bolt_2018_2021_friction_scale(25.0, 0.7, 0.8)
+    center_base = get_bolt_2018_2021_friction_scale(25.0, 0.0, 0.0)
     left_turn_in = get_bolt_2018_2021_friction_scale(6.0, 0.7, 0.8)
     right_turn_in = get_bolt_2018_2021_friction_scale(6.0, -0.7, -0.8)
     left_unwind = get_bolt_2018_2021_friction_scale(6.0, 0.7, -0.8)
     right_unwind = get_bolt_2018_2021_friction_scale(6.0, -0.7, 0.8)
+    assert center_base < 1.02
     assert left_turn_in > right_turn_in > base
     assert base > left_unwind > right_unwind
 
@@ -94,6 +97,7 @@ class TestLatControl:
     assert get_bolt_2022_2023_ff_scale(0.6, 0.7, 8.0) > get_bolt_2022_2023_ff_scale(-0.6, -0.7, 8.0)
     assert get_bolt_2022_2023_ff_scale(-0.6, -0.7, 8.0) > get_bolt_2022_2023_ff_scale(-0.6, 0.0, 8.0)
     assert get_bolt_2022_2023_ff_scale(0.6, -0.7, 8.0) < get_bolt_2022_2023_ff_scale(0.6, 0.0, 8.0)
+    assert get_bolt_2022_2023_ff_scale(0.6, -0.7, 6.0) < get_bolt_2022_2023_ff_scale(0.6, -0.7, 20.0)
 
   def test_bolt_2022_2023_friction_threshold_curve(self):
     base = get_friction_threshold(6.0)

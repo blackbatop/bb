@@ -16,6 +16,7 @@ class ControlSample:
   steering_pressed: bool
   lat_active: bool
   saturated: bool
+  roll_rad: float
   actual_la: float
   desired_la: float
   desired_jerk: float
@@ -23,6 +24,9 @@ class ControlSample:
   i_term: float
   f_term: float
   torque_cmd: float
+
+
+LOW_ROLL_THRESHOLD_DEG = 1.5
 
 
 def siglin_torque(lat_accel: float, params: dict[str, list[float]]) -> float:
@@ -42,6 +46,7 @@ def summarize_control_samples(samples: list[ControlSample]) -> None:
   steering_pressed = np.array([s.steering_pressed for s in samples], dtype=bool)
   lat_active = np.array([s.lat_active for s in samples], dtype=bool)
   saturated = np.array([s.saturated for s in samples], dtype=bool)
+  roll = np.array([s.roll_rad for s in samples])
   actual = np.array([s.actual_la for s in samples])
   desired = np.array([s.desired_la for s in samples])
   jerk = np.array([s.desired_jerk for s in samples])
@@ -50,8 +55,20 @@ def summarize_control_samples(samples: list[ControlSample]) -> None:
   f_term = np.array([s.f_term for s in samples])
   torque_cmd = np.array([s.torque_cmd for s in samples])
 
+  roll_valid = np.isfinite(roll)
+  low_roll = roll_valid & (np.abs(roll) <= math.radians(LOW_ROLL_THRESHOLD_DEG))
+  high_roll = roll_valid & (~low_roll)
   base = lat_active & (~steering_pressed) & (v > 8.0)
   transition_base = lat_active & (~steering_pressed) & (v > 4.0) & (~saturated)
+  if np.any(roll_valid):
+    print("\nRoll context:")
+    print(
+      f"  valid={int(roll_valid.sum()):5d}/{len(samples):5d} "
+      f"abs_mean_deg={np.mean(np.degrees(np.abs(roll[roll_valid]))):.3f} "
+      f"abs_p95_deg={np.percentile(np.degrees(np.abs(roll[roll_valid])), 95):.3f} "
+      f"low_roll_deg<={LOW_ROLL_THRESHOLD_DEG:.1f}"
+    )
+
   masks = (
     ("all", base),
     ("all_non_sat", base & (~saturated)),
@@ -60,6 +77,11 @@ def summarize_control_samples(samples: list[ControlSample]) -> None:
     ("center", base & (~saturated) & (np.abs(desired) < 0.1)),
     ("steady_left", base & (~saturated) & (desired >= 0.1) & (np.abs(jerk) < 0.2)),
     ("steady_right", base & (~saturated) & (desired <= -0.1) & (np.abs(jerk) < 0.2)),
+    ("steady_left_low_roll", base & (~saturated) & low_roll & (desired >= 0.1) & (np.abs(jerk) < 0.2)),
+    ("steady_right_low_roll", base & (~saturated) & low_roll & (desired <= -0.1) & (np.abs(jerk) < 0.2)),
+    ("center_low_roll", base & (~saturated) & low_roll & (np.abs(desired) < 0.1)),
+    ("steady_left_high_roll", base & (~saturated) & high_roll & (desired >= 0.1) & (np.abs(jerk) < 0.2)),
+    ("steady_right_high_roll", base & (~saturated) & high_roll & (desired <= -0.1) & (np.abs(jerk) < 0.2)),
     ("low_speed_sharp", transition_base & (v < 14.0) & (np.abs(desired) >= 0.4) & (np.abs(jerk) >= 0.35)),
     ("turn_in", transition_base & (v < 14.0) & (np.abs(desired) >= 0.4) & (np.abs(jerk) >= 0.35) & ((desired * jerk) > 0.0)),
     ("unwind", transition_base & (v < 14.0) & (np.abs(desired) >= 0.4) & (np.abs(jerk) >= 0.35) & ((desired * jerk) < 0.0)),
@@ -144,6 +166,8 @@ def main() -> None:
 
     if which in ("carState", "carControl"):
       latest[which] = getattr(msg, which)
+    elif which == "liveParameters":
+      latest[which] = msg.liveParameters
     elif which == "controlsState" and "carState" in latest and "carControl" in latest:
       lateral_state = msg.controlsState.lateralControlState
       if lateral_state.which() == "torqueState":
@@ -153,6 +177,7 @@ def main() -> None:
           steering_pressed=latest["carState"].steeringPressed,
           lat_active=latest["carControl"].latActive,
           saturated=torque_state.saturated,
+          roll_rad=float(getattr(latest.get("liveParameters"), "roll", float("nan"))),
           actual_la=torque_state.actualLateralAccel,
           desired_la=torque_state.desiredLateralAccel,
           desired_jerk=torque_state.desiredLateralJerk,

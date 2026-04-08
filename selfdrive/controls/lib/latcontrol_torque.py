@@ -72,20 +72,23 @@ BOLT_2017_UNWIND_TAPER_RIGHT = 0.28
 
 BOLT_2018_2021_LATERAL_TESTING_GROUND_ID = testing_ground.id_4
 BOLT_2018_2021_STEER_RATIO_TEST_SCALE = 1.01
-BOLT_2018_2021_TORQUE_GAIN_LEFT = 0.085
-BOLT_2018_2021_TORQUE_GAIN_RIGHT = 0.055
+BOLT_2018_2021_TORQUE_GAIN_LEFT = 0.090
+BOLT_2018_2021_TORQUE_GAIN_RIGHT = 0.050
 BOLT_2018_2021_TORQUE_ONSET = 0.18
 BOLT_2018_2021_TORQUE_ONSET_WIDTH = 0.08
 BOLT_2018_2021_TORQUE_CUTOFF = 1.05
 BOLT_2018_2021_TORQUE_CUTOFF_WIDTH = 0.24
 BOLT_2018_2021_JERK_TAPER_CUTOFF = 0.42
+BOLT_2018_2021_CENTER_TAPER_LAT = 0.12
+BOLT_2018_2021_CENTER_TAPER_WIDTH = 0.04
+BOLT_2018_2021_CENTER_TAPER_GAIN = 0.35
 BOLT_2018_2021_TRANSITION_SPEED = 8.5
 BOLT_2018_2021_PHASE_SCALE = 0.10
 BOLT_2018_2021_TURN_IN_BOOST_LEFT = 0.22
 BOLT_2018_2021_TURN_IN_BOOST_RIGHT = 0.12
 BOLT_2018_2021_UNWIND_TAPER_GAIN_LEFT = 0.72
 BOLT_2018_2021_UNWIND_TAPER_GAIN_RIGHT = 0.84
-BOLT_2018_2021_FRICTION_MULT = 1.03
+BOLT_2018_2021_FRICTION_MULT = 1.01
 BOLT_2018_2021_FRICTION_LAT_RISE = 0.24
 BOLT_2018_2021_FRICTION_JERK_RISE = 0.28
 BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_LEFT = 0.16
@@ -108,19 +111,19 @@ BOLT_2022_2023_TRANSITION_SPEED = 9.0
 BOLT_2022_2023_PHASE_SCALE = 0.12
 BOLT_2022_2023_TURN_IN_BOOST_LEFT = 0.12
 BOLT_2022_2023_TURN_IN_BOOST_RIGHT = 0.06
-BOLT_2022_2023_UNWIND_TAPER_LEFT = 0.24
-BOLT_2022_2023_UNWIND_TAPER_RIGHT = 0.20
+BOLT_2022_2023_UNWIND_TAPER_LEFT = 0.28
+BOLT_2022_2023_UNWIND_TAPER_RIGHT = 0.24
 BOLT_2022_2023_FRICTION_MULT = 1.15
 BOLT_2022_2023_FRICTION_LAT_RISE = 0.22
 BOLT_2022_2023_FRICTION_JERK_RISE = 0.26
 BOLT_2022_2023_TURN_IN_THRESHOLD_REDUCTION_LEFT = 0.14
 BOLT_2022_2023_TURN_IN_THRESHOLD_REDUCTION_RIGHT = 0.08
-BOLT_2022_2023_UNWIND_THRESHOLD_INCREASE_LEFT = 0.16
-BOLT_2022_2023_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.13
+BOLT_2022_2023_UNWIND_THRESHOLD_INCREASE_LEFT = 0.20
+BOLT_2022_2023_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.16
 BOLT_2022_2023_TURN_IN_FRICTION_BOOST_LEFT = 0.08
 BOLT_2022_2023_TURN_IN_FRICTION_BOOST_RIGHT = 0.04
-BOLT_2022_2023_UNWIND_FRICTION_REDUCTION_LEFT = 0.17
-BOLT_2022_2023_UNWIND_FRICTION_REDUCTION_RIGHT = 0.14
+BOLT_2022_2023_UNWIND_FRICTION_REDUCTION_LEFT = 0.21
+BOLT_2022_2023_UNWIND_FRICTION_REDUCTION_RIGHT = 0.17
 
 
 def get_friction_threshold(v_ego: float) -> float:
@@ -208,7 +211,11 @@ def get_bolt_2018_2021_torque_scale(desired_lateral_accel: float) -> float:
 def get_bolt_2018_2021_dynamic_torque_scale(desired_lateral_accel: float, desired_lateral_jerk: float, v_ego: float) -> float:
   base_scale = get_bolt_2018_2021_torque_scale(desired_lateral_accel)
   extra_scale = max(base_scale - 1.0, 0.0)
+  abs_lateral_accel = abs(desired_lateral_accel)
   low_speed_factor = _bolt_2018_2021_low_speed_factor(v_ego)
+  high_speed_factor = 1.0 - low_speed_factor
+  center_window = _bolt_2018_2021_sigmoid((BOLT_2018_2021_CENTER_TAPER_LAT - abs_lateral_accel) / BOLT_2018_2021_CENTER_TAPER_WIDTH)
+  center_taper = 1.0 - (BOLT_2018_2021_CENTER_TAPER_GAIN * high_speed_factor * center_window)
   phase = _bolt_2018_2021_transition_phase(desired_lateral_accel, desired_lateral_jerk)
   turn_in_weight = max(phase, 0.0)
   jerk_taper = 1.0 / (1.0 + (abs(desired_lateral_jerk) / BOLT_2018_2021_JERK_TAPER_CUTOFF) ** 2)
@@ -217,7 +224,7 @@ def get_bolt_2018_2021_dynamic_torque_scale(desired_lateral_accel: float, desire
   unwind_weight = max(-phase, 0.0)
   unwind_taper = 1.0 - (_bolt_2018_2021_side_value(desired_lateral_accel, BOLT_2018_2021_UNWIND_TAPER_GAIN_LEFT, BOLT_2018_2021_UNWIND_TAPER_GAIN_RIGHT) *
                          unwind_weight * (0.55 + 0.45 * low_speed_factor))
-  return 1.0 + (extra_scale * jerk_taper * turn_in_boost * max(unwind_taper, 0.0))
+  return 1.0 + (extra_scale * center_taper * jerk_taper * turn_in_boost * max(unwind_taper, 0.0))
 
 
 def get_bolt_2018_2021_friction_threshold(v_ego: float, desired_lateral_accel: float = 0.0, desired_lateral_jerk: float = 0.0) -> float:
@@ -282,13 +289,15 @@ def get_bolt_2022_2023_ff_scale(desired_lateral_accel: float, desired_lateral_je
   cutoff = _bolt_2022_2023_sigmoid((BOLT_2022_2023_FF_CUTOFF - abs_lateral_accel) / BOLT_2022_2023_FF_CUTOFF_WIDTH)
   extra_scale = gain * onset * cutoff
   low_speed_factor = _bolt_2022_2023_low_speed_factor(v_ego)
+  transition_envelope = _bolt_2022_2023_transition_envelope(v_ego, desired_lateral_accel, desired_lateral_jerk)
   phase = _bolt_2022_2023_transition_phase(desired_lateral_accel, desired_lateral_jerk)
   turn_in_weight = max(phase, 0.0)
   unwind_weight = max(-phase, 0.0)
   turn_in_boost = 1.0 + (_bolt_2022_2023_side_value(desired_lateral_accel, BOLT_2022_2023_TURN_IN_BOOST_LEFT, BOLT_2022_2023_TURN_IN_BOOST_RIGHT) *
                           turn_in_weight * low_speed_factor)
+  unwind_envelope = (0.25 + 0.75 * low_speed_factor) * (1.0 + 0.45 * transition_envelope)
   unwind_taper = 1.0 - (_bolt_2022_2023_side_value(desired_lateral_accel, BOLT_2022_2023_UNWIND_TAPER_LEFT, BOLT_2022_2023_UNWIND_TAPER_RIGHT) *
-                         unwind_weight * (0.55 + 0.45 * low_speed_factor))
+                         unwind_weight * unwind_envelope)
   return 1.0 + (extra_scale * turn_in_boost * max(unwind_taper, 0.0))
 
 
