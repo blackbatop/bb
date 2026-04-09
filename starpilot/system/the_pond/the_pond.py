@@ -99,7 +99,7 @@ send_from_directory = None
 _POND_WEB_DEPS_READY = False
 _POND_WEB_DEPS_ERROR = None
 
-_TESTING_GROUND_CUSTOM_RESERVED_SERVICE = "customReservedRawData0"
+_TESTING_GROUND_CUSTOM_RESERVED_SERVICE = "customReserved9"
 _TESTING_GROUND_CUSTOM_RESERVED_INTERVAL_S = 15.0
 _TESTING_GROUND_CUSTOM_RESERVED_PM = None
 _TESTING_GROUND_CUSTOM_RESERVED_LOCK = threading.Lock()
@@ -2807,23 +2807,28 @@ def _get_testing_ground_custom_reserved_pm():
 def _build_testing_ground_custom_reserved_payload(state, reason):
   serialized = _serialize_testing_grounds_state(state)
   return {
-    "type": "testingGroundState",
-    "reason": reason,
     "slotId": serialized["activeSlot"],
     "slotName": serialized["activeSlotName"],
     "variant": serialized["activeVariant"],
     "variantLabel": serialized["activeVariantLabel"],
-    "publishedAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    "reason": reason,
+    "wallTimeNanos": time.time_ns(),
   }
 
 def _publish_testing_ground_custom_reserved(state, reason):
   global _TESTING_GROUND_CUSTOM_RESERVED_LAST_PUBLISH_MONO
 
   payload = _build_testing_ground_custom_reserved_payload(state, reason)
+  message_valid = str(payload.get("variant") or "").strip().upper() == "B"
 
   try:
-    message = messaging.new_message(_TESTING_GROUND_CUSTOM_RESERVED_SERVICE)
-    message.customReservedRawData0 = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    message = messaging.new_message(_TESTING_GROUND_CUSTOM_RESERVED_SERVICE, valid=message_valid)
+    message.customReserved9.slotId = payload["slotId"]
+    message.customReserved9.slotName = payload["slotName"]
+    message.customReserved9.variant = payload["variant"]
+    message.customReserved9.variantLabel = payload["variantLabel"]
+    message.customReserved9.reason = payload["reason"]
+    message.customReserved9.wallTimeNanos = payload["wallTimeNanos"]
     _get_testing_ground_custom_reserved_pm().send(_TESTING_GROUND_CUSTOM_RESERVED_SERVICE, message)
   except Exception:
     return

@@ -239,6 +239,12 @@ struct StarPilotSelfdriveState @0xf416ec09499d9d19 {
 }
 
 struct CustomReserved9 @0xa1680744031fdb2d {
+  slotId @0 :Text;
+  slotName @1 :Text;
+  variant @2 :Text;
+  variantLabel @3 :Text;
+  reason @4 :Text;
+  wallTimeNanos @5 :UInt64;
 }
 
 struct CustomReserved10 @0xcb9fd56c7057593a {
