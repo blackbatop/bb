@@ -99,6 +99,12 @@ send_from_directory = None
 _POND_WEB_DEPS_READY = False
 _POND_WEB_DEPS_ERROR = None
 
+_TESTING_GROUND_CUSTOM_RESERVED_SERVICE = "customReservedRawData0"
+_TESTING_GROUND_CUSTOM_RESERVED_INTERVAL_S = 15.0
+_TESTING_GROUND_CUSTOM_RESERVED_PM = None
+_TESTING_GROUND_CUSTOM_RESERVED_LOCK = threading.Lock()
+_TESTING_GROUND_CUSTOM_RESERVED_LAST_PUBLISH_MONO = 0.0
+
 
 def _is_comma_device_runtime() -> bool:
   """Robust runtime device check.
@@ -2790,12 +2796,64 @@ def _serialize_testing_grounds_state(state):
     "selectableSlots": [slot for slot in slots if not _is_unused_testing_ground_slot(slot)],
   }
 
+def _get_testing_ground_custom_reserved_pm():
+  global _TESTING_GROUND_CUSTOM_RESERVED_PM
+
+  with _TESTING_GROUND_CUSTOM_RESERVED_LOCK:
+    if _TESTING_GROUND_CUSTOM_RESERVED_PM is None:
+      _TESTING_GROUND_CUSTOM_RESERVED_PM = messaging.PubMaster([_TESTING_GROUND_CUSTOM_RESERVED_SERVICE])
+    return _TESTING_GROUND_CUSTOM_RESERVED_PM
+
+def _build_testing_ground_custom_reserved_payload(state, reason):
+  serialized = _serialize_testing_grounds_state(state)
+  return {
+    "type": "testingGroundState",
+    "reason": reason,
+    "slotId": serialized["activeSlot"],
+    "slotName": serialized["activeSlotName"],
+    "variant": serialized["activeVariant"],
+    "variantLabel": serialized["activeVariantLabel"],
+    "publishedAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+  }
+
+def _publish_testing_ground_custom_reserved(state, reason):
+  global _TESTING_GROUND_CUSTOM_RESERVED_LAST_PUBLISH_MONO
+
+  payload = _build_testing_ground_custom_reserved_payload(state, reason)
+
+  try:
+    message = messaging.new_message(_TESTING_GROUND_CUSTOM_RESERVED_SERVICE)
+    message.customReservedRawData0 = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    _get_testing_ground_custom_reserved_pm().send(_TESTING_GROUND_CUSTOM_RESERVED_SERVICE, message)
+  except Exception:
+    return
+
+  with _TESTING_GROUND_CUSTOM_RESERVED_LOCK:
+    _TESTING_GROUND_CUSTOM_RESERVED_LAST_PUBLISH_MONO = time.monotonic()
+
+def _testing_ground_custom_reserved_worker():
+  while True:
+    with _TESTING_GROUND_CUSTOM_RESERVED_LOCK:
+      last_publish_mono = _TESTING_GROUND_CUSTOM_RESERVED_LAST_PUBLISH_MONO
+
+    sleep_s = _TESTING_GROUND_CUSTOM_RESERVED_INTERVAL_S - (time.monotonic() - last_publish_mono)
+    if sleep_s > 0:
+      time.sleep(min(sleep_s, 1.0))
+      continue
+
+    try:
+      _publish_testing_ground_custom_reserved(_get_testing_grounds_state(), "heartbeat")
+    except Exception:
+      time.sleep(1.0)
+
 def _set_testing_ground_selection(slot_id, variant):
   normalized_slot_id = str(slot_id or "").strip()
   requested_variant = str(variant or "").strip().upper()
 
   with _TESTING_GROUNDS_LOCK:
     state, _ = _load_testing_grounds_state_unlocked()
+    previous_slot_id = str(state.get("activeSlot") or "").strip()
+    previous_variant = _normalize_testing_ground_variant(previous_slot_id, state.get("activeVariant"), _find_testing_ground_slot(state, previous_slot_id))
     slot_ids = {slot["id"] for slot in state["slots"]}
     if normalized_slot_id not in slot_ids:
       raise ValueError(f"Unknown testing ground slot '{normalized_slot_id}'.")
@@ -2807,10 +2865,12 @@ def _set_testing_ground_selection(slot_id, variant):
       raise ValueError(f"Variant must be one of: {allowed_variants}.")
 
     normalized_variant = _normalize_testing_ground_variant(normalized_slot_id, requested_variant, slot)
+    changed = normalized_slot_id != previous_slot_id or normalized_variant != previous_variant
     state["activeSlot"] = normalized_slot_id
     state["activeVariant"] = normalized_variant
-    _write_testing_grounds_state_unlocked(state)
-    return state
+    if changed:
+      _write_testing_grounds_state_unlocked(state)
+    return state, changed
 
 def _default_longitudinal_maneuver_status():
   return {
@@ -4609,11 +4669,14 @@ def setup(app):
       return jsonify({"error": "Missing 'slotId' in request body."}), 400
 
     try:
-      state = _set_testing_ground_selection(slot_id, variant)
+      state, changed = _set_testing_ground_selection(slot_id, variant)
     except ValueError as exception:
       return jsonify({"error": str(exception)}), 400
     except Exception as exception:
       return jsonify({"error": str(exception)}), 500
+
+    if changed:
+      _publish_testing_ground_custom_reserved(state, "manual_change")
 
     slot = _find_testing_ground_slot(state, slot_id)
     slot_name = slot.get("name", f"Testing Ground {slot_id}")
@@ -5927,6 +5990,7 @@ def main():
 
   app = Flask(__name__, static_folder="assets", static_url_path="/assets")
   setup(app)
+  threading.Thread(target=_testing_ground_custom_reserved_worker, daemon=True).start()
 
   # Desktop-only debug mode. On-device must stay on 8082 to match Galaxy FRP routing.
   debug = not _is_comma_device_runtime()
