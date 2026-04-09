@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from parameterized import parameterized
 
 from opendbc.car.car_helpers import interfaces
+from opendbc.car.gm.carcontroller import should_spoof_dash_speed
 import opendbc.car.gm.interface as gm_interface
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.gm.fingerprints import FINGERPRINTS
@@ -71,3 +72,17 @@ class TestGMInterface:
     assert list(car_params.longitudinalTuning.kiV) == [0.025, 0.035, 0.055, 0.08]
     assert car_params.startingState
     assert car_params.startAccel == pytest.approx(1.15)
+
+
+class TestGMCarController:
+  def test_dash_speed_spoof_respects_live_stock_acc_toggles(self):
+    cp = SimpleNamespace(openpilotLongitudinalControl=True, enableGasInterceptorDEPRECATED=True)
+
+    assert should_spoof_dash_speed(cp, SimpleNamespace(disable_openpilot_long=False, gm_pedal_longitudinal=True))
+    assert not should_spoof_dash_speed(cp, SimpleNamespace(disable_openpilot_long=True, gm_pedal_longitudinal=True))
+    assert not should_spoof_dash_speed(cp, SimpleNamespace(disable_openpilot_long=False, gm_pedal_longitudinal=False))
+
+  def test_dash_speed_spoof_allows_non_pedal_long_when_op_long_enabled(self):
+    cp = SimpleNamespace(openpilotLongitudinalControl=True, enableGasInterceptorDEPRECATED=False)
+
+    assert should_spoof_dash_speed(cp, SimpleNamespace(disable_openpilot_long=False))

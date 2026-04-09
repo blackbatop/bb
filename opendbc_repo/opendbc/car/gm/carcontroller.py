@@ -36,6 +36,20 @@ def use_interceptor_sng_launch(CP, CS, maneuver_mode=False):
   return CS.out.cruiseState.standstill and (CS.out.standstill or CS.out.vEgo < launch_speed)
 
 
+def should_spoof_dash_speed(CP, starpilot_toggles):
+  if not CP.openpilotLongitudinalControl:
+    return False
+
+  # Respect the current StarPilot stock-ACC toggles even before CarParams are
+  # rebuilt on reboot, so the cluster speed spoof doesn't leak in stock mode.
+  if getattr(starpilot_toggles, "disable_openpilot_long", False):
+    return False
+  if CP.enableGasInterceptorDEPRECATED and not getattr(starpilot_toggles, "gm_pedal_longitudinal", True):
+    return False
+
+  return True
+
+
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
@@ -283,6 +297,7 @@ class CarController(CarControllerBase):
     hud_v_cruise = hud_control.setSpeed
     if hud_v_cruise > 70:
       hud_v_cruise = 0
+    dash_speed_spoof_active = should_spoof_dash_speed(self.CP, starpilot_toggles)
 
     # Send CAN commands.
     can_sends = []
@@ -366,7 +381,7 @@ class CarController(CarControllerBase):
       self.CP.carFingerprint in spoof_ecm_cruise_cars and
       self.CP.enableGasInterceptorDEPRECATED
     )
-    if non_acc_pedal_long and self.frame % 4 == 0:
+    if non_acc_pedal_long and dash_speed_spoof_active and self.frame % 4 == 0:
       can_sends.append(gmcan.create_ecm_cruise_control_command(
         self.packer_pt, CanBus.POWERTRAIN, True, hud_v_cruise * CV.MS_TO_KPH))
 
@@ -518,7 +533,7 @@ class CarController(CarControllerBase):
                                                              idx, CC.enabled, near_stop, at_full_stop, self.CP))
 
         is_bolt_acc_pedal = self.CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL
-        if self.CP.carFingerprint not in CC_ONLY_CAR or is_bolt_acc_pedal:
+        if dash_speed_spoof_active and (self.CP.carFingerprint not in CC_ONLY_CAR or is_bolt_acc_pedal):
           send_fcw = hud_alert == VisualAlert.fcw
           can_sends.append(gmcan.create_acc_dashboard_command(self.packer_pt, CanBus.POWERTRAIN, CC.enabled,
                                                               hud_v_cruise * CV.MS_TO_KPH, hud_control, send_fcw))
