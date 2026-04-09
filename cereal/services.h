@@ -99,3 +99,4 @@ static std::map<std::string, service> services = {
   { "mapdOut", {"mapdOut", true, 20.000000, 20, 2097152}},
 };
 #endif
+
