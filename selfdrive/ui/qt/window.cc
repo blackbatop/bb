@@ -13,6 +13,17 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
   QObject::connect(homeWindow, &HomeWindow::openSettings, this, &MainWindow::openSettings);
   QObject::connect(homeWindow, &HomeWindow::closeSettings, this, &MainWindow::closeSettings);
 
+  settingsWindow = new SettingsWindow(this);
+  main_layout->addWidget(settingsWindow);
+  QObject::connect(settingsWindow, &SettingsWindow::closeSettings, this, &MainWindow::closeSettings);
+  QObject::connect(settingsWindow, &SettingsWindow::reviewTrainingGuide, [=]() {
+    onboardingWindow->showTrainingGuide();
+    main_layout->setCurrentWidget(onboardingWindow);
+  });
+  QObject::connect(settingsWindow, &SettingsWindow::showDriverView, [=] {
+    homeWindow->showDriverView(true);
+  });
+
   onboardingWindow = new OnboardingWindow(this);
   main_layout->addWidget(onboardingWindow);
   QObject::connect(onboardingWindow, &OnboardingWindow::onboardingDone, [=]() {
@@ -28,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
     }
   });
   QObject::connect(device(), &Device::interactiveTimeout, [=]() {
-    if (settingsWindow != nullptr && main_layout->currentWidget() == settingsWindow) {
+    if (main_layout->currentWidget() == settingsWindow) {
       closeSettings();
     }
   });
@@ -54,25 +65,7 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent) {
   setAttribute(Qt::WA_NoSystemBackground);
 }
 
-void MainWindow::ensureSettingsWindow() {
-  if (settingsWindow != nullptr) {
-    return;
-  }
-
-  settingsWindow = new SettingsWindow(this);
-  main_layout->insertWidget(1, settingsWindow);
-  QObject::connect(settingsWindow, &SettingsWindow::closeSettings, this, &MainWindow::closeSettings);
-  QObject::connect(settingsWindow, &SettingsWindow::reviewTrainingGuide, [=]() {
-    onboardingWindow->showTrainingGuide();
-    main_layout->setCurrentWidget(onboardingWindow);
-  });
-  QObject::connect(settingsWindow, &SettingsWindow::showDriverView, [=] {
-    homeWindow->showDriverView(true);
-  });
-}
-
 void MainWindow::openSettings(int index, const QString &param) {
-  ensureSettingsWindow();
   main_layout->setCurrentWidget(settingsWindow);
   settingsWindow->setCurrentPanel(index, param);
 }
