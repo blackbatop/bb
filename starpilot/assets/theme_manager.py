@@ -108,8 +108,16 @@ class ThemeManager:
     default_boot_logo_path = Path(__file__).parent / "other_images/starpilot_boot_logo.jpg"
     boot_logo_save_path = THEME_SAVE_PATH / "bootlogos/starpilot.jpg"
     boot_logo_save_path.parent.mkdir(parents=True, exist_ok=True)
-    if default_boot_logo_path.exists() and not boot_logo_save_path.exists():
-      shutil.copy2(default_boot_logo_path, boot_logo_save_path)
+    if default_boot_logo_path.exists():
+      should_refresh_default_boot_logo = not boot_logo_save_path.exists()
+      if not should_refresh_default_boot_logo:
+        try:
+          should_refresh_default_boot_logo = default_boot_logo_path.read_bytes() != boot_logo_save_path.read_bytes()
+        except OSError:
+          should_refresh_default_boot_logo = True
+
+      if should_refresh_default_boot_logo:
+        shutil.copy2(default_boot_logo_path, boot_logo_save_path)
 
   def download_theme(self, theme_component, theme_name, asset_param, starpilot_toggles):
     self.downloading_theme = True
