@@ -60,6 +60,8 @@ BOLT_CARS = BOLT_2022_2023_CARS + BOLT_2018_2021_CARS + BOLT_2017_CARS
 
 BOLT_2017_LATERAL_TESTING_GROUND_ID = testing_ground.id_3
 BOLT_2017_STEER_RATIO_TEST_SCALE = 1.045
+BOLT_2017_STEER_RATIO_ONSET_SPEED = 20.0 * CV.MPH_TO_MS
+BOLT_2017_STEER_RATIO_ONSET_WIDTH = 4.0 * CV.MPH_TO_MS
 BOLT_2017_TORQUE_SCALE_BP = [0.0, 0.2, 0.5, 1.0, 1.5, 2.5]
 BOLT_2017_TORQUE_SCALE_LEFT = [1.0, 1.0, 1.065, 1.060, 1.055, 1.045]
 BOLT_2017_TORQUE_SCALE_RIGHT = [1.0, 1.0, 1.035, 1.020, 0.995, 0.985]
@@ -133,6 +135,15 @@ def get_friction_threshold(v_ego: float) -> float:
 
 def bolt_2017_lateral_testing_ground_active() -> bool:
   return testing_ground.use(BOLT_2017_LATERAL_TESTING_GROUND_ID)
+
+
+def _bolt_2017_sigmoid(x: float) -> float:
+  return 1.0 / (1.0 + math.exp(-x))
+
+
+def get_bolt_2017_steer_ratio_scale(v_ego: float) -> float:
+  onset = _bolt_2017_sigmoid((max(v_ego, 0.0) - BOLT_2017_STEER_RATIO_ONSET_SPEED) / BOLT_2017_STEER_RATIO_ONSET_WIDTH)
+  return 1.0 + ((BOLT_2017_STEER_RATIO_TEST_SCALE - 1.0) * onset)
 
 
 def _bolt_2017_low_speed_factor(v_ego: float) -> float:

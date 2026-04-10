@@ -16,6 +16,7 @@ from openpilot.selfdrive.controls.lib.latcontrol_torque import (
   LatControlTorque,
   get_friction_threshold,
   get_bolt_2017_base_torque_scale,
+  get_bolt_2017_steer_ratio_scale,
   get_bolt_2017_torque_scale,
   get_bolt_2022_2023_ff_scale,
   get_bolt_2022_2023_friction_scale,
@@ -57,6 +58,9 @@ class TestLatControl:
     assert get_bolt_2017_base_torque_scale(0.5) > get_bolt_2017_base_torque_scale(-0.5)
     assert 1.0 < get_bolt_2017_base_torque_scale(1.2) < get_bolt_2017_base_torque_scale(0.5)
     assert get_bolt_2017_base_torque_scale(-2.5) < 1.0
+    assert 1.0 < get_bolt_2017_steer_ratio_scale(10.0 * 0.44704) < get_bolt_2017_steer_ratio_scale(20.0 * 0.44704) < get_bolt_2017_steer_ratio_scale(30.0 * 0.44704)
+    assert get_bolt_2017_steer_ratio_scale(5.0 * 0.44704) < 1.01
+    assert get_bolt_2017_steer_ratio_scale(35.0 * 0.44704) > 1.04
     assert get_bolt_2017_torque_scale(0.6, 0.6, 8.0) > get_bolt_2017_torque_scale(0.6, 0.0, 8.0) > get_bolt_2017_torque_scale(0.6, -0.6, 8.0)
     assert get_bolt_2017_torque_scale(-0.6, -0.6, 8.0) > get_bolt_2017_torque_scale(-0.6, 0.0, 8.0) > get_bolt_2017_torque_scale(-0.6, 0.6, 8.0)
     assert get_bolt_2017_torque_scale(0.6, 0.6, 8.0) > get_bolt_2017_torque_scale(-0.6, -0.6, 8.0)
