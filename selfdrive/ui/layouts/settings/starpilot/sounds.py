@@ -12,7 +12,7 @@ from openpilot.system.ui.widgets import DialogResult
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
-from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, ToggleTile, AetherSliderDialog, RadioTileGroup
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, ToggleTile, AetherSliderDialog, RadioTileGroup, SPACING
 
 class StarPilotSoundsLayout(StarPilotPanel):
   COOLDOWN_KEY = "SwitchbackModeCooldown"
@@ -98,8 +98,8 @@ class StarPilotSoundsLayout(StarPilotPanel):
       self._set_active_section(sub_panel)
 
   def _render(self, rect):
-    tab_rect = rl.Rectangle(rect.x, rect.y, rect.width, 110)
-    panel_rect = rl.Rectangle(rect.x, rect.y + 140, rect.width, rect.height - 140)
+    tab_rect = rl.Rectangle(rect.x, rect.y, rect.width, SPACING.tab_height)
+    panel_rect = rl.Rectangle(rect.x, rect.y + SPACING.tab_height + SPACING.tab_panel_gap, rect.width, rect.height - SPACING.tab_height - SPACING.tab_panel_gap)
     self._section_tabs.render(tab_rect)
     self._sub_panels[self._active_section].render(panel_rect)
 
@@ -129,7 +129,7 @@ class StarPilotVolumeControlLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
     self._init_sound_player()
-    self._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
+    self._tile_grid = TileGrid(columns=2, padding=SPACING.tile_gap, uniform_width=True)
     
     self.CATEGORIES = []
     for key in StarPilotSoundsLayout.VOLUME_KEYS:
@@ -257,7 +257,7 @@ class StarPilotCustomAlertsLayout(StarPilotPanel):
 
   def __init__(self):
     super().__init__()
-    self._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
+    self._tile_grid = TileGrid(columns=2, padding=SPACING.tile_gap, uniform_width=True)
     self.CATEGORIES = []
     for key in StarPilotSoundsLayout.CUSTOM_ALERTS_KEYS:
       info = self.ALERT_INFO[key]

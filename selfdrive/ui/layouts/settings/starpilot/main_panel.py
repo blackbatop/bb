@@ -23,7 +23,7 @@ from openpilot.selfdrive.ui.layouts.settings.starpilot.themes import StarPilotTh
 from openpilot.selfdrive.ui.layouts.settings.starpilot.vehicle import StarPilotVehicleSettingsLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.wheel import StarPilotWheelLayout
 
-from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, RadioTileGroup
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, RadioTileGroup, SPACING
 
 STARPILOT_ICONS_DIR = "toggle_icons"
 
@@ -115,7 +115,7 @@ class StarPilotLayout(Widget):
       StarPilotPanelType.VEHICLE,
     )
 
-    self._main_grid = TileGrid(columns=None, padding=20)
+    self._main_grid = TileGrid(columns=None, padding=SPACING.tile_gap)
     self._rebuild_grid()
 
   def set_depth_callback(self, callback: Callable):
