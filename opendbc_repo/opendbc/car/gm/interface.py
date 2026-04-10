@@ -574,12 +574,13 @@ class CarInterface(CarInterfaceBase):
     )
     if volt_test_tune_active:
       # Volt interceptor-long currently falls back to an all-I tune on this path.
-      # The test-ground tune adds a modest P term, reduces I memory, and uses a
-      # dedicated starting state so stop-and-go launches do not wind up the PID.
+      # The test-ground tune adds a modest P term, trims mid/high-speed I memory,
+      # and uses a dedicated starting state so stop-and-go launches do not wind
+      # up the PID.
       ret.longitudinalTuning.kpBP = [0.0, 4.0, 12.0, 35.0]
-      ret.longitudinalTuning.kpV = [0.10, 0.08, 0.06, 0.045]
+      ret.longitudinalTuning.kpV = [0.10, 0.072, 0.050, 0.040]
       ret.longitudinalTuning.kiBP = [0.0, 4.0, 12.0, 35.0]
-      ret.longitudinalTuning.kiV = [0.025, 0.035, 0.055, 0.080]
+      ret.longitudinalTuning.kiV = [0.025, 0.030, 0.040, 0.055]
       ret.startingState = True
       ret.startAccel = 1.15
       ret.vEgoStarting = max(ret.vEgoStarting, 0.35)

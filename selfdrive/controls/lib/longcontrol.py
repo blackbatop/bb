@@ -155,14 +155,21 @@ class LongControl:
     self.integrator_hold_frames = 0
 
   def _get_pedal_long_freeze(self, a_target, error, v_ego, accel_limits):
-    if not self.is_gm_pedal_long:
+    volt_test_tune_handoff = self.is_volt_interceptor and testing_ground.use_2
+
+    if not self.is_gm_pedal_long and not volt_test_tune_handoff:
       self.last_a_target = a_target
       self.integrator_hold_frames = 0
       return False
 
-    handoff_threshold = interp(v_ego, [0.0, 4.0, 12.0, 25.0], [0.35, 0.45, 0.55, 0.70])
-    if abs(a_target - self.last_a_target) > handoff_threshold:
+    if self.is_gm_pedal_long:
+      handoff_threshold = interp(v_ego, [0.0, 4.0, 12.0, 25.0], [0.35, 0.45, 0.55, 0.70])
       hold_frames = int(round(interp(v_ego, [0.0, 4.0, 12.0, 25.0], [25.0, 20.0, 14.0, 10.0])))
+    else:
+      handoff_threshold = interp(v_ego, [0.0, 4.0, 12.0, 25.0], [0.24, 0.30, 0.38, 0.48])
+      hold_frames = int(round(interp(v_ego, [0.0, 4.0, 12.0, 25.0], [12.0, 10.0, 8.0, 6.0])))
+
+    if abs(a_target - self.last_a_target) > handoff_threshold:
       self.integrator_hold_frames = max(self.integrator_hold_frames, hold_frames)
     self.last_a_target = a_target
 
@@ -183,7 +190,7 @@ class LongControl:
 
     # Bleed stale I quickly when the target reverses against stored integrator.
     if self.pid.i * error < 0.0 and abs(error) > 0.05:
-      bleed = interp(v_ego, [0.0, 4.0, 12.0, 25.0], [0.86, 0.90, 0.94, 0.97])
+      bleed = interp(v_ego, [0.0, 4.0, 12.0, 25.0], [0.82, 0.86, 0.90, 0.94])
       self.pid.i *= bleed
 
   def update(self, active, CS, a_target, should_stop, accel_limits, starpilot_toggles):

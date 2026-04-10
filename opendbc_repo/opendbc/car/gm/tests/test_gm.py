@@ -68,8 +68,8 @@ class TestGMInterface:
     car_params = CarInterface.get_params(CAR.CHEVROLET_VOLT_ASCM, fingerprint, [], alpha_long=False, is_release=False, docs=False,
                                          starpilot_toggles=_test_starpilot_toggles())
 
-    assert list(car_params.longitudinalTuning.kpV) == [0.10, 0.08, 0.06, 0.045]
-    assert list(car_params.longitudinalTuning.kiV) == [0.025, 0.035, 0.055, 0.08]
+    assert list(car_params.longitudinalTuning.kpV) == [0.10, 0.072, 0.05, 0.04]
+    assert list(car_params.longitudinalTuning.kiV) == [0.025, 0.03, 0.04, 0.055]
     assert car_params.startingState
     assert car_params.startAccel == pytest.approx(1.15)
 
