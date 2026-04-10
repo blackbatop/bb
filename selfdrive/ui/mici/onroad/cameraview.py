@@ -44,20 +44,11 @@ FRAME_FRAGMENT_SHADER_EGL = """
   in vec2 fragTexCoord;
   uniform samplerExternalOES texture0;
   out vec4 fragColor;
-  uniform int engaged;
   uniform int enhance_driver;
 
   void main() {
     vec4 color = texture(texture0, fragTexCoord);
-    if (engaged == 1) {
-      float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));  // Luma
-      color.rgb = mix(vec3(gray), color.rgb, 0.2);  // 20% saturation
-      color.rgb = clamp((color.rgb - 0.5) * 1.2 + 0.5, 0.0, 1.0);  // +20% contrast
-      color.rgb = pow(color.rgb, vec3(1.0/1.28));
-      fragColor = vec4(color.rgb, color.a);
-    } else {
-      color.rgb *= 0.85;  // 85% opacity
-    }
+    color.rgb = pow(color.rgb, vec3(1.0/1.28));
     if (enhance_driver == 1) {
       float brightness = 1.1;
       color.rgb = color.rgb + 0.15;
@@ -74,20 +65,12 @@ FRAME_FRAGMENT_SHADER_TEXTURES = VERSION + """
   uniform sampler2D texture0;
   uniform sampler2D texture1;
   out vec4 fragColor;
-  uniform int engaged;
   uniform int enhance_driver;
 
   void main() {
     float y = texture(texture0, fragTexCoord).r;
     vec2 uv = texture(texture1, fragTexCoord).ra - 0.5;
     vec3 rgb = vec3(y + 1.402*uv.y, y - 0.344*uv.x - 0.714*uv.y, y + 1.772*uv.x);
-    if (engaged == 1) {
-      float gray = dot(rgb, vec3(0.299, 0.587, 0.114));
-      rgb = mix(vec3(gray), rgb, 0.2);  // 20% saturation
-      rgb = clamp((rgb - 0.5) * 1.2 + 0.5, 0.0, 1.0);  // +20% contrast
-    } else {
-      rgb *= 0.85;  // 85% opacity
-    }
     // TODO: the images out of camerad need some more correction and
     // the ui should apply a gamma curve for the device display
     if (enhance_driver == 1) {
@@ -133,8 +116,6 @@ class CameraView(Widget):
     fragment_shader = FRAME_FRAGMENT_SHADER_EGL if self._use_egl else FRAME_FRAGMENT_SHADER_TEXTURES
     self.shader = rl.load_shader_from_memory(VERTEX_SHADER, fragment_shader)
     self._texture1_loc: int = rl.get_shader_location(self.shader, "texture1") if not self._use_egl else -1
-    self._engaged_loc = rl.get_shader_location(self.shader, "engaged")
-    self._engaged_val = rl.ffi.new("int[1]", [1])
     self._enhance_driver_loc = rl.get_shader_location(self.shader, "enhance_driver")
     self._enhance_driver_val = rl.ffi.new("int[1]", [1 if stream_type == VisionStreamType.VISION_STREAM_DRIVER else 0])
 
@@ -298,7 +279,7 @@ class CameraView(Widget):
 
     # Render with shader
     rl.begin_shader_mode(self.shader)
-    self._update_texture_color_filtering()
+    self._update_shader_uniforms()
     rl.draw_texture_pro(self.egl_texture, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
     rl.end_shader_mode()
 
@@ -318,14 +299,12 @@ class CameraView(Widget):
 
     # Render with shader
     rl.begin_shader_mode(self.shader)
-    self._update_texture_color_filtering()
+    self._update_shader_uniforms()
     rl.set_shader_value_texture(self.shader, self._texture1_loc, self.texture_uv)
     rl.draw_texture_pro(self.texture_y, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
     rl.end_shader_mode()
 
-  def _update_texture_color_filtering(self):
-    self._engaged_val[0] = 1 if ui_state.started else 0
-    rl.set_shader_value(self.shader, self._engaged_loc, self._engaged_val, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+  def _update_shader_uniforms(self):
     rl.set_shader_value(self.shader, self._enhance_driver_loc, self._enhance_driver_val, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
 
   def _ensure_connection(self) -> bool:
