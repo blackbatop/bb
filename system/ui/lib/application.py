@@ -569,13 +569,19 @@ class GuiApplication:
           continue
 
         if self._render_texture:
-          self._mark_progress("gui_app.begin_texture_mode")
+          self._mark_progress("gui_app.before_begin_texture_mode")
           rl.begin_texture_mode(self._render_texture)
+          self._mark_progress("gui_app.after_begin_texture_mode")
+          self._mark_progress("gui_app.before_clear_background")
           rl.clear_background(rl.BLACK)
+          self._mark_progress("gui_app.after_clear_background")
         else:
-          self._mark_progress("gui_app.begin_drawing")
+          self._mark_progress("gui_app.before_begin_drawing")
           rl.begin_drawing()
+          self._mark_progress("gui_app.after_begin_drawing")
+          self._mark_progress("gui_app.before_clear_background")
           rl.clear_background(rl.BLACK)
+          self._mark_progress("gui_app.after_clear_background")
 
         # Handle modal overlay rendering and input processing
         if self._render_nav_stack():
@@ -594,19 +600,24 @@ class GuiApplication:
         if self._render_texture:
           self._mark_progress("gui_app.end_texture_mode")
           rl.end_texture_mode()
-          self._mark_progress("gui_app.begin_present")
+          self._mark_progress("gui_app.before_present_begin_drawing")
           rl.begin_drawing()
+          self._mark_progress("gui_app.after_present_begin_drawing")
+          self._mark_progress("gui_app.before_present_clear_background")
           rl.clear_background(rl.BLACK)
+          self._mark_progress("gui_app.after_present_clear_background")
           src_rect = rl.Rectangle(0, 0, float(self._width), -float(self._height))
           dst_rect = rl.Rectangle(0, 0, float(self._scaled_width), float(self._scaled_height))
           texture = self._render_texture.texture
           if texture:
+            self._mark_progress("gui_app.before_present_draw_texture")
             if BURN_IN_MODE and self._burn_in_shader:
               rl.begin_shader_mode(self._burn_in_shader)
               rl.draw_texture_pro(texture, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
               rl.end_shader_mode()
             else:
               rl.draw_texture_pro(texture, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
+            self._mark_progress("gui_app.after_present_draw_texture")
 
         if self._show_fps:
           rl.draw_fps(10, 10)

@@ -15,12 +15,13 @@ public:
 
 private:
   bool eventFilter(QObject *obj, QEvent *event) override;
+  void ensureSettingsWindow();
   void openSettings(int index = 0, const QString &param = "");
   void closeSettings();
 
   QStackedLayout *main_layout;
   HomeWindow *homeWindow;
-  SettingsWindow *settingsWindow;
+  SettingsWindow *settingsWindow = nullptr;
   OnboardingWindow *onboardingWindow;
 
   Params params;

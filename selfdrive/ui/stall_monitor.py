@@ -3,6 +3,7 @@ import sys
 import time
 import traceback
 import threading
+from collections import deque
 from pathlib import Path
 
 from openpilot.common.swaglog import cloudlog
@@ -32,6 +33,8 @@ class UIStallMonitor:
     self._stalled_phase = self._phase
 
     self._lock = threading.Lock()
+    self._history = deque(maxlen=max(1, int(os.getenv("UI_STALL_HISTORY_LEN", "64"))))
+    self._history.append((now, self._phase))
     self._stop_event = threading.Event()
     self._thread = threading.Thread(target=self._run, name=f"{name}_stall_probe", daemon=True)
 
@@ -54,6 +57,7 @@ class UIStallMonitor:
       if phase != self._phase:
         self._phase = phase
         self._phase_entered = now
+        self._history.append((now, phase))
       self._last_progress = now
 
       if self._stall_reported:
@@ -100,6 +104,15 @@ class UIStallMonitor:
       f"phase_for_s={phase_for_s:.3f}",
       "",
     ]
+
+    with self._lock:
+      history = list(self._history)
+
+    lines.append("Recent phase transitions:")
+    for ts, phase_name in history:
+      age_s = now - ts
+      lines.append(f"  - {ts:.6f} ({age_s:.3f}s ago) {phase_name}")
+    lines.append("")
 
     ordered_idents = sorted(frames.keys(), key=lambda ident: ident != self._main_thread_id)
     for ident in ordered_idents:
