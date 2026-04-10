@@ -539,7 +539,7 @@ class GuiApplication:
   def last_mouse_event(self) -> MouseEvent:
     return self._last_mouse_event
 
-  def render(self):
+  def render(self, render_callback: Callable[[], None] | None = None):
     try:
       if self._profile_render_frames > 0:
         import cProfile
@@ -595,6 +595,10 @@ class GuiApplication:
           yield False
         else:
           self._mark_progress("gui_app.frame_ready")
+          if render_callback is not None:
+            self._mark_progress("gui_app.before_render_callback")
+            render_callback()
+            self._mark_progress("gui_app.after_render_callback")
           yield True
 
         if self._render_texture:

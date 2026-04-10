@@ -17,6 +17,7 @@ def main():
   config_realtime_process(0, 51)
 
   gui_app.init_window("UI")
+  render_in_gui_app = not gui_app.big_ui()
   if gui_app.big_ui():
     main_layout = MainLayout()
   else:
@@ -27,18 +28,19 @@ def main():
   stall_monitor.progress("ui.loop_ready")
   stall_monitor.start()
 
+  def render_layout() -> None:
+    stall_monitor.progress("ui.before_layout_render")
+    main_layout.render()
+    stall_monitor.progress("ui.after_layout_render")
+
   try:
-    for should_render in gui_app.render():
+    for should_render in gui_app.render(render_callback=render_layout if render_in_gui_app else None):
       stall_monitor.progress("ui.loop_iteration")
       kick_watchdog()
       stall_monitor.progress("ui.after_watchdog")
       ui_state.update()
       stall_monitor.progress("ui.after_state_update")
       if should_render:
-        stall_monitor.progress("ui.before_layout_render")
-        main_layout.render()
-        stall_monitor.progress("ui.after_layout_render")
-
         # reaffine after power save offlines our core
         if TICI and os.sched_getaffinity(0) != cores:
           try:
