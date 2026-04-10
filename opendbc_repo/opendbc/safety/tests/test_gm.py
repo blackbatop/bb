@@ -391,14 +391,18 @@ class TestGmInterceptorSafety(common.GasInterceptorSafetyTest, TestGmCameraSafet
       self.assertEqual(enable, self.safety.get_controls_allowed())
 
   def test_buttons(self):
-    # Pedal-long non-ACC only allows CANCEL while controls are active.
+    # Pedal-long non-ACC only allows CANCEL when the CC-only cruise state is engaged.
     self.safety.set_controls_allowed(False)
     for btn in range(8):
       self.assertFalse(self._tx(self._button_msg(btn)))
 
     self.safety.set_controls_allowed(True)
     for btn in range(8):
-      self.assertEqual(btn == Buttons.CANCEL, self._tx(self._button_msg(btn)))
+      self.assertFalse(self._tx(self._button_msg(btn)))
+
+    for enabled in (True, False):
+      self._rx(self._pcm_status_msg(enabled))
+      self.assertEqual(enabled, self._tx(self._button_msg(Buttons.CANCEL)))
 
   def test_disable_control_allowed_from_cruise(self):
     pass
@@ -510,7 +514,7 @@ class TestGmCcLongitudinalPandaSchedSafety(TestGmCcLongitudinalSafety):
 
     self.safety.set_controls_allowed(1)
     for btn in range(8):
-      self.assertEqual(btn == Buttons.CANCEL, self._tx(self._button_msg(btn)))
+      self.assertFalse(self._tx(self._button_msg(btn)))
 
     allowed_btns = {Buttons.UNPRESS, Buttons.RES_ACCEL, Buttons.DECEL_SET, Buttons.CANCEL}
     for enabled in (True, False):

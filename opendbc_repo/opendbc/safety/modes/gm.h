@@ -395,11 +395,6 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
     int button = (msg->data[5] >> 4) & 0x7U;
 
     bool allowed_btn = (button == GM_BTN_CANCEL) && cruise_engaged_prev;
-    // Pedal-long non-ACC path: once OP controls are taken over, allow cancel spam
-    // immediately even if cruise_engaged_prev has not flipped yet.
-    if ((button == GM_BTN_CANCEL) && gm_pedal_long && !gm_has_acc && controls_allowed) {
-      allowed_btn = true;
-    }
     if (gm_hw == GM_CAM && enable_gas_interceptor && gm_bolt_2022_pedal && button == GM_BTN_CANCEL) {
       allowed_btn = true;
     }
