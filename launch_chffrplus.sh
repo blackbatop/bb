@@ -98,6 +98,10 @@ function launch {
   # start manager
   cd system/manager
 
+  if ! python3 ./launch_param_migrations.py; then
+    echo "Launch param migrations failed; continuing boot."
+  fi
+
   # Bootstrap runtime (e.g. /usr/comma after reset/uninstall) must go straight
   # to manager/setup flow. Do not run StarPilot prebuilt checks/builds here.
   if [ "$DIR" = "/usr/comma" ] || [ ! -d "$DIR/.git" ]; then

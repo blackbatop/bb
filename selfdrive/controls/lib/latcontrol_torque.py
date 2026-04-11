@@ -23,7 +23,7 @@ from openpilot.starpilot.common.testing_grounds import testing_ground
 # Additionally, there is friction in the steering wheel that needs
 # to be overcome to move it at all, this is compensated for too.
 
-KP = 0.7
+KP = 0.6
 KI = 0.35
 
 INTERP_SPEEDS = [1, 1.5, 2.0, 3.0, 5, 7.5, 10, 15, 30]
@@ -62,6 +62,9 @@ BOLT_2017_LATERAL_TESTING_GROUND_ID = testing_ground.id_3
 BOLT_2017_STEER_RATIO_TEST_SCALE = 1.045
 BOLT_2017_STEER_RATIO_ONSET_SPEED = 20.0 * CV.MPH_TO_MS
 BOLT_2017_STEER_RATIO_ONSET_WIDTH = 4.0 * CV.MPH_TO_MS
+BOLT_2017_CENTER_TAPER_LAT = 0.10
+BOLT_2017_CENTER_TAPER_WIDTH = 0.03
+BOLT_2017_CENTER_TAPER_GAIN = 0.055
 BOLT_2017_TORQUE_SCALE_BP = [0.0, 0.2, 0.5, 1.0, 1.5, 2.5]
 BOLT_2017_TORQUE_SCALE_LEFT = [1.0, 1.0, 1.065, 1.060, 1.055, 1.045]
 BOLT_2017_TORQUE_SCALE_RIGHT = [1.0, 1.0, 1.035, 1.020, 0.995, 0.985]
@@ -89,18 +92,18 @@ BOLT_2018_2021_PHASE_SCALE = 0.10
 BOLT_2018_2021_TURN_IN_BOOST_LEFT = 0.22
 BOLT_2018_2021_TURN_IN_BOOST_RIGHT = 0.12
 BOLT_2018_2021_UNWIND_TAPER_GAIN_LEFT = 0.80
-BOLT_2018_2021_UNWIND_TAPER_GAIN_RIGHT = 0.96
+BOLT_2018_2021_UNWIND_TAPER_GAIN_RIGHT = 1.04
 BOLT_2018_2021_FRICTION_MULT = 1.01
 BOLT_2018_2021_FRICTION_LAT_RISE = 0.24
 BOLT_2018_2021_FRICTION_JERK_RISE = 0.28
 BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_LEFT = 0.16
-BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_RIGHT = 0.13
+BOLT_2018_2021_TURN_IN_THRESHOLD_REDUCTION_RIGHT = 0.16
 BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_LEFT = 0.15
-BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.21
+BOLT_2018_2021_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.25
 BOLT_2018_2021_TURN_IN_FRICTION_BOOST_LEFT = 0.08
-BOLT_2018_2021_TURN_IN_FRICTION_BOOST_RIGHT = 0.06
+BOLT_2018_2021_TURN_IN_FRICTION_BOOST_RIGHT = 0.08
 BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_LEFT = 0.17
-BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_RIGHT = 0.23
+BOLT_2018_2021_UNWIND_FRICTION_REDUCTION_RIGHT = 0.27
 
 BOLT_2022_2023_LATERAL_TESTING_GROUND_ID = testing_ground.id_5
 BOLT_2022_2023_FF_GAIN_LEFT = 0.13
@@ -127,6 +130,40 @@ BOLT_2022_2023_TURN_IN_FRICTION_BOOST_RIGHT = 0.04
 BOLT_2022_2023_UNWIND_FRICTION_REDUCTION_LEFT = 0.21
 BOLT_2022_2023_UNWIND_FRICTION_REDUCTION_RIGHT = 0.17
 
+SILVERADO_TRAILER_LATERAL_TESTING_GROUND_ID = testing_ground.id_6
+SILVERADO_TRAILER_FF_GAIN_LEFT = 0.11
+SILVERADO_TRAILER_FF_GAIN_RIGHT = 0.03
+SILVERADO_TRAILER_FF_ONSET = 0.18
+SILVERADO_TRAILER_FF_ONSET_WIDTH = 0.10
+SILVERADO_TRAILER_FF_CUTOFF = 1.50
+SILVERADO_TRAILER_FF_CUTOFF_WIDTH = 0.34
+SILVERADO_TRAILER_SPEED_BP = [
+  30.0 * CV.MPH_TO_MS,
+  45.0 * CV.MPH_TO_MS,
+  55.0 * CV.MPH_TO_MS,
+  60.0 * CV.MPH_TO_MS,
+  63.0 * CV.MPH_TO_MS,
+  68.0 * CV.MPH_TO_MS,
+  72.0 * CV.MPH_TO_MS,
+]
+SILVERADO_TRAILER_SPEED_V = [0.0, 0.35, 0.90, 1.00, 0.55, 0.15, 0.0]
+SILVERADO_TRAILER_PHASE_SCALE = 0.18
+SILVERADO_TRAILER_FRICTION_MULT = 1.015
+SILVERADO_TRAILER_FRICTION_LAT_RISE = 0.28
+SILVERADO_TRAILER_FRICTION_JERK_RISE = 0.30
+SILVERADO_TRAILER_TURN_IN_BOOST_LEFT = 0.20
+SILVERADO_TRAILER_TURN_IN_BOOST_RIGHT = 0.06
+SILVERADO_TRAILER_UNWIND_TAPER_LEFT = 0.06
+SILVERADO_TRAILER_UNWIND_TAPER_RIGHT = 0.18
+SILVERADO_TRAILER_TURN_IN_THRESHOLD_REDUCTION_LEFT = 0.12
+SILVERADO_TRAILER_TURN_IN_THRESHOLD_REDUCTION_RIGHT = 0.04
+SILVERADO_TRAILER_UNWIND_THRESHOLD_INCREASE_LEFT = 0.03
+SILVERADO_TRAILER_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.10
+SILVERADO_TRAILER_TURN_IN_FRICTION_BOOST_LEFT = 0.05
+SILVERADO_TRAILER_TURN_IN_FRICTION_BOOST_RIGHT = 0.02
+SILVERADO_TRAILER_UNWIND_FRICTION_REDUCTION_LEFT = 0.03
+SILVERADO_TRAILER_UNWIND_FRICTION_REDUCTION_RIGHT = 0.08
+
 
 def get_friction_threshold(v_ego: float) -> float:
   # Keep the speed-scaled friction threshold behavior.
@@ -141,9 +178,17 @@ def _bolt_2017_sigmoid(x: float) -> float:
   return 1.0 / (1.0 + math.exp(-x))
 
 
+def _bolt_2017_high_speed_factor(v_ego: float) -> float:
+  return _bolt_2017_sigmoid((max(v_ego, 0.0) - BOLT_2017_STEER_RATIO_ONSET_SPEED) / BOLT_2017_STEER_RATIO_ONSET_WIDTH)
+
+
 def get_bolt_2017_steer_ratio_scale(v_ego: float) -> float:
-  onset = _bolt_2017_sigmoid((max(v_ego, 0.0) - BOLT_2017_STEER_RATIO_ONSET_SPEED) / BOLT_2017_STEER_RATIO_ONSET_WIDTH)
-  return 1.0 + ((BOLT_2017_STEER_RATIO_TEST_SCALE - 1.0) * onset)
+  return 1.0 + ((BOLT_2017_STEER_RATIO_TEST_SCALE - 1.0) * _bolt_2017_high_speed_factor(v_ego))
+
+
+def get_bolt_2017_center_taper_scale(desired_lateral_accel: float, v_ego: float) -> float:
+  center_window = _bolt_2017_sigmoid((BOLT_2017_CENTER_TAPER_LAT - abs(desired_lateral_accel)) / BOLT_2017_CENTER_TAPER_WIDTH)
+  return 1.0 - (BOLT_2017_CENTER_TAPER_GAIN * _bolt_2017_high_speed_factor(v_ego) * center_window)
 
 
 def _bolt_2017_low_speed_factor(v_ego: float) -> float:
@@ -168,18 +213,19 @@ def get_bolt_2017_base_torque_scale(desired_lateral_accel: float) -> float:
 
 def get_bolt_2017_torque_scale(desired_lateral_accel: float, desired_lateral_jerk: float = 0.0, v_ego: float = 30.0) -> float:
   base_scale = get_bolt_2017_base_torque_scale(desired_lateral_accel)
-  if base_scale <= 1.0 or desired_lateral_jerk == 0.0:
-    return base_scale
+  scale = base_scale
+  if base_scale > 1.0 and desired_lateral_jerk != 0.0:
+    low_speed_factor = _bolt_2017_low_speed_factor(v_ego)
+    phase = _bolt_2017_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+    turn_in_weight = max(phase, 0.0)
+    unwind_weight = max(-phase, 0.0)
+    turn_in_boost = 1.0 + (_bolt_2017_side_value(desired_lateral_accel, BOLT_2017_TURN_IN_BOOST_LEFT, BOLT_2017_TURN_IN_BOOST_RIGHT) *
+                            turn_in_weight * (0.35 + 0.65 * low_speed_factor))
+    unwind_taper = 1.0 - (_bolt_2017_side_value(desired_lateral_accel, BOLT_2017_UNWIND_TAPER_LEFT, BOLT_2017_UNWIND_TAPER_RIGHT) *
+                           unwind_weight * (0.45 + 0.55 * low_speed_factor))
+    scale = 1.0 + ((base_scale - 1.0) * turn_in_boost * max(unwind_taper, 0.0))
 
-  low_speed_factor = _bolt_2017_low_speed_factor(v_ego)
-  phase = _bolt_2017_transition_phase(desired_lateral_accel, desired_lateral_jerk)
-  turn_in_weight = max(phase, 0.0)
-  unwind_weight = max(-phase, 0.0)
-  turn_in_boost = 1.0 + (_bolt_2017_side_value(desired_lateral_accel, BOLT_2017_TURN_IN_BOOST_LEFT, BOLT_2017_TURN_IN_BOOST_RIGHT) *
-                          turn_in_weight * (0.35 + 0.65 * low_speed_factor))
-  unwind_taper = 1.0 - (_bolt_2017_side_value(desired_lateral_accel, BOLT_2017_UNWIND_TAPER_LEFT, BOLT_2017_UNWIND_TAPER_RIGHT) *
-                         unwind_weight * (0.45 + 0.55 * low_speed_factor))
-  return 1.0 + ((base_scale - 1.0) * turn_in_boost * max(unwind_taper, 0.0))
+  return scale * get_bolt_2017_center_taper_scale(desired_lateral_accel, v_ego)
 
 
 def bolt_2018_2021_lateral_testing_ground_active() -> bool:
@@ -338,6 +384,78 @@ def get_bolt_2022_2023_friction_scale(v_ego: float, desired_lateral_accel: float
   return min(max(friction_scale, 0.92), 1.22)
 
 
+def silverado_trailer_lateral_testing_ground_active() -> bool:
+  return testing_ground.use(SILVERADO_TRAILER_LATERAL_TESTING_GROUND_ID)
+
+
+def _silverado_trailer_sigmoid(x: float) -> float:
+  return 1.0 / (1.0 + math.exp(-x))
+
+
+def _silverado_trailer_speed_factor(v_ego: float) -> float:
+  return float(np.interp(v_ego, SILVERADO_TRAILER_SPEED_BP, SILVERADO_TRAILER_SPEED_V))
+
+
+def _silverado_trailer_transition_phase(desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  return math.tanh((desired_lateral_accel * desired_lateral_jerk) / SILVERADO_TRAILER_PHASE_SCALE)
+
+
+def _silverado_trailer_side_value(desired_lateral_accel: float, left_value: float, right_value: float) -> float:
+  return left_value if desired_lateral_accel >= 0.0 else right_value
+
+
+def _silverado_trailer_transition_envelope(v_ego: float, desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  lat_factor = 1.0 - math.exp(-abs(desired_lateral_accel) / SILVERADO_TRAILER_FRICTION_LAT_RISE)
+  jerk_factor = 1.0 - math.exp(-abs(desired_lateral_jerk) / SILVERADO_TRAILER_FRICTION_JERK_RISE)
+  return _silverado_trailer_speed_factor(v_ego) * lat_factor * jerk_factor
+
+
+def get_silverado_trailer_ff_scale(desired_lateral_accel: float, desired_lateral_jerk: float, v_ego: float) -> float:
+  if desired_lateral_accel == 0.0:
+    return 1.0
+
+  gain = _silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_FF_GAIN_LEFT, SILVERADO_TRAILER_FF_GAIN_RIGHT)
+  abs_lateral_accel = abs(desired_lateral_accel)
+  onset = _silverado_trailer_sigmoid((abs_lateral_accel - SILVERADO_TRAILER_FF_ONSET) / SILVERADO_TRAILER_FF_ONSET_WIDTH)
+  cutoff = _silverado_trailer_sigmoid((SILVERADO_TRAILER_FF_CUTOFF - abs_lateral_accel) / SILVERADO_TRAILER_FF_CUTOFF_WIDTH)
+  speed_factor = _silverado_trailer_speed_factor(v_ego)
+  extra_scale = gain * speed_factor * onset * cutoff
+  phase = _silverado_trailer_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  turn_in_boost = 1.0 + (_silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_TURN_IN_BOOST_LEFT, SILVERADO_TRAILER_TURN_IN_BOOST_RIGHT) *
+                          turn_in_weight * speed_factor)
+  unwind_taper = 1.0 - (_silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_UNWIND_TAPER_LEFT, SILVERADO_TRAILER_UNWIND_TAPER_RIGHT) *
+                         unwind_weight * (0.35 + 0.65 * speed_factor))
+  return 1.0 + (extra_scale * turn_in_boost * max(unwind_taper, 0.0))
+
+
+def get_silverado_trailer_friction_threshold(v_ego: float, desired_lateral_accel: float = 0.0, desired_lateral_jerk: float = 0.0) -> float:
+  base_threshold = get_friction_threshold(v_ego)
+  transition_envelope = _silverado_trailer_transition_envelope(v_ego, desired_lateral_accel, desired_lateral_jerk)
+  phase = _silverado_trailer_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  threshold_scale = 1.0 - (_silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_TURN_IN_THRESHOLD_REDUCTION_LEFT, SILVERADO_TRAILER_TURN_IN_THRESHOLD_REDUCTION_RIGHT) *
+                           transition_envelope * turn_in_weight)
+  threshold_scale += (_silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_UNWIND_THRESHOLD_INCREASE_LEFT, SILVERADO_TRAILER_UNWIND_THRESHOLD_INCREASE_RIGHT) *
+                      transition_envelope * unwind_weight)
+  return base_threshold * min(max(threshold_scale, 0.86), 1.12)
+
+
+def get_silverado_trailer_friction_scale(v_ego: float, desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  transition_envelope = _silverado_trailer_transition_envelope(v_ego, desired_lateral_accel, desired_lateral_jerk)
+  phase = _silverado_trailer_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  friction_scale = SILVERADO_TRAILER_FRICTION_MULT
+  friction_scale += (_silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_TURN_IN_FRICTION_BOOST_LEFT, SILVERADO_TRAILER_TURN_IN_FRICTION_BOOST_RIGHT) *
+                     transition_envelope * turn_in_weight)
+  friction_scale -= (_silverado_trailer_side_value(desired_lateral_accel, SILVERADO_TRAILER_UNWIND_FRICTION_REDUCTION_LEFT, SILVERADO_TRAILER_UNWIND_FRICTION_REDUCTION_RIGHT) *
+                     transition_envelope * unwind_weight)
+  return min(max(friction_scale, 0.93), 1.12)
+
+
 class LatControlTorque(LatControl):
   def __init__(self, CP, CI, dt):
     super().__init__(CP, CI, dt)
@@ -363,6 +481,7 @@ class LatControlTorque(LatControl):
     self.is_bolt_2022_2023 = CP.carFingerprint in BOLT_2022_2023_CARS
     self.is_bolt_2018_2021 = CP.carFingerprint in BOLT_2018_2021_CARS
     self.is_bolt_2017 = CP.carFingerprint in BOLT_2017_CARS
+    self.is_silverado = CP.carFingerprint == GM_CAR.CHEVROLET_SILVERADO
     self.use_bolt_ff_scaling = self.is_bolt_2022_2023 or self.is_bolt_2018_2021 or self.is_bolt_2017
     self.use_bolt_ki_multiplier = self.use_bolt_ff_scaling
     self.torque_ff_scale_pos = 1.0
@@ -445,6 +564,7 @@ class LatControlTorque(LatControl):
         ff *= ff_scale
       bolt_2022_2023_test_active = self.is_bolt_2022_2023 and bolt_2022_2023_lateral_testing_ground_active()
       bolt_2018_2021_test_active = self.is_bolt_2018_2021 and bolt_2018_2021_lateral_testing_ground_active()
+      silverado_trailer_test_active = self.is_silverado and silverado_trailer_lateral_testing_ground_active()
       friction_threshold = get_friction_threshold(CS.vEgo)
       friction_scale = 1.0
       if bolt_2022_2023_test_active:
@@ -454,6 +574,13 @@ class LatControlTorque(LatControl):
       elif bolt_2018_2021_test_active:
         friction_threshold = get_bolt_2018_2021_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
         friction_scale = get_bolt_2018_2021_friction_scale(CS.vEgo, setpoint, desired_lateral_jerk)
+      elif silverado_trailer_test_active:
+        # Trailer pulls in the reference log showed a repeatable left-turn under-response
+        # centered around 55-65 mph. Bias feedforward and turn-in friction there, while
+        # softening right-side unwind so the experimental B tune stays bounded.
+        ff *= get_silverado_trailer_ff_scale(setpoint, desired_lateral_jerk, CS.vEgo)
+        friction_threshold = get_silverado_trailer_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
+        friction_scale = get_silverado_trailer_friction_scale(CS.vEgo, setpoint, desired_lateral_jerk)
       ff += friction_scale * get_friction(error_with_lsf + JERK_GAIN * desired_lateral_jerk, lateral_accel_deadzone, friction_threshold, self.torque_params)
       deadzone_boost_active = False
       if self.torque_deadzone_boost > 0.0 and abs(gravity_adjusted_future_lateral_accel) < DEADZONE_BOOST_LAT_ACCEL:

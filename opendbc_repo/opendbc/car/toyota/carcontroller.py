@@ -49,7 +49,7 @@ def get_long_tune(CP, params):
   k_f = 1.0
 
   if CP.carFingerprint == CAR.TOYOTA_PRIUS:
-    k_f = 0.0
+    k_f = 0.4
   elif CP.carFingerprint not in TSS2_CAR:
     kiBP = [0., 5., 35.]
     kiV = [3.6, 2.4, 1.5]
@@ -265,9 +265,14 @@ class CarController(CarControllerBase):
                                                -MAX_PITCH_COMPENSATION, MAX_PITCH_COMPENSATION))
             pcm_accel_cmd += pitch_compensation
 
+          feedforward = pcm_accel_cmd
+          if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
+            # Preserve the smoother positive handoff, but let braking feedforward pull speed back down.
+            feedforward = min(feedforward, 0.0)
+
           pcm_accel_cmd = self.long_pid.update(error_future,
                                                speed=CS.out.vEgo,
-                                               feedforward=pcm_accel_cmd,
+                                               feedforward=feedforward,
                                                freeze_integrator=actuators.longControlState != LongCtrlState.pid)
         else:
           self.long_pid.reset()

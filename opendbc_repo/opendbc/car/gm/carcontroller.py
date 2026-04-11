@@ -66,6 +66,10 @@ def should_spoof_ecm_cruise_status(CP):
   )
 
 
+def get_testing_ground_1_brake_switch_bias(v_ego: float) -> int:
+  return int(round(np.interp(v_ego, [0.0, 6.0, 15.0, 30.0], [40.0, 85.0, 130.0, 170.0])))
+
+
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
@@ -458,7 +462,7 @@ class CarController(CarControllerBase):
             apply_gas_torque = np.clip(scaled_torque, self.params.MAX_ACC_REGEN, gas_max)
             brake_switch = int(round(np.interp(CS.out.vEgo, self.params.BRAKE_SWITCH_LOOKUP_BP, self.params.BRAKE_SWITCH_LOOKUP_V)))
             if testing_ground.use_1:
-              brake_switch_bias = int(round(np.interp(CS.out.vEgo, [0.0, 6.0, 15.0, 30.0], [60.0, 120.0, 180.0, 220.0])))
+              brake_switch_bias = get_testing_ground_1_brake_switch_bias(CS.out.vEgo)
               brake_switch = min(self.params.ZERO_GAS, brake_switch + brake_switch_bias)
             brake_accel = min((scaled_torque - brake_switch) / (self.tireRadius * self.mass), 0)
             self.apply_gas = int(round(apply_gas_torque))

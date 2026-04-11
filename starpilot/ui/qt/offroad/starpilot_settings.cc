@@ -386,7 +386,8 @@ void StarPilotSettingsWindow::updateVariables() {
     longitudinalActuatorDelay = CP.getLongitudinalActuatorDelay();
     startAccel = CP.getStartAccel();
     steerActuatorDelay = CP.getSteerActuatorDelay();
-    steerKp = 1.0f;
+    // Keep Qt stock-sync aligned with selfdrive/controls/lib/latcontrol_torque.py::KP.
+    steerKp = 0.6f;
     steerRatio = CP.getSteerRatio();
     stopAccel = CP.getStopAccel();
     stoppingDecelRate = CP.getStoppingDecelRate();

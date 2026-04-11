@@ -19,6 +19,11 @@ def test_tracked_lead_catchup_bias_ignores_very_far_gap():
   assert bias == 0.0
 
 
+def test_tracked_lead_catchup_bias_applies_to_two_second_highway_gap():
+  bias = get_tracked_lead_catchup_bias(30.4, 63.0, 40.0, 0.4)
+  assert bias > 14.0
+
+
 def test_disable_far_lead_throttle_rejects_two_second_plus_gap():
   should_disable = should_disable_far_lead_throttle(31.4, 78.7, 38.0, 0.1, False)
   assert not should_disable

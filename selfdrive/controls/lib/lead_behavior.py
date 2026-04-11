@@ -18,14 +18,14 @@ def get_tracked_lead_catchup_bias(v_ego: float, lead_distance: float, desired_ga
   # Encourage ACC to treat a tracked lead as the active constraint when we're
   # hanging far above the requested time gap, but don't override cruise for a
   # truly distant lead or one we're already closing on decisively.
-  if actual_hw <= max(desired_hw + 0.35, 1.75):
+  if actual_hw <= max(desired_hw + 0.3, 1.72):
     return 0.0
   if actual_hw >= max(desired_hw + 1.6, 3.0):
     return 0.0
   if closing_speed > max(2.5, 0.12 * v_ego):
     return 0.0
 
-  return min(gap_error * 0.5, max(12.0, 0.6 * v_ego))
+  return min(gap_error * 0.65, max(14.0, 0.75 * v_ego))
 
 
 def should_disable_far_lead_throttle(v_ego: float, lead_distance: float, desired_gap: float,
