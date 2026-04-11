@@ -9,6 +9,7 @@ from openpilot.common.params import Params
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, ToggleTile, ValueTile, SPACING
+from openpilot.selfdrive.ui.layouts.settings.starpilot.sectioned_panel import SectionedTileLayout, TileSection
 
 
 class StarPilotPanelType(IntEnum):
@@ -46,7 +47,9 @@ class StarPilotPanel(Widget):
         self._sub_panels: dict[str, Widget] = {}
         self._scroller = None
         self._tile_grid = None
+        self._sectioned_grid = None
         self.CATEGORIES = []
+        self.SECTIONS = []
 
     def set_navigate_callback(self, callback: Callable):
         self._navigate_callback = callback
@@ -57,7 +60,74 @@ class StarPilotPanel(Widget):
     def set_current_sub_panel(self, sub_panel: str):
         self._current_sub_panel = sub_panel
 
+    def _is_category_visible(self, cat: dict) -> bool:
+        visible_fn = cat.get("visible")
+        return visible_fn is None or visible_fn()
+
+    def _build_tile(self, cat: dict) -> Widget | None:
+        tile_type = cat.get("type", "hub")
+        if tile_type == "hub":
+            on_click = cat.get("on_click")
+            if on_click is None:
+                on_click = lambda c=cat: self._navigate_to(c["panel"])
+
+            return HubTile(
+                title=tr(cat["title"]),
+                desc=tr(cat.get("desc", "")),
+                icon_path=cat.get("icon"),
+                on_click=on_click,
+                starpilot_icon=cat.get("starpilot_icon", True),
+                bg_color=cat.get("color"),
+                get_status=cat.get("get_status"),
+            )
+
+        if tile_type == "toggle":
+            raw_set_state = cat["set_state"]
+
+            def on_toggle(state: bool, setter=raw_set_state):
+                setter(state)
+                self._rebuild_grid()
+
+            return ToggleTile(title=tr(cat["title"]), get_state=cat["get_state"], set_state=on_toggle, icon_path=cat.get("icon"), bg_color=cat.get("color"), desc=tr(cat.get("desc", "")), is_enabled=cat.get("is_enabled"), disabled_label=cat.get("disabled_label", ""))
+
+        if tile_type == "value":
+            return ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], icon_path=cat.get("icon"), bg_color=cat.get("color"), is_enabled=cat.get("is_enabled"), desc=tr(cat.get("desc", "")))
+
+        return None
+
+    def _build_tile_grid(self, categories: list[dict], columns: int | None = None, padding: int | None = None, uniform_width: bool = False) -> TileGrid:
+        grid = TileGrid(columns=columns, padding=padding, uniform_width=uniform_width)
+        for cat in categories:
+            if not self._is_category_visible(cat):
+                continue
+            tile = self._build_tile(cat)
+            if tile is not None:
+                grid.add_tile(tile)
+        return grid
+
     def _rebuild_grid(self):
+        if self.SECTIONS:
+            if self._sectioned_grid is None:
+                self._sectioned_grid = SectionedTileLayout()
+
+            sections: list[TileSection] = []
+            for section in self.SECTIONS:
+                visible_fn = section.get("visible")
+                if visible_fn is not None and not visible_fn():
+                    continue
+
+                grid = self._build_tile_grid(
+                    section.get("categories", []),
+                    columns=section.get("columns", 2),
+                    padding=section.get("padding", SPACING.tile_gap),
+                    uniform_width=section.get("uniform_width", True),
+                )
+                if grid.tiles:
+                    sections.append(TileSection(tr(section["title"]), grid))
+
+            self._sectioned_grid.set_sections(sections)
+            return
+
         if not self.CATEGORIES:
             return
 
@@ -67,38 +137,11 @@ class StarPilotPanel(Widget):
         self._tile_grid.clear()
 
         for cat in self.CATEGORIES:
-            visible_fn = cat.get("visible")
-            if visible_fn is not None and not visible_fn():
+            if not self._is_category_visible(cat):
                 continue
-
-            tile_type = cat.get("type", "hub")
-            if tile_type == "hub":
-                on_click = cat.get("on_click")
-                if on_click is None:
-                    on_click = lambda c=cat: self._navigate_to(c["panel"])
-
-                tile = HubTile(
-                    title=tr(cat["title"]),
-                    desc=tr(cat.get("desc", "")),
-                    icon_path=cat.get("icon"),
-                    on_click=on_click,
-                    starpilot_icon=cat.get("starpilot_icon", True),
-                    bg_color=cat.get("color"),
-                )
-            elif tile_type == "toggle":
-                raw_set_state = cat["set_state"]
-
-                def on_toggle(state: bool, setter=raw_set_state):
-                    setter(state)
-                    self._rebuild_grid()
-
-                tile = ToggleTile(title=tr(cat["title"]), get_state=cat["get_state"], set_state=on_toggle, icon_path=cat.get("icon"), bg_color=cat.get("color"), desc=tr(cat.get("desc", "")), is_enabled=cat.get("is_enabled"), disabled_label=cat.get("disabled_label", ""))
-            elif tile_type == "value":
-                tile = ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], icon_path=cat.get("icon"), bg_color=cat.get("color"), is_enabled=cat.get("is_enabled"), desc=tr(cat.get("desc", "")))
-            else:
-                continue
-
-            self._tile_grid.add_tile(tile)
+            tile = self._build_tile(cat)
+            if tile is not None:
+                self._tile_grid.add_tile(tile)
 
     def _navigate_to(self, sub_panel: str):
         self._current_sub_panel = sub_panel
@@ -113,6 +156,8 @@ class StarPilotPanel(Widget):
     def _render(self, rect: rl.Rectangle):
         if self._current_sub_panel and self._current_sub_panel in self._sub_panels:
             self._sub_panels[self._current_sub_panel].render(rect)
+        elif self.SECTIONS and self._sectioned_grid:
+            self._sectioned_grid.render(rect)
         elif self.CATEGORIES and self._tile_grid:
             self._tile_grid.render(rect)
         elif self._scroller:
@@ -123,8 +168,19 @@ class StarPilotPanel(Widget):
         self._rebuild_grid()
         if self._current_sub_panel and self._current_sub_panel in self._sub_panels:
             self._sub_panels[self._current_sub_panel].show_event()
+        elif self.SECTIONS and self._sectioned_grid:
+            self._sectioned_grid.show_event()
         elif self._scroller:
             self._scroller.show_event()
+
+    def hide_event(self):
+        super().hide_event()
+        if self._current_sub_panel and self._current_sub_panel in self._sub_panels:
+            self._sub_panels[self._current_sub_panel].hide_event()
+        elif self.SECTIONS and self._sectioned_grid:
+            self._sectioned_grid.hide_event()
+        elif self._scroller:
+            self._scroller.hide_event()
 
 
 def create_tile_panel(categories: list[dict], sub_panels: dict[str, Widget] | None = None) -> StarPilotPanel:

@@ -198,11 +198,12 @@ class AetherTile(Widget):
 
 
 class HubTile(AetherTile):
-  def __init__(self, title: str, desc: str, icon_path: str, on_click: Callable | None = None, starpilot_icon: bool = False, bg_color: rl.Color | str | None = None):
+  def __init__(self, title: str, desc: str, icon_path: str, on_click: Callable | None = None, starpilot_icon: bool = False, bg_color: rl.Color | str | None = None, get_status: Callable[[], str] | None = None):
     if bg_color:
       super().__init__(surface_color=bg_color, on_click=on_click)
     else:
       super().__init__(on_click=on_click)
+    self.get_status = get_status
     self.title = title
     self.desc = desc
     if icon_path:
@@ -214,6 +215,17 @@ class HubTile(AetherTile):
 
   def _render(self, rect: rl.Rectangle):
     face = self._render_layers(rect)
+    
+    status_text = self.get_status() if self.get_status else ""
+    if status_text:
+      import re
+      m = re.search(r'(\d+)%$', status_text)
+      if m:
+        ratio = min(1.0, max(0.0, float(m.group(1)) / 100.0))
+        if ratio > 0.05:
+            fill_rect = rl.Rectangle(face.x, face.y, face.width * ratio, face.height)
+            rl.draw_rectangle_rounded(fill_rect, TILE_RADIUS, 10, rl.Color(255, 255, 255, 40))
+
     content_pad = SPACING.tile_content
     max_w = face.width - (content_pad * 2)
     lines = self._wrap_text(self._font_title, self.title, max_w, 30)
@@ -224,8 +236,9 @@ class HubTile(AetherTile):
     for i, line in enumerate(lines):
       self._draw_text_fit(self._font_title, line, rl.Vector2(face.x + content_pad, ty + i * (line_h + line_spacing)), max_w, line_h, align_center=True)
 
-    if self.desc:
-      desc_lines = self._wrap_text(self._font_desc, self.desc, max_w, 18, max_lines=3)
+    desc_to_render = status_text if status_text else self.desc
+    if desc_to_render:
+      desc_lines = self._wrap_text(self._font_desc, desc_to_render, max_w, 18, max_lines=3)
       desc_y = ty + len(lines) * (line_h + line_spacing) + SPACING.lg
       for i, line in enumerate(desc_lines):
         self._draw_text_fit(self._font_desc, line, rl.Vector2(face.x + content_pad, desc_y + i * 20), max_w, 18, align_center=True)
@@ -492,14 +505,14 @@ class AetherSliderDialog(Widget):
     if self._is_pressed_ok:
       self._ok_target = 0.0
       if rl.check_collision_point_rec(mouse_pos, self._ok_rect):
-        self._user_callback(DialogResult.CONFIRM, self._current_val)
         gui_app.set_modal_overlay(None)
+        self._user_callback(DialogResult.CONFIRM, self._current_val)
       self._is_pressed_ok = False
     if self._is_pressed_cancel:
       self._cancel_target = 0.0
       if rl.check_collision_point_rec(mouse_pos, self._cancel_rect):
-        self._user_callback(DialogResult.CANCEL, self._current_val)
         gui_app.set_modal_overlay(None)
+        self._user_callback(DialogResult.CANCEL, self._current_val)
       self._is_pressed_cancel = False
 
   def _render(self, rect: rl.Rectangle):
@@ -635,9 +648,37 @@ class TileGrid(Widget):
     self.tiles = []
     self._uniform_width = uniform_width
 
+  @property
+  def gap(self) -> int:
+    return self._gap
+
   def add_tile(self, tile: Widget): self.tiles.append(tile)
 
   def clear(self): self.tiles.clear()
+
+  def get_column_count(self, tile_count: int | None = None) -> int:
+    count = len(self.tiles) if tile_count is None else tile_count
+    if count <= 0:
+      return self._columns or 1
+    if self._columns is not None:
+      return self._columns
+    if count == 1: return 1
+    if count == 2: return 2
+    if count == 3: return 3
+    if count == 4: return 2
+    if count <= 6: return 3
+    return 4
+
+  def get_row_count(self, tile_count: int | None = None) -> int:
+    count = len(self.tiles) if tile_count is None else tile_count
+    if count <= 0:
+      return 0
+    cols = self.get_column_count(count)
+    return (count + cols - 1) // cols
+
+  def get_internal_gap_height(self, tile_count: int | None = None) -> float:
+    rows = self.get_row_count(tile_count)
+    return self._gap * max(0, rows - 1)
 
   def _render(self, rect: rl.Rectangle):
     self.set_rect(rect)
@@ -645,16 +686,8 @@ class TileGrid(Widget):
       return
     tiles_to_render = list(self.tiles)
     count = len(tiles_to_render)
-    if self._columns is not None:
-      cols = self._columns
-    else:
-      if count == 1: cols = 1
-      elif count == 2: cols = 2
-      elif count == 3: cols = 3
-      elif count == 4: cols = 2
-      elif count <= 6: cols = 3
-      else: cols = 4
-    rows = (count + cols - 1) // cols
+    cols = self.get_column_count(count)
+    rows = self.get_row_count(count)
     tile_h = (rect.height - (self._gap * (rows - 1))) / rows
     uniform_tile_w = (rect.width - (self._gap * (cols - 1))) / cols if self._uniform_width else 0
     tile_idx = 0

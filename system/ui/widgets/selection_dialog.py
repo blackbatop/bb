@@ -64,17 +64,14 @@ class SelectionHeader(Widget):
     self._pressed = False
 
 class SelectionItem(Widget):
-  def __init__(self, text: str, is_selected: bool, is_favorite: bool, callback: Callable[[str], None], fav_callback: Callable[[str], None] = None):
+  def __init__(self, text: str, is_selected: bool, callback: Callable[[str], None]):
     super().__init__()
     self._text = text
     self._is_selected = is_selected
-    self._is_favorite = is_favorite
     self._callback = callback
-    self._fav_callback = fav_callback
     self._font = gui_app.font(FontWeight.MEDIUM)
     self._font_size = 48
     self._pressed = False
-    self._fav_pressed = False
     self.set_rect(rl.Rectangle(0, 0, 0, 110))
 
   def set_parent_rect(self, parent_rect: rl.Rectangle) -> None:
@@ -94,14 +91,9 @@ class SelectionItem(Widget):
     if self._is_selected:
       rl.draw_rectangle_rounded_lines_ex(rect, 0.1, 10, 3, rl.WHITE)
     
-    # Favorite Star - Left side
-    star = "♥" if self._is_favorite else "♡"
-    star_pos = rl.Vector2(rect.x + 25, rect.y + (rect.height - self._font_size) / 2)
-    rl.draw_text_ex(self._font, star, star_pos, self._font_size + 10, 0, rl.WHITE)
-    
     # Text
     text_size = rl.measure_text_ex(self._font, self._text, self._font_size, 0)
-    text_pos = rl.Vector2(rect.x + 90, rect.y + (rect.height - text_size.y) / 2)
+    text_pos = rl.Vector2(rect.x + 40, rect.y + (rect.height - text_size.y) / 2)
     rl.draw_text_ex(self._font, self._text, text_pos, self._font_size, 0, rl.WHITE)
 
     # Indicator (Dot for selection instead of radio)
@@ -109,25 +101,15 @@ class SelectionItem(Widget):
         circle_center = rl.Vector2(rect.x + rect.width - 50, rect.y + rect.height / 2)
         rl.draw_circle_v(circle_center, 12, rl.WHITE)
 
-  @property
-  def _fav_rect(self) -> rl.Rectangle:
-    return rl.Rectangle(self._rect.x, self._rect.y, 80, self._rect.height)
-
   def _handle_mouse_press(self, mouse_pos):
-    if rl.check_collision_point_rec(mouse_pos, self._fav_rect):
-        self._fav_pressed = True
-    elif rl.check_collision_point_rec(mouse_pos, self._hit_rect):
+    if rl.check_collision_point_rec(mouse_pos, self._hit_rect):
         self._pressed = True
 
   def _handle_mouse_release(self, mouse_pos):
-    if self._fav_pressed and rl.check_collision_point_rec(mouse_pos, self._fav_rect):
-        if self._fav_callback:
-            self._fav_callback(self._text)
-    elif self._pressed and rl.check_collision_point_rec(mouse_pos, self._hit_rect):
+    if self._pressed and rl.check_collision_point_rec(mouse_pos, self._hit_rect):
       if self._callback:
         self._callback(self._text)
     self._pressed = False
-    self._fav_pressed = False
 
 class SelectionDialog(Widget):
   def __init__(self, title: str, options, current_selection: str = "", 
@@ -214,20 +196,16 @@ class SelectionDialog(Widget):
           for model in sorted_models:
             key = self._name_to_file.get(model, model)
             is_selected = (model == self._selected_value or key == self._selected_value)
-            is_fav = key in self._user_favorites or key in self._community_favorites
             items.append(SelectionItem(
               text=model,
               is_selected=is_selected,
-              is_favorite=is_fav,
-              callback=self._on_item_selected,
-              fav_callback=self._toggle_favorite if self._favorites_editable else None
+              callback=self._on_item_selected
             ))
     else:
       for option in self._options_raw:
         items.append(SelectionItem(
           text=option,
           is_selected=(option == self._selected_value),
-          is_favorite=False,
           callback=self._on_item_selected
         ))
     
@@ -257,14 +235,14 @@ class SelectionDialog(Widget):
               item._is_selected = (item._text == val)
 
   def _cancel_button_callback(self):
+    gui_app.set_modal_overlay(None)
     if self._on_close:
       self._on_close(DialogResult.CANCEL, "")
-    gui_app.set_modal_overlay(None)
 
   def _confirm_button_callback(self):
+    gui_app.set_modal_overlay(None)
     if self._on_close:
       self._on_close(DialogResult.CONFIRM, self._selected_value)
-    gui_app.set_modal_overlay(None)
 
   def show_event(self):
     super().show_event()
