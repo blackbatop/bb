@@ -818,13 +818,15 @@ class StarPilotVariables:
     toggle.lock_doors_timer = self.get_value("LockDoorsTimer", cast=float, condition=(toggle.car_make == "toyota"))
 
     longitudinal_tuning = toggle.openpilot_longitudinal and self.get_value("LongitudinalTune")
+    custom_accel_profile_tuning = advanced_longitudinal_tuning and self.get_value("CustomAccelProfile")
+    acceleration_profile_tuning = longitudinal_tuning or custom_accel_profile_tuning
     toggle.acceleration_profile = normalize_acceleration_profile(
-      self.get_value("AccelerationProfile", cast=None, condition=longitudinal_tuning, default=ACCELERATION_PROFILES["SPORT"])
+      self.get_value("AccelerationProfile", cast=None, condition=acceleration_profile_tuning, default=ACCELERATION_PROFILES["SPORT"])
     )
     toggle.deceleration_profile = normalize_deceleration_profile(
       self.get_value("DecelerationProfile", cast=None, condition=longitudinal_tuning, default=DECELERATION_PROFILES["ECO"])
     )
-    toggle.custom_accel_profile = self.get_value("CustomAccelProfile", condition=longitudinal_tuning)
+    toggle.custom_accel_profile = custom_accel_profile_tuning
     custom_accel_defaults = build_custom_accel_profile_defaults(toggle.acceleration_profile, toggle.ev_tuning, toggle.truck_tuning)
     custom_accel_raw_values = {key: self.params_raw.get(key) for key in CUSTOM_ACCEL_PROFILE_PARAM_KEYS}
     custom_accel_initialized = custom_accel_profile_is_initialized(
@@ -833,7 +835,7 @@ class StarPilotVariables:
     )
     if custom_accel_initialized:
       toggle.custom_accel_profile_values = [
-        self.get_value(key, cast=float, condition=longitudinal_tuning, default=custom_accel_defaults[key],
+        self.get_value(key, cast=float, condition=advanced_longitudinal_tuning, default=custom_accel_defaults[key],
                        min=CUSTOM_ACCEL_PROFILE_VALUE_MIN, max=CUSTOM_ACCEL_PROFILE_VALUE_MAX)
         for key in CUSTOM_ACCEL_PROFILE_PARAM_KEYS
       ]

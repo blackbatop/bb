@@ -213,7 +213,12 @@ class LongControl:
       self.reset()
 
     elif self.long_control_state == LongCtrlState.starting:
-      output_accel = (a_target if starpilot_toggles.human_acceleration else starpilot_toggles.startAccel)
+      if starpilot_toggles.human_acceleration:
+        output_accel = a_target
+      elif getattr(starpilot_toggles, "custom_accel_profile", False):
+        output_accel = clip(a_target, 0.0, starpilot_toggles.startAccel)
+      else:
+        output_accel = starpilot_toggles.startAccel
       self.reset()
 
     else:  # LongCtrlState.pid
@@ -287,7 +292,10 @@ class LongControl:
       self.reset_old_long(CS.vEgo)
 
     elif self.long_control_state == LongCtrlState.starting:
-      output_accel = starpilot_toggles.startAccel
+      if getattr(starpilot_toggles, "custom_accel_profile", False):
+        output_accel = clip(a_target, 0.0, starpilot_toggles.startAccel)
+      else:
+        output_accel = starpilot_toggles.startAccel
       self.reset_old_long(CS.vEgo)
 
     elif self.long_control_state == LongCtrlState.pid:
