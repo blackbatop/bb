@@ -116,12 +116,7 @@ class DeveloperLayoutMici(NavScroller):
       self._use_prebuilt_toggle,
       self._joystick_toggle,
     )
-    release_blocked_toggles = (self._joystick_toggle, self._long_maneuver_toggle, self._lat_maneuver_toggle, self._alpha_long_toggle)
     engaged_blocked_toggles = (self._long_maneuver_toggle, self._lat_maneuver_toggle, self._alpha_long_toggle)
-
-    # Hide non-release toggles on release builds
-    for item in release_blocked_toggles:
-      item.set_visible(not ui_state.is_release)
 
     # Disable toggles that require offroad
     for item in onroad_blocked_toggles:
@@ -268,7 +263,7 @@ class DeveloperLayoutMici(NavScroller):
     # CP gating
     if ui_state.CP is not None:
       alpha_avail = ui_state.CP.alphaLongitudinalAvailable
-      if not alpha_avail or ui_state.is_release:
+      if not alpha_avail:
         self._alpha_long_toggle.set_visible(False)
         ui_state.params.remove("AlphaLongitudinalEnabled")
       else:

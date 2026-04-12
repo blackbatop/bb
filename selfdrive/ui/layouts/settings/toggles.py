@@ -38,7 +38,6 @@ class TogglesLayout(Widget):
   def __init__(self):
     super().__init__()
     self._params = Params()
-    self._is_release = self._params.get_bool("IsReleaseBranch")
 
     # param, title, desc, icon, needs_restart
     self._toggle_defs = {
@@ -196,11 +195,7 @@ class TogglesLayout(Widget):
 
         long_desc = unavailable + " " + tr("openpilot longitudinal control may come in a future update.")
         if ui_state.CP.alphaLongitudinalAvailable:
-          if self._is_release:
-            long_desc = unavailable + " " + tr("An alpha version of openpilot longitudinal control can be tested, along with " +
-                                               "Experimental mode, on non-release branches.")
-          else:
-            long_desc = tr("Enable the openpilot longitudinal control (alpha) toggle to allow Experimental mode.")
+          long_desc = tr("Enable the openpilot longitudinal control (alpha) toggle to allow Experimental mode.")
 
         self._toggles["ExperimentalMode"].set_description("<b>" + long_desc + "</b><br><br>" + e2e_description)
     else:

@@ -36,7 +36,6 @@ class DeveloperLayout(Widget):
   def __init__(self):
     super().__init__()
     self._params = Params()
-    self._is_release = self._params.get_bool("IsReleaseBranch")
 
     # Build items and keep references for callbacks/state updates
     self._adb_toggle = toggle_item(
@@ -119,15 +118,10 @@ class DeveloperLayout(Widget):
   def _update_toggles(self):
     ui_state.update_params()
 
-    # Hide non-release toggles on release builds
-    # TODO: we can do an onroad cycle, but alpha long toggle requires a deinit function to re-enable radar and not fault
-    for item in (self._joystick_toggle, self._long_maneuver_toggle, self._alpha_long_toggle):
-      item.set_visible(not self._is_release)
-
     # CP gating
     if ui_state.CP is not None:
       alpha_avail = ui_state.CP.alphaLongitudinalAvailable
-      if not alpha_avail or self._is_release:
+      if not alpha_avail:
         self._alpha_long_toggle.set_visible(False)
         self._params.remove("AlphaLongitudinalEnabled")
       else:
