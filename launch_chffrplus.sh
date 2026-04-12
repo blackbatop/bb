@@ -76,6 +76,20 @@ function agnos_init {
 
   if [ "$COLOR_CAL_UPDATED" = "1" ] && systemctl is-active --quiet weston.service; then
     sudo systemctl restart weston.service
+
+    # Weston can recreate wayland-0 as root on service restart before weston-ready
+    # fixes ownership. Repair it here so the Qt UI can always reconnect.
+    if [ -d /var/tmp/weston ]; then
+      for _ in $(seq 1 50); do
+        if [ -S /var/tmp/weston/wayland-0 ]; then
+          sudo chown -R comma:comma /var/tmp/weston 2>/dev/null || true
+          sudo chmod -R 700 /var/tmp/weston 2>/dev/null || true
+          SOCKET_OWNER="$(stat -c '%U:%G' /var/tmp/weston/wayland-0 2>/dev/null || true)"
+          [ "$SOCKET_OWNER" = "comma:comma" ] && break
+        fi
+        sleep 0.1
+      done
+    fi
   fi
 
   # Check if AGNOS update is required
