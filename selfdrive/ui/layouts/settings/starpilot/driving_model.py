@@ -269,11 +269,7 @@ class DrivingModelManagerView(Widget):
 
     if target.startswith("utility:"):
       action = target.split(":", 1)[1]
-      if action == "randomizer":
-        self._controller._on_model_randomizer_toggled(not self._controller._params.get_bool("ModelRandomizer"))
-      elif action == "auto_download":
-        self._controller._params.put_bool("AutomaticallyDownloadModels", not self._controller._params.get_bool("AutomaticallyDownloadModels"))
-      elif action == "blacklist":
+      if action == "blacklist":
         self._controller._on_blacklist_clicked()
       elif action == "ratings":
         self._controller._on_scores_clicked()
@@ -1026,8 +1022,6 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
       return tr("Refreshing the driving model catalog in the background.")
     if ui_state.started:
       return tr("Downloads and removals pause while driving.")
-    if self._params.get_bool("ModelRandomizer"):
-      return tr("Model Randomizer is active. Turn it off below to choose a model manually.")
     return tr("Tap an installed model to make it active.")
 
   def empty_state_title(self) -> str:
@@ -1041,22 +1035,7 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     return tr("Try refreshing the catalog once the device is offroad and connected.")
 
   def utility_rows(self) -> list[dict]:
-    rows = [
-      {
-        "id": "randomizer",
-        "title": tr("Model Randomizer"),
-        "subtitle": tr("Automatically rotates between installed models."),
-        "type": "toggle",
-        "value": self._params.get_bool("ModelRandomizer"),
-      },
-      {
-        "id": "auto_download",
-        "title": tr("Auto Download"),
-        "subtitle": tr("Fetch new driving models automatically when updates need them."),
-        "type": "toggle",
-        "value": self._params.get_bool("AutomaticallyDownloadModels"),
-      },
-    ]
+    rows = []
 
     if self._params.get_bool("ModelRandomizer"):
       blacklist_count = len([m.strip() for m in (self._params.get("BlacklistedModels", encoding="utf-8") or "").split(",") if m.strip()])
@@ -1257,18 +1236,6 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
 
   def _on_model_randomizer_toggled(self, state: bool):
     self._params.put_bool("ModelRandomizer", state)
-    if state:
-      not_installed = [key for key, entry in self._catalog_entries.items() if not entry.installed]
-      if not_installed:
-        if ui_state.started:
-          gui_app.set_modal_overlay(alert_dialog(tr("Download remaining models offroad if you want Randomizer to use the full catalog.")))
-          return
-
-        def _on_download_confirm(res):
-          if res == DialogResult.CONFIRM:
-            self.download_all_missing()
-
-        gui_app.set_modal_overlay(ConfirmDialog(tr("Download all models for Randomizer?"), tr("Download All"), on_close=_on_download_confirm))
 
   def _update_state(self):
     if self._transient_status_text and time.monotonic() >= self._transient_status_until:
