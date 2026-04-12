@@ -10,8 +10,8 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
-from openpilot.system.ui.widgets.input_dialog import InputDialog
+from openpilot.system.ui.widgets.keyboard import Keyboard
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid
 
@@ -27,6 +27,7 @@ LEGACY_STARPILOT_PARAM_RENAMES = {
 class StarPilotDataLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._keyboard = Keyboard(min_text_size=0)
     self.CATEGORIES = [
       {"title": tr_noop("Manage Backups"), "panel": "backups", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
       {"title": tr_noop("Toggle Backups"), "panel": "toggle_backups", "icon": "toggle_icons/icon_system.png", "color": "#D43D8A"},
@@ -134,44 +135,51 @@ class StarPilotBackupsLayout(StarPilotPanel):
 
         threading.Thread(target=_task, daemon=True).start()
 
-    gui_app.set_modal_overlay(InputDialog(tr("Name your backup"), "", on_close=on_name))
+    self._keyboard.reset(min_text_size=0)
+    self._keyboard.set_title(tr("Name your backup"), "")
+    self._keyboard.set_text("")
+    self._keyboard.set_callback(lambda result: on_name(result, self._keyboard.text))
+    gui_app.push_widget(self._keyboard)
 
   def _on_restore_backup(self):
     backups = self._get_backups()
     if not backups:
       gui_app.set_modal_overlay(alert_dialog(tr("No backups found.")))
       return
+    dialog = MultiOptionDialog(tr("Select Backup"), backups)
 
-    def _on_select(res, val):
-      if res == DialogResult.CONFIRM:
+    def _on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
         gui_app.set_modal_overlay(alert_dialog(tr("Restoring... device will reboot.")))
 
         def _task():
           subprocess.run(["rm", "-rf", "/data/openpilot/*"])
-          subprocess.run(["tar", "--use-compress-program=zstd", "-xf", f"/data/backups/{val}", "-C", "/"])
+          subprocess.run(["tar", "--use-compress-program=zstd", "-xf", f"/data/backups/{dialog.selection}", "-C", "/"])
           os.system("reboot")
 
         threading.Thread(target=_task, daemon=True).start()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Backup"), backups, on_close=_on_select))
+    gui_app.set_modal_overlay(dialog, callback=_on_select)
 
   def _on_delete_backup(self):
     backups = self._get_backups()
     if not backups:
       gui_app.set_modal_overlay(alert_dialog(tr("No backups found.")))
       return
+    dialog = MultiOptionDialog(tr("Delete Backup"), backups)
 
-    def _on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        os.remove(f"/data/backups/{val}")
+    def _on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        os.remove(f"/data/backups/{dialog.selection}")
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Delete Backup"), backups, on_close=_on_select))
+    gui_app.set_modal_overlay(dialog, callback=_on_select)
 
 
 class StarPilotToggleBackupsLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._keyboard = Keyboard(min_text_size=0)
     self._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
     self.CATEGORIES = [
       {"title": tr_noop("Create Toggle Backup"), "type": "hub", "on_click": self._on_create, "color": "#D43D8A"},
@@ -199,20 +207,25 @@ class StarPilotToggleBackupsLayout(StarPilotPanel):
         gui_app.set_modal_overlay(alert_dialog(tr("Toggle backup created.")))
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(InputDialog(tr("Name your toggle backup"), "", on_close=on_name))
+    self._keyboard.reset(min_text_size=0)
+    self._keyboard.set_title(tr("Name your toggle backup"), "")
+    self._keyboard.set_text("")
+    self._keyboard.set_callback(lambda result: on_name(result, self._keyboard.text))
+    gui_app.push_widget(self._keyboard)
 
   def _on_restore(self):
     backups = self._get_backups()
     if not backups:
       gui_app.set_modal_overlay(alert_dialog(tr("No toggle backups found.")))
       return
+    dialog = MultiOptionDialog(tr("Select Toggle Backup"), backups)
 
-    def _on_select(res, val):
-      if res == DialogResult.CONFIRM:
+    def _on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
 
         def on_confirm(r2):
           if r2 == DialogResult.CONFIRM:
-            src = Path(f"/data/toggle_backups/{val}")
+            src = Path(f"/data/toggle_backups/{dialog.selection}")
             params_dir = Path("/data/params/d")
             for old_key, new_key in LEGACY_STARPILOT_PARAM_RENAMES.items():
               if (src / old_key).exists():
@@ -228,17 +241,18 @@ class StarPilotToggleBackupsLayout(StarPilotPanel):
 
         gui_app.set_modal_overlay(ConfirmDialog(tr("This will overwrite your current toggles."), tr("Restore"), on_close=on_confirm))
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Toggle Backup"), backups, on_close=_on_select))
+    gui_app.set_modal_overlay(dialog, callback=_on_select)
 
   def _on_delete(self):
     backups = self._get_backups()
     if not backups:
       gui_app.set_modal_overlay(alert_dialog(tr("No toggle backups found.")))
       return
+    dialog = MultiOptionDialog(tr("Delete Toggle Backup"), backups)
 
-    def _on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        shutil.rmtree(f"/data/toggle_backups/{val}", ignore_errors=True)
+    def _on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        shutil.rmtree(f"/data/toggle_backups/{dialog.selection}", ignore_errors=True)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Delete Toggle Backup"), backups, on_close=_on_select))
+    gui_app.set_modal_overlay(dialog, callback=_on_select)

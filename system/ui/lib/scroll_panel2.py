@@ -8,6 +8,7 @@ from openpilot.system.ui.lib.application import gui_app, MouseEvent
 from openpilot.system.hardware import TICI
 from collections import deque
 
+MOUSE_WHEEL_SCROLL_SPEED = 50
 MIN_VELOCITY = 10  # px/s, changes from auto scroll to steady state
 MIN_VELOCITY_FOR_CLICKING = 2 * 60  # px/s, accepts clicks while auto scrolling below this velocity
 MIN_DRAG_PIXELS = 12
@@ -72,6 +73,14 @@ class GuiScrollPanel2:
     for mouse_event in gui_app.mouse_events:
       self._handle_mouse_event(mouse_event, bounds, bounds_size, content_size)
       self._previous_mouse_event = mouse_event
+
+    wheel_move = rl.get_mouse_wheel_move()
+    if wheel_move != 0 and self.enabled and rl.check_collision_point_rec(rl.get_mouse_position(), bounds):
+      scroll_delta = wheel_move * MOUSE_WHEEL_SCROLL_SPEED
+      if self._horizontal:
+        self._offset.x += scroll_delta
+      else:
+        self._offset.y += scroll_delta
 
     self._update_state(bounds_size, content_size)
 

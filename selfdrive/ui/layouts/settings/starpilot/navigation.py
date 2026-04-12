@@ -2,15 +2,15 @@ from __future__ import annotations
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
-from openpilot.system.ui.widgets.input_dialog import InputDialog
+from openpilot.system.ui.widgets.keyboard import Keyboard
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 
 
 class StarPilotNavigationLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._keyboard = Keyboard(min_text_size=1)
     self._sub_panels = {
       "mapbox": StarPilotMapboxLayout(),
     }
@@ -60,7 +60,11 @@ class StarPilotNavigationLayout(StarPilotPanel):
       if res == DialogResult.CONFIRM and text:
         self._params.put("SearchAddress", text)
 
-    gui_app.set_modal_overlay(InputDialog(tr("Search Destination"), "", on_close=on_close))
+    self._keyboard.reset(min_text_size=1)
+    self._keyboard.set_title(tr("Search Destination"), "")
+    self._keyboard.set_text("")
+    self._keyboard.set_callback(lambda result: on_close(result, self._keyboard.text))
+    gui_app.push_widget(self._keyboard)
 
   def _on_home(self):
     current = self._params.get("HomeAddress", encoding='utf-8') or ""
@@ -70,7 +74,11 @@ class StarPilotNavigationLayout(StarPilotPanel):
         self._params.put("HomeAddress", text)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(InputDialog(tr("Home Address"), current, on_close=on_close))
+    self._keyboard.reset(min_text_size=0)
+    self._keyboard.set_title(tr("Home Address"), "")
+    self._keyboard.set_text(current)
+    self._keyboard.set_callback(lambda result: on_close(result, self._keyboard.text))
+    gui_app.push_widget(self._keyboard)
 
   def _on_work(self):
     current = self._params.get("WorkAddress", encoding='utf-8') or ""
@@ -80,12 +88,17 @@ class StarPilotNavigationLayout(StarPilotPanel):
         self._params.put("WorkAddress", text)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(InputDialog(tr("Work Address"), current, on_close=on_close))
+    self._keyboard.reset(min_text_size=0)
+    self._keyboard.set_title(tr("Work Address"), "")
+    self._keyboard.set_text(current)
+    self._keyboard.set_callback(lambda result: on_close(result, self._keyboard.text))
+    gui_app.push_widget(self._keyboard)
 
 
 class StarPilotMapboxLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._keyboard = Keyboard(min_text_size=1)
     self.CATEGORIES = [
       {
         "title": tr_noop("Public Mapbox Key"),
@@ -131,4 +144,8 @@ class StarPilotMapboxLayout(StarPilotPanel):
           self._params.put(key, text)
           self._rebuild_grid()
 
-      gui_app.set_modal_overlay(InputDialog(tr(f"Enter {key.replace('Mapbox', 'Mapbox ')}"), "", on_close=on_close))
+      self._keyboard.reset(min_text_size=1)
+      self._keyboard.set_title(tr(f"Enter {key.replace('Mapbox', 'Mapbox ')}"), "")
+      self._keyboard.set_text("")
+      self._keyboard.set_callback(lambda result: on_close(result, self._keyboard.text))
+      gui_app.push_widget(self._keyboard)

@@ -5,8 +5,8 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
-from openpilot.system.ui.widgets.input_dialog import InputDialog
+from openpilot.system.ui.widgets.keyboard import Keyboard
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid
 
@@ -39,6 +39,7 @@ REPORT_CATEGORIES = [
 class StarPilotUtilitiesLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._keyboard = Keyboard(min_text_size=1)
     self._tile_grid = TileGrid(columns=2, padding=20, uniform_width=True)
     self.CATEGORIES = [
       {
@@ -79,13 +80,15 @@ class StarPilotUtilitiesLayout(StarPilotPanel):
 
   def _on_force_drive_state(self):
     options = [tr("Offroad"), tr("Onroad"), tr("Default")]
+    current = self._get_force_drive_state()
+    dialog = MultiOptionDialog(tr("Force Drive State"), options, current)
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        if val == tr("Offroad"):
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        if dialog.selection == tr("Offroad"):
           self._params.put_bool("ForceOffroad", True)
           self._params.put_bool("ForceOnroad", False)
-        elif val == tr("Onroad"):
+        elif dialog.selection == tr("Onroad"):
           self._params.put_bool("ForceOnroad", True)
           self._params.put_bool("ForceOffroad", False)
         else:
@@ -93,25 +96,30 @@ class StarPilotUtilitiesLayout(StarPilotPanel):
           self._params.put_bool("ForceOnroad", False)
         self._rebuild_grid()
 
-    current = self._get_force_drive_state()
-    gui_app.set_modal_overlay(SelectionDialog(tr("Force Drive State"), options, current, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
   def _on_report_issue(self):
-    def on_category(res, val):
-      if res != DialogResult.CONFIRM:
+    dialog = MultiOptionDialog(tr("Select Issue"), REPORT_CATEGORIES)
+
+    def on_category(res):
+      if res != DialogResult.CONFIRM or not dialog.selection:
         return
       discord_user = self._params.get("DiscordUsername", encoding='utf-8') or ""
 
       def on_discord(res2, username):
         if res2 == DialogResult.CONFIRM and username:
           self._params.put("DiscordUsername", username)
-          report = json.dumps({"DiscordUser": username, "Issue": val})
+          report = json.dumps({"DiscordUser": username, "Issue": dialog.selection})
           self._params_memory.put("IssueReported", report)
           gui_app.set_modal_overlay(alert_dialog(tr("Issue reported. Thank you!")))
 
-      gui_app.set_modal_overlay(InputDialog(tr("Discord Username"), discord_user or "", on_close=on_discord))
+      self._keyboard.reset(min_text_size=1)
+      self._keyboard.set_title(tr("Discord Username"), "")
+      self._keyboard.set_text(discord_user or "")
+      self._keyboard.set_callback(lambda result: on_discord(result, self._keyboard.text))
+      gui_app.push_widget(self._keyboard)
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Issue"), REPORT_CATEGORIES, on_close=on_category))
+    gui_app.set_modal_overlay(dialog, callback=on_category)
 
   def _on_reset_defaults(self):
     def _do_reset(res):

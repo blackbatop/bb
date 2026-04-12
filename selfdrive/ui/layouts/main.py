@@ -37,12 +37,14 @@ class MainLayout(Widget):
     # Set callbacks
     self._setup_callbacks()
 
+    gui_app.push_widget(self)
+
     # Skip onboarding on desktop; keep normal flow on device.
     self._onboarding_window = None
     if not PC:
       self._onboarding_window = OnboardingWindow()
       if not self._onboarding_window.completed:
-        gui_app.set_modal_overlay(self._onboarding_window)
+        gui_app.push_widget(self._onboarding_window)
 
   def _render(self, _):
     self._handle_onroad_transition()

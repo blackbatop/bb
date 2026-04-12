@@ -4,8 +4,8 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
-from openpilot.system.ui.widgets.input_dialog import InputDialog
+from openpilot.system.ui.widgets.keyboard import Keyboard
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_master_toggle_panel, create_tile_panel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.tabbed_panel import TabSectionSpec, TabbedSectionHost
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog
@@ -653,13 +653,14 @@ class StarPilotLongitudinalTuneLayout(StarPilotPanel):
     option_labels = [tr(option_label) for _, option_label in options]
     label_to_value = {tr(option_label): option_value for option_value, option_label in options}
     default_option = next((tr(option_label) for option_value, option_label in options if option_value == current_value), option_labels[0])
+    dialog = MultiOptionDialog(tr(title), option_labels, default_option)
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        self._params.put_int(key, label_to_value[val])
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        self._params.put_int(key, label_to_value[dialog.selection])
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr(title), option_labels, default_option, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
   def _show_int_selector(self, key, min_v, max_v, unit=""):
     def on_close(res, val):
@@ -847,45 +848,42 @@ class StarPilotSpeedLimitControllerLayout(StarPilotPanel):
     current_primary = self._params.get("SLCPriority1", encoding='utf-8') or "Map Data"
     current_secondary = self._params.get("SLCPriority2", encoding='utf-8') or "None"
 
-    def on_secondary_select(primary, res, val):
-      if res == DialogResult.CONFIRM:
+    def on_secondary_select(primary, dialog, res):
+      if res == DialogResult.CONFIRM and dialog.selection:
         self._params.put("SLCPriority1", primary)
-        self._params.put("SLCPriority2", val)
+        self._params.put("SLCPriority2", dialog.selection)
         self._rebuild_grid()
 
     def show_secondary_dialog(primary):
       secondary_options = ["None"] + [option for option in ("Dashboard", "Map Data", "Vision") if option != primary]
       selected_secondary = current_secondary if current_secondary in secondary_options else "None"
-      gui_app.set_modal_overlay(
-        SelectionDialog(
-          tr("SLC Secondary Priority"),
-          secondary_options,
-          selected_secondary,
-          on_close=lambda res, val: on_secondary_select(primary, res, val),
-        )
-      )
+      secondary_dialog = MultiOptionDialog(tr("SLC Secondary Priority"), secondary_options, selected_secondary)
+      gui_app.set_modal_overlay(secondary_dialog, callback=lambda res: on_secondary_select(primary, secondary_dialog, res))
 
-    def on_primary_select(res, val):
-      if res != DialogResult.CONFIRM:
+    primary_dialog = MultiOptionDialog(tr("SLC Primary Priority"), primary_options, current_primary)
+
+    def on_primary_select(res):
+      if res != DialogResult.CONFIRM or not primary_dialog.selection:
         return
-      if val in ("Highest", "Lowest"):
-        self._params.put("SLCPriority1", val)
+      if primary_dialog.selection in ("Highest", "Lowest"):
+        self._params.put("SLCPriority1", primary_dialog.selection)
         self._params.put("SLCPriority2", "None")
         self._rebuild_grid()
         return
-      show_secondary_dialog(val)
+      show_secondary_dialog(primary_dialog.selection)
 
-    gui_app.set_modal_overlay(
-      SelectionDialog(tr("SLC Primary Priority"), primary_options, current_primary, on_close=on_primary_select)
-    )
+    gui_app.set_modal_overlay(primary_dialog, callback=on_primary_select)
 
   def _show_selection(self, key, options):
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        self._params.put(key, val)
+    current = self._params.get(key, encoding='utf-8') or "None"
+    dialog = MultiOptionDialog(tr(key), options, current)
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        self._params.put(key, dialog.selection)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr(key), options, self._params.get(key, encoding='utf-8') or "None", on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
 
 class StarPilotSLCOffsetsLayout(StarPilotPanel):
@@ -1006,6 +1004,7 @@ class StarPilotSLCVisualsLayout(StarPilotPanel):
 class StarPilotWeatherLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
+    self._keyboard = Keyboard(min_text_size=1)
     self.CATEGORIES = [
       {"title": tr_noop("Low Visibility"), "panel": "low_visibility", "icon": "toggle_icons/icon_rainbow.png", "color": "#597497"},
       {"title": tr_noop("Rain"), "panel": "rain", "icon": "toggle_icons/icon_rainbow.png", "color": "#597497"},
@@ -1022,18 +1021,23 @@ class StarPilotWeatherLayout(StarPilotPanel):
 
   def _set_weather_key(self):
     options = ["ADD", "REMOVE"]
+    dialog = MultiOptionDialog(tr("Weather API Key"), options, "ADD")
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        if val == "ADD":
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        if dialog.selection == "ADD":
 
           def on_key(res, text):
             if res == DialogResult.CONFIRM:
               self._params.put("WeatherAPIKey", text)
               self._rebuild_grid()
 
-          gui_app.set_modal_overlay(InputDialog(tr("Weather API Key"), on_close=on_key))
-        elif val == "REMOVE":
+          self._keyboard.reset(min_text_size=1)
+          self._keyboard.set_title(tr("Weather API Key"), "")
+          self._keyboard.set_text("")
+          self._keyboard.set_callback(lambda result: on_key(result, self._keyboard.text))
+          gui_app.push_widget(self._keyboard)
+        elif dialog.selection == "REMOVE":
 
           def on_confirm(res):
             if res == DialogResult.CONFIRM:
@@ -1042,7 +1046,7 @@ class StarPilotWeatherLayout(StarPilotPanel):
 
           gui_app.set_modal_overlay(ConfirmDialog(tr("Remove API Key?"), tr("Confirm"), on_close=on_confirm))
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Weather API Key"), options, "ADD", on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
 
 class StarPilotWeatherBase(StarPilotPanel):

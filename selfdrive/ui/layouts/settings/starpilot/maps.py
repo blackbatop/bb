@@ -6,7 +6,7 @@ from pathlib import Path
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 from openpilot.starpilot.common.maps_catalog import (
@@ -117,13 +117,14 @@ class StarPilotMapsLayout(StarPilotPanel):
   def _on_schedule(self):
     options = list(MAP_SCHEDULE_LABELS.values())
     current = schedule_label(self._params.get("PreferredSchedule"))
+    dialog = MultiOptionDialog(tr("Auto Update Schedule"), options, current)
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        self._params.put("PreferredSchedule", schedule_param_value(val))
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        self._params.put("PreferredSchedule", schedule_param_value(dialog.selection))
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Auto Update Schedule"), options, current, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
   def _on_download(self):
     current_selected = self._params.get("MapsSelected", encoding="utf-8") or ""

@@ -3,7 +3,7 @@ from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 
 ACTION_OPTIONS = [
@@ -107,14 +107,15 @@ class StarPilotWheelLayout(StarPilotPanel):
     current = self._get_action_name(key)
     if current not in actions:
       current = actions[0]
+    dialog = MultiOptionDialog(tr(key), actions, current)
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        self._params.put_int(key, ACTION_IDS.get(val, 0))
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        self._params.put_int(key, ACTION_IDS.get(dialog.selection, 0))
         self._params_memory.put_bool("StarPilotTogglesUpdated", True)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr(key), actions, current, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
   def _rebuild_grid(self):
     if not self.CATEGORIES:

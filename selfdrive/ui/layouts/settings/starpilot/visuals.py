@@ -3,7 +3,7 @@ from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel, create_tile_panel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.tabbed_panel import TabSectionSpec, TabbedSectionHost
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, ToggleTile, AetherSliderDialog
@@ -453,15 +453,17 @@ class StarPilotModelUILayout(StarPilotPanel):
     presets = ["Stock", "#FFFFFF", "#178644", "#3B82F6", "#E63956", "#8B5CF6", "#F59E0B"]
     current = self._params.get(key, encoding='utf-8') or "Stock"
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        if val == "Stock":
+    dialog = MultiOptionDialog(tr(key), presets, current)
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        if dialog.selection == "Stock":
           self._params.remove(key)
         else:
-          self._params.put(key, val)
+          self._params.put(key, dialog.selection)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr(key), presets, current, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
 
 class StarPilotNavigationVisualsLayout(StarPilotPanel):
@@ -554,10 +556,12 @@ class StarPilotVisualQOLLayout(StarPilotPanel):
   def _show_camera_view_selector(self):
     current = self._params.get_int("CameraView")
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        idx = self.CAMERA_VIEWS.index(val)
+    dialog = MultiOptionDialog(tr("Camera View"), self.CAMERA_VIEWS, self.CAMERA_VIEWS[current])
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        idx = self.CAMERA_VIEWS.index(dialog.selection)
         self._params.put_int("CameraView", idx)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Camera View"), self.CAMERA_VIEWS, self.CAMERA_VIEWS[current], on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)

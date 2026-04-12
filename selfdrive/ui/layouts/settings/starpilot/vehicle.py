@@ -5,7 +5,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog, TileGrid, HubTile, ToggleTile, ValueTile
 from openpilot.selfdrive.ui.lib.starpilot_state import starpilot_state
@@ -170,19 +170,22 @@ class StarPilotVehicleSettingsLayout(StarPilotPanel):
       gui_app.set_modal_overlay(ConfirmDialog(tr("No fingerprint list available."), tr("OK"), on_close=lambda r: None))
       return
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        self._params.put("CarMake", val)
+    current_make = self._params.get("CarMake", encoding='utf-8') or ""
+    default_make = current_make if current_make in makes else makes[0]
+
+    dialog = MultiOptionDialog(tr("Select Make"), makes, default_make)
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        self._params.put("CarMake", dialog.selection)
         current_model = self._params.get("CarModel", encoding='utf-8') or ""
-        available_models = {option.value for option in self._models_by_make.get(val, ())}
+        available_models = {option.value for option in self._models_by_make.get(dialog.selection, ())}
         if current_model not in available_models:
           self._params.remove("CarModel")
           self._params.remove("CarModelName")
         self._rebuild_grid()
 
-    current_make = self._params.get("CarMake", encoding='utf-8') or ""
-    default_make = current_make if current_make in makes else makes[0]
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Make"), makes, default_make, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
   def _on_select_model(self):
     make = self._params.get("CarMake", encoding='utf-8') or ""
@@ -203,15 +206,17 @@ class StarPilotVehicleSettingsLayout(StarPilotPanel):
     if default_option is None:
       default_option = next((option.option_label for option in model_options if option.value == current_model), option_labels[0])
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        selected_option = selected_by_label[val]
+    dialog = MultiOptionDialog(tr("Select Model"), option_labels, default_option)
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        selected_option = selected_by_label[dialog.selection]
         self._params.put("CarModel", selected_option.value)
         self._params.put("CarModelName", selected_option.label)
         self._params.put("CarMake", make)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Select Model"), option_labels, default_option, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
   def _on_disable_long(self, state):
     if state:

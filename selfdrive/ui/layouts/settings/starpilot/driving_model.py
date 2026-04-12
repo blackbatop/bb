@@ -1,21 +1,84 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from collections.abc import Callable
 import json
+import math
 import shutil
 import threading
+import time
+
+import pyray as rl
 
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.starpilot.assets.model_manager import ModelManager, TINYGRAD_VERSIONS, canonical_model_key, is_builtin_model_key, model_key_aliases
+from openpilot.starpilot.assets.model_manager import (
+  CANCEL_DOWNLOAD_PARAM,
+  DOWNLOAD_PROGRESS_PARAM,
+  MODEL_DOWNLOAD_ALL_PARAM,
+  MODEL_DOWNLOAD_PARAM,
+  ModelManager,
+  TINYGRAD_VERSIONS,
+  canonical_model_key,
+  is_builtin_model_key,
+  model_key_aliases,
+)
 from openpilot.starpilot.common.starpilot_variables import MODELS_PATH, update_starpilot_toggles
-from openpilot.system.hardware import HARDWARE
-from openpilot.system.ui.lib.application import gui_app
-from openpilot.system.ui.lib.multilang import tr, tr_noop
-from openpilot.system.ui.widgets import DialogResult
+from openpilot.system.ui.lib.application import FontWeight, MouseEvent, MousePos, gui_app
+from openpilot.system.ui.lib.multilang import tr
+from openpilot.system.ui.lib.scroll_panel2 import GuiScrollPanel2
+from openpilot.system.ui.widgets import DialogResult, Widget
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
+from openpilot.system.ui.widgets.label import gui_label
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
-from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import AetherSliderDialog, hex_to_color
+
+
+MODEL_PANEL_BG = hex_to_color("#11151D")
+MODEL_PANEL_BORDER = rl.Color(255, 255, 255, 22)
+MODEL_PANEL_GLOW = rl.Color(92, 116, 151, 34)
+MODEL_HEADER_TEXT = rl.Color(236, 242, 250, 255)
+MODEL_SUBTEXT = rl.Color(164, 177, 196, 255)
+MODEL_MUTED = rl.Color(126, 139, 158, 255)
+MODEL_ROW_BG = rl.Color(20, 25, 34, 255)
+MODEL_ROW_BORDER = rl.Color(255, 255, 255, 18)
+MODEL_ROW_SEPARATOR = rl.Color(255, 255, 255, 16)
+MODEL_ROW_HOVER = rl.Color(255, 255, 255, 10)
+MODEL_CURRENT_BG = rl.Color(39, 55, 88, 255)
+MODEL_CURRENT_BORDER = rl.Color(108, 138, 196, 105)
+MODEL_ACTION_BG = rl.Color(255, 255, 255, 6)
+MODEL_ACTION_SEPARATOR = rl.Color(255, 255, 255, 18)
+MODEL_PRIMARY = hex_to_color("#597497")
+MODEL_PRIMARY_SOFT = rl.Color(89, 116, 151, 48)
+MODEL_DANGER = rl.Color(173, 78, 90, 255)
+MODEL_DANGER_SOFT = rl.Color(173, 78, 90, 44)
+MODEL_SUCCESS = rl.Color(94, 168, 130, 255)
+MODEL_SUCCESS_SOFT = rl.Color(94, 168, 130, 44)
+MODEL_WARNING = rl.Color(204, 158, 83, 255)
+MODEL_SCROLL_TRACK = rl.Color(255, 255, 255, 10)
+MODEL_SCROLL_THUMB = rl.Color(255, 255, 255, 68)
+
+MAX_CONTENT_WIDTH = 1280
+OUTER_MARGIN_X = 34
+OUTER_MARGIN_Y = 24
+PANEL_RADIUS = 0.055
+PANEL_PADDING_X = 28
+PANEL_PADDING_TOP = 28
+PANEL_PADDING_BOTTOM = 22
+HEADER_HEIGHT = 156
+SECTION_GAP = 28
+SECTION_HEADER_HEIGHT = 34
+SECTION_HEADER_GAP = 12
+ROW_HEIGHT = 122
+UTILITY_ROW_HEIGHT = 88
+ROW_RADIUS = 0.12
+ACTION_WIDTH = 188
+ROW_TEXT_GAP = 8
+BUTTON_HEIGHT = 58
+BUTTON_GAP = 12
+FADE_HEIGHT = 24
+CONFIRM_TIMEOUT_SECONDS = 3.0
+TRANSITION_SECONDS = 0.24
 
 
 @dataclass
@@ -35,6 +98,590 @@ class ModelCatalogEntry:
 def _clean_model_name(name: str) -> str:
   return str(name or "").replace("_default", "").replace("(Default)", "").strip()
 
+
+def _with_alpha(color: rl.Color, alpha: int) -> rl.Color:
+  return rl.Color(color.r, color.g, color.b, max(0, min(color.a, int(alpha))))
+
+
+def _ease(current: float, target: float, tau: float = 0.085) -> float:
+  dt = max(rl.get_frame_time(), 1 / max(gui_app.target_fps, 1))
+  return current + (target - current) * (1 - math.exp(-dt / tau))
+
+
+class DrivingModelManagerView(Widget):
+  def __init__(self, controller: "StarPilotDrivingModelLayout"):
+    super().__init__()
+    self._controller = controller
+    self._scroll_panel = GuiScrollPanel2(horizontal=False)
+    self._content_height = 0.0
+    self._scroll_offset = 0.0
+    self._pressed_target: str | None = None
+    self._can_click = True
+    self._row_rects: dict[str, rl.Rectangle] = {}
+    self._action_rects: dict[str, rl.Rectangle] = {}
+    self._utility_rects: dict[str, rl.Rectangle] = {}
+    self._header_rects: dict[str, rl.Rectangle] = {}
+    self._confirm_key: str | None = None
+    self._confirm_until = 0.0
+    self._confirm_mix: dict[str, float] = {}
+    self._transition_starts: dict[str, tuple[float, float]] = {}
+    self._known_install_state: dict[str, bool] = {}
+    self._active_download_key: str | None = None
+    self._shell_rect = rl.Rectangle(0, 0, 0, 0)
+    self._scroll_rect = rl.Rectangle(0, 0, 0, 0)
+    self._metric_font = gui_app.font(FontWeight.BOLD)
+
+  def _clear_ephemeral_state(self):
+    self._pressed_target = None
+    self._can_click = True
+    self._confirm_key = None
+    self._confirm_until = 0.0
+
+  def show_event(self):
+    super().show_event()
+    self._clear_ephemeral_state()
+
+  def hide_event(self):
+    super().hide_event()
+    self._clear_ephemeral_state()
+
+  def _update_state(self):
+    super()._update_state()
+
+    if self._confirm_key is not None and time.monotonic() >= self._confirm_until:
+      self._confirm_key = None
+
+    current_keys = set(self._controller._catalog_entries.keys())
+    for key in list(self._confirm_mix.keys()):
+      if key not in current_keys and self._confirm_mix[key] <= 0.01:
+        self._confirm_mix.pop(key, None)
+
+    for key in current_keys:
+      target = 1.0 if key == self._confirm_key else 0.0
+      self._confirm_mix[key] = _ease(self._confirm_mix.get(key, 0.0), target)
+
+    progress = self._controller.download_progress_text()
+    active_key = canonical_model_key(self._controller._params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or "")
+    if active_key:
+      self._active_download_key = active_key
+    elif self._controller._params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM):
+      parsed_key = self._controller._model_key_for_progress(progress)
+      if parsed_key:
+        self._active_download_key = parsed_key
+    elif not self._controller._is_download_active():
+      self._active_download_key = None
+
+    latest_state = {key: entry.installed for key, entry in self._controller._catalog_entries.items()}
+    for key, installed in latest_state.items():
+      previous = self._known_install_state.get(key)
+      if previous is None:
+        self._known_install_state[key] = installed
+        continue
+      if previous != installed:
+        direction = 1.0 if installed else -1.0
+        self._transition_starts[key] = (time.monotonic(), direction)
+        self._known_install_state[key] = installed
+
+    for key in list(self._transition_starts.keys()):
+      started_at, _direction = self._transition_starts[key]
+      if time.monotonic() - started_at >= TRANSITION_SECONDS:
+        self._transition_starts.pop(key, None)
+
+  def _handle_mouse_press(self, mouse_pos: MousePos):
+    self._pressed_target = self._target_at(mouse_pos)
+    self._can_click = True
+
+  def _handle_mouse_event(self, mouse_event: MouseEvent):
+    del mouse_event
+    if not self._scroll_panel.is_touch_valid():
+      self._can_click = False
+
+  def _handle_mouse_release(self, mouse_pos: MousePos):
+    target = self._target_at(mouse_pos)
+    if self._pressed_target is not None and self._pressed_target == target and self._can_click:
+      self._activate_target(target)
+    self._pressed_target = None
+
+  def _target_at(self, mouse_pos: MousePos) -> str | None:
+    for name, rect in self._header_rects.items():
+      if rl.check_collision_point_rec(mouse_pos, rect):
+        return name
+
+    for key, rect in self._action_rects.items():
+      visible_rect = rl.get_collision_rec(rect, self._scroll_rect)
+      if visible_rect.width > 0 and visible_rect.height > 0 and rl.check_collision_point_rec(mouse_pos, visible_rect):
+        return f"action:{key}"
+
+    for name, rect in self._utility_rects.items():
+      visible_rect = rl.get_collision_rec(rect, self._scroll_rect)
+      if visible_rect.width > 0 and visible_rect.height > 0 and rl.check_collision_point_rec(mouse_pos, visible_rect):
+        return f"utility:{name}"
+
+    for key, rect in self._row_rects.items():
+      visible_rect = rl.get_collision_rec(rect, self._scroll_rect)
+      if visible_rect.width > 0 and visible_rect.height > 0 and rl.check_collision_point_rec(mouse_pos, visible_rect):
+        return f"row:{key}"
+
+    return None
+
+  def _activate_target(self, target: str | None):
+    if not target:
+      return
+
+    if target == "header:primary":
+      if self._controller._is_download_active():
+        self._controller.cancel_active_download()
+      else:
+        self._controller.download_all_missing()
+      return
+
+    if target == "header:secondary":
+      self._controller.refresh_manifest()
+      return
+
+    if target.startswith("row:"):
+      self._confirm_key = None
+      model_key = target.split(":", 1)[1]
+      self._controller.select_model(model_key)
+      return
+
+    if target.startswith("action:"):
+      model_key = target.split(":", 1)[1]
+      entry = self._controller._catalog_entries.get(model_key)
+      if entry is None:
+        return
+
+      if not entry.installed:
+        self._confirm_key = None
+        self._controller.start_download(model_key)
+        return
+
+      if not self._controller.is_model_removable(model_key):
+        return
+
+      if self._confirm_key == model_key:
+        self._confirm_key = None
+        self._controller.delete_model(model_key)
+      else:
+        self._confirm_key = model_key
+        self._confirm_until = time.monotonic() + CONFIRM_TIMEOUT_SECONDS
+      return
+
+    if target.startswith("utility:"):
+      action = target.split(":", 1)[1]
+      if action == "randomizer":
+        self._controller._on_model_randomizer_toggled(not self._controller._params.get_bool("ModelRandomizer"))
+      elif action == "auto_download":
+        self._controller._params.put_bool("AutomaticallyDownloadModels", not self._controller._params.get_bool("AutomaticallyDownloadModels"))
+      elif action == "blacklist":
+        self._controller._on_blacklist_clicked()
+      elif action == "ratings":
+        self._controller._on_scores_clicked()
+      elif action == "recovery_power":
+        self._controller._on_recovery_power_clicked()
+      elif action == "stop_distance":
+        self._controller._on_stop_distance_clicked()
+      return
+
+  def _render(self, rect: rl.Rectangle):
+    self.set_rect(rect)
+    self._row_rects.clear()
+    self._action_rects.clear()
+    self._utility_rects.clear()
+    self._header_rects.clear()
+
+    shell_w = min(rect.width - OUTER_MARGIN_X * 2, MAX_CONTENT_WIDTH)
+    shell_x = rect.x + (rect.width - shell_w) / 2
+    shell_y = rect.y + OUTER_MARGIN_Y
+    shell_h = rect.height - OUTER_MARGIN_Y * 2
+    self._shell_rect = rl.Rectangle(shell_x, shell_y, shell_w, shell_h)
+
+    rl.draw_rectangle_rounded(rl.Rectangle(shell_x, shell_y + 8, shell_w, shell_h), PANEL_RADIUS, 24, MODEL_PANEL_GLOW)
+    rl.draw_rectangle_rounded(self._shell_rect, PANEL_RADIUS, 24, MODEL_PANEL_BG)
+    rl.draw_rectangle_rounded_lines_ex(self._shell_rect, PANEL_RADIUS, 24, 2, MODEL_PANEL_BORDER)
+
+    header_rect = rl.Rectangle(
+      shell_x + PANEL_PADDING_X,
+      shell_y + PANEL_PADDING_TOP,
+      shell_w - PANEL_PADDING_X * 2,
+      HEADER_HEIGHT,
+    )
+    self._draw_header(header_rect)
+
+    scroll_rect = rl.Rectangle(
+      shell_x + PANEL_PADDING_X,
+      header_rect.y + header_rect.height,
+      shell_w - PANEL_PADDING_X * 2,
+      shell_h - HEADER_HEIGHT - PANEL_PADDING_TOP - PANEL_PADDING_BOTTOM,
+    )
+    self._scroll_rect = scroll_rect
+
+    content_width = scroll_rect.width - 18
+    self._content_height = self._measure_content_height(content_width)
+    self._scroll_panel.set_enabled(lambda: not self._controller._is_download_active())
+    self._scroll_offset = self._scroll_panel.update(scroll_rect, max(self._content_height, scroll_rect.height))
+
+    rl.begin_scissor_mode(int(scroll_rect.x), int(scroll_rect.y), int(scroll_rect.width), int(scroll_rect.height))
+    self._draw_scroll_content(scroll_rect, content_width)
+    rl.end_scissor_mode()
+
+    if self._content_height > scroll_rect.height:
+      self._draw_scrollbar(scroll_rect)
+
+    if self._content_height > scroll_rect.height + 4:
+      top_fade = min(FADE_HEIGHT, int(scroll_rect.height / 4))
+      bottom_y = int(scroll_rect.y + scroll_rect.height - top_fade)
+      rl.draw_rectangle_gradient_v(int(scroll_rect.x), int(scroll_rect.y), int(scroll_rect.width - 12), top_fade,
+                                   _with_alpha(MODEL_PANEL_BG, 255), _with_alpha(MODEL_PANEL_BG, 0))
+      rl.draw_rectangle_gradient_v(int(scroll_rect.x), bottom_y, int(scroll_rect.width - 12), top_fade,
+                                   _with_alpha(MODEL_PANEL_BG, 0), _with_alpha(MODEL_PANEL_BG, 255))
+
+  def _draw_header(self, rect: rl.Rectangle):
+    title_rect = rl.Rectangle(rect.x, rect.y + 4, rect.width * 0.55, 40)
+    gui_label(title_rect, tr("Driving Models"), 40, MODEL_HEADER_TEXT, FontWeight.SEMI_BOLD)
+
+    subtitle_rect = rl.Rectangle(rect.x, rect.y + 46, rect.width * 0.58, 56)
+    gui_label(subtitle_rect, self._controller.header_description_text(), 24, MODEL_SUBTEXT, FontWeight.NORMAL)
+
+    current_label_rect = rl.Rectangle(rect.x, rect.y + 84, rect.width * 0.40, 22)
+    gui_label(current_label_rect, tr("Current model"), 20, MODEL_MUTED, FontWeight.MEDIUM)
+
+    current_chip_rect = rl.Rectangle(rect.x, rect.y + 108, rect.width * 0.40, 40)
+    self._draw_chip(current_chip_rect, self._controller._current_model_name, MODEL_PRIMARY_SOFT, MODEL_PRIMARY, MODEL_HEADER_TEXT, pill=True)
+
+    right_panel_w = min(390, rect.width * 0.35)
+    right_rect = rl.Rectangle(rect.x + rect.width - right_panel_w, rect.y + 8, right_panel_w, 142)
+    summary_bg = rl.Color(255, 255, 255, 5)
+    rl.draw_rectangle_rounded(right_rect, 0.18, 18, summary_bg)
+    rl.draw_rectangle_rounded_lines_ex(right_rect, 0.18, 18, 1, rl.Color(255, 255, 255, 16))
+
+    primary_label, primary_enabled = self._controller.primary_header_button_state()
+    secondary_label, secondary_enabled = self._controller.secondary_header_button_state()
+    primary_rect = rl.Rectangle(right_rect.x + 18, right_rect.y + 18, right_rect.width - 36, BUTTON_HEIGHT)
+    secondary_rect = rl.Rectangle(right_rect.x + 18, primary_rect.y + BUTTON_HEIGHT + BUTTON_GAP, right_rect.width - 36, BUTTON_HEIGHT)
+    self._header_rects["header:primary"] = primary_rect if primary_enabled else rl.Rectangle(-1, -1, 0, 0)
+    self._header_rects["header:secondary"] = secondary_rect if secondary_enabled else rl.Rectangle(-1, -1, 0, 0)
+    self._draw_button(primary_rect, primary_label, primary_enabled, emphasized=True)
+    self._draw_button(secondary_rect, secondary_label, secondary_enabled, emphasized=False)
+
+  def _measure_content_height(self, width: float) -> float:
+    sections = self._build_sections(width)
+    if not sections:
+      return 260
+    return max(sum(height for _key, height in sections) - SECTION_GAP, 0.0)
+
+  def _build_sections(self, width: float) -> list[tuple[str, float]]:
+    sections: list[tuple[str, float]] = []
+
+    installed = self._controller.installed_entries()
+    available = self._controller.available_entries()
+    utility_rows = self._controller.utility_rows()
+
+    if installed:
+      sections.append(("installed", SECTION_HEADER_HEIGHT + SECTION_HEADER_GAP + len(installed) * ROW_HEIGHT))
+    if available:
+      sections.append(("available", SECTION_HEADER_HEIGHT + SECTION_HEADER_GAP + len(available) * ROW_HEIGHT))
+    if utility_rows:
+      utility_height = SECTION_HEADER_HEIGHT + SECTION_HEADER_GAP + len(utility_rows) * UTILITY_ROW_HEIGHT
+      sections.append(("utility", utility_height))
+
+    if not sections:
+      sections.append(("empty", 240))
+
+    return [(key, height + SECTION_GAP) for key, height in sections]
+
+  def _draw_scroll_content(self, rect: rl.Rectangle, width: float):
+    installed = self._controller.installed_entries()
+    available = self._controller.available_entries()
+    utility_rows = self._controller.utility_rows()
+
+    y = rect.y + self._scroll_offset
+    if not installed and not available and not utility_rows:
+      self._draw_empty_state(rl.Rectangle(rect.x, y + 36, width, 200))
+      return
+
+    if installed:
+      y = self._draw_model_section(rect.x, y, width, tr("On Device"), installed)
+      y += SECTION_GAP
+    if available:
+      y = self._draw_model_section(rect.x, y, width, tr("Available to Download"), available)
+      y += SECTION_GAP
+    if utility_rows:
+      self._draw_utility_section(rect.x, y, width, utility_rows)
+
+  def _draw_empty_state(self, rect: rl.Rectangle):
+    state_rect = rl.Rectangle(rect.x, rect.y, rect.width - 18, rect.height)
+    rl.draw_rectangle_rounded(state_rect, 0.08, 18, rl.Color(255, 255, 255, 5))
+    rl.draw_rectangle_rounded_lines_ex(state_rect, 0.08, 18, 1, rl.Color(255, 255, 255, 14))
+    gui_label(rl.Rectangle(state_rect.x, state_rect.y + 42, state_rect.width, 40), self._controller.empty_state_title(), 32, MODEL_HEADER_TEXT, FontWeight.MEDIUM,
+              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+    gui_label(rl.Rectangle(state_rect.x + 48, state_rect.y + 88, state_rect.width - 96, 72), self._controller.empty_state_body(), 24, MODEL_SUBTEXT, FontWeight.NORMAL,
+              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_model_section(self, x: float, y: float, width: float, title: str, entries: list[ModelCatalogEntry]) -> float:
+    title_rect = rl.Rectangle(x, y, width - 18, SECTION_HEADER_HEIGHT)
+    gui_label(title_rect, title, 26, MODEL_SUBTEXT, FontWeight.MEDIUM)
+    y += SECTION_HEADER_HEIGHT + SECTION_HEADER_GAP
+
+    container_rect = rl.Rectangle(x, y, width - 18, len(entries) * ROW_HEIGHT)
+    rl.draw_rectangle_rounded(container_rect, 0.055, 18, rl.Color(255, 255, 255, 4))
+    rl.draw_rectangle_rounded_lines_ex(container_rect, 0.055, 18, 1, rl.Color(255, 255, 255, 15))
+
+    for index, entry in enumerate(entries):
+      row_rect = rl.Rectangle(x, y + index * ROW_HEIGHT, width - 18, ROW_HEIGHT)
+      self._draw_model_row(row_rect, entry, is_last=index == len(entries) - 1)
+    return y + len(entries) * ROW_HEIGHT
+
+  def _draw_model_row(self, rect: rl.Rectangle, entry: ModelCatalogEntry, is_last: bool):
+    mouse_pos = gui_app.last_mouse_event.pos
+    row_hovered = rl.check_collision_point_rec(mouse_pos, rect)
+    target_key = f"row:{entry.key}"
+    pressed = self._pressed_target == target_key
+    current = self._controller.is_current_model(entry.key)
+    downloading = self._controller.is_entry_actively_downloading(entry.key, self._active_download_key)
+    removable = self._controller.is_model_removable(entry.key)
+    confirm_mix = self._confirm_mix.get(entry.key, 0.0)
+
+    row_bg = MODEL_CURRENT_BG if current else MODEL_ROW_BG
+    row_border = MODEL_CURRENT_BORDER if current else MODEL_ROW_BORDER
+    if row_hovered:
+      row_bg = rl.Color(min(row_bg.r + MODEL_ROW_HOVER.r, 255), min(row_bg.g + MODEL_ROW_HOVER.g, 255), min(row_bg.b + MODEL_ROW_HOVER.b, 255), row_bg.a)
+    if pressed:
+      row_bg = rl.Color(min(row_bg.r + 8, 255), min(row_bg.g + 8, 255), min(row_bg.b + 8, 255), row_bg.a)
+
+    alpha, offset_y, scale = self._row_transition_style(entry.key)
+    draw_rect = rl.Rectangle(rect.x + (rect.width * (1 - scale) / 2), rect.y + offset_y + (rect.height * (1 - scale) / 2), rect.width * scale, rect.height * scale)
+
+    rl.draw_rectangle_rounded(draw_rect, ROW_RADIUS, 18, _with_alpha(row_bg, alpha))
+    rl.draw_rectangle_rounded_lines_ex(draw_rect, ROW_RADIUS, 18, 1, _with_alpha(row_border, alpha if current else 22))
+    if not is_last:
+      line_y = int(draw_rect.y + draw_rect.height - 1)
+      rl.draw_line(int(draw_rect.x + 22), line_y, int(draw_rect.x + draw_rect.width - 22), line_y, _with_alpha(MODEL_ROW_SEPARATOR, alpha))
+
+    action_x = draw_rect.x + draw_rect.width - ACTION_WIDTH
+    action_rect = rl.Rectangle(action_x, draw_rect.y, ACTION_WIDTH, draw_rect.height)
+    rl.draw_rectangle_rec(action_rect, _with_alpha(MODEL_ACTION_BG, alpha))
+    rl.draw_line(int(action_x), int(draw_rect.y + 18), int(action_x), int(draw_rect.y + draw_rect.height - 18), _with_alpha(MODEL_ACTION_SEPARATOR, alpha))
+
+    info_rect = rl.Rectangle(draw_rect.x + 24, draw_rect.y + 18, draw_rect.width - ACTION_WIDTH - 42, draw_rect.height - 36)
+    row_touchable = entry.installed and not self._controller._params.get_bool("ModelRandomizer")
+    if row_touchable:
+      self._row_rects[entry.key] = draw_rect
+
+    self._draw_model_info(info_rect, entry, current)
+
+    if entry.installed:
+      if current:
+        self._draw_current_action(action_rect)
+      elif not removable:
+        self._draw_protected_action(action_rect)
+      else:
+        self._action_rects[entry.key] = action_rect
+        self._draw_ready_action(action_rect, confirm_mix)
+    else:
+      self._action_rects[entry.key] = action_rect
+      if downloading:
+        self._draw_downloading_action(action_rect, self._controller.download_progress_text())
+      else:
+        self._draw_download_action(action_rect)
+
+  def _draw_model_info(self, rect: rl.Rectangle, entry: ModelCatalogEntry, current: bool):
+    title_rect = rl.Rectangle(rect.x, rect.y, rect.width, 34)
+    gui_label(title_rect, entry.name, 34, MODEL_HEADER_TEXT, FontWeight.MEDIUM)
+
+    meta_parts = [part for part in (entry.series, entry.released) if part]
+    meta_rect = rl.Rectangle(rect.x, rect.y + 42, rect.width, 24)
+    gui_label(meta_rect, " • ".join(meta_parts), 22, MODEL_SUBTEXT, FontWeight.NORMAL)
+
+    badge_parts: list[str] = []
+    if current:
+      badge_parts.append(tr("Active"))
+    elif entry.builtin:
+      badge_parts.append(tr("Built-in"))
+    if entry.partial:
+      badge_parts.append(tr("Incomplete"))
+    if entry.user_favorite:
+      badge_parts.append(tr("Saved"))
+    elif entry.community_favorite:
+      badge_parts.append(tr("Popular"))
+
+    if badge_parts:
+      badge_rect = rl.Rectangle(rect.x, rect.y + 78, rect.width, 22)
+      badge_color = MODEL_WARNING if entry.partial else MODEL_MUTED
+      gui_label(badge_rect, " • ".join(badge_parts), 20, badge_color, FontWeight.MEDIUM)
+
+  def _draw_download_action(self, rect: rl.Rectangle):
+    center_x = rect.x + rect.width / 2
+    center_y = rect.y + rect.height / 2 - 8
+    self._draw_download_icon(rl.Vector2(center_x, center_y), MODEL_HEADER_TEXT)
+    gui_label(rl.Rectangle(rect.x + 16, rect.y + rect.height - 40, rect.width - 32, 22), tr("Download"), 18, MODEL_SUBTEXT, FontWeight.MEDIUM,
+              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_downloading_action(self, rect: rl.Rectangle, progress_text: str):
+    center = rl.Vector2(rect.x + rect.width / 2, rect.y + rect.height / 2 - 8)
+    phase = (time.monotonic() * 240.0) % 360.0
+    rl.draw_ring(center, 20, 26, 0, 360, 48, rl.Color(255, 255, 255, 26))
+    rl.draw_ring(center, 20, 26, phase, phase + 260, 48, MODEL_PRIMARY)
+
+    label = progress_text if progress_text else tr("Downloading")
+    gui_label(rl.Rectangle(rect.x + 16, rect.y + rect.height - 40, rect.width - 32, 22), label, 17, MODEL_SUBTEXT, FontWeight.MEDIUM,
+              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_ready_action(self, rect: rl.Rectangle, confirm_mix: float):
+    confirm_alpha = int(255 * confirm_mix)
+    ready_alpha = int(255 * (1.0 - confirm_mix))
+    center = rl.Vector2(rect.x + rect.width / 2, rect.y + rect.height / 2 - 12)
+
+    if ready_alpha > 2:
+      radius = 24 - (confirm_mix * 1.5)
+      rl.draw_ring(center, radius - 3, radius, 0, 360, 48, _with_alpha(MODEL_SUCCESS, ready_alpha))
+      rl.draw_text_ex(self._metric_font, "✓", rl.Vector2(round(center.x - 15), round(center.y - 20)), 36, 0, _with_alpha(MODEL_HEADER_TEXT, ready_alpha))
+
+    if confirm_alpha > 2:
+      self._draw_trash_icon(center, _with_alpha(MODEL_DANGER, confirm_alpha))
+
+    ready_label = _with_alpha(MODEL_SUBTEXT, ready_alpha)
+    confirm_label = _with_alpha(MODEL_DANGER, confirm_alpha)
+    gui_label(rl.Rectangle(rect.x + 16, rect.y + rect.height - 40, rect.width - 32, 18), tr("Ready"), 18, ready_label, FontWeight.MEDIUM,
+              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+    gui_label(rl.Rectangle(rect.x + 16, rect.y + rect.height - 40, rect.width - 32, 18), tr("Remove"), 18, confirm_label, FontWeight.SEMI_BOLD,
+              alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_current_action(self, rect: rl.Rectangle):
+    chip_rect = rl.Rectangle(rect.x + 24, rect.y + (rect.height - 42) / 2, rect.width - 48, 42)
+    self._draw_chip(chip_rect, tr("Current"), MODEL_SUCCESS_SOFT, MODEL_SUCCESS, MODEL_HEADER_TEXT)
+
+  def _draw_protected_action(self, rect: rl.Rectangle):
+    chip_rect = rl.Rectangle(rect.x + 20, rect.y + (rect.height - 42) / 2, rect.width - 40, 42)
+    self._draw_chip(chip_rect, tr("Protected"), rl.Color(255, 255, 255, 10), MODEL_MUTED, MODEL_SUBTEXT)
+
+  def _draw_trash_icon(self, center: rl.Vector2, color: rl.Color):
+    bin_rect = rl.Rectangle(center.x - 12, center.y - 12, 24, 24)
+    lid_rect = rl.Rectangle(center.x - 14, center.y - 18, 28, 5)
+    handle_rect = rl.Rectangle(center.x - 4, center.y - 22, 8, 4)
+    rl.draw_rectangle_rounded(bin_rect, 0.2, 8, color)
+    rl.draw_rectangle_rounded(lid_rect, 0.5, 8, color)
+    rl.draw_rectangle_rounded(handle_rect, 0.5, 8, color)
+    stripe = _with_alpha(MODEL_PANEL_BG, 120)
+    rl.draw_line(int(center.x - 6), int(center.y - 8), int(center.x - 6), int(center.y + 8), stripe)
+    rl.draw_line(int(center.x), int(center.y - 8), int(center.x), int(center.y + 8), stripe)
+    rl.draw_line(int(center.x + 6), int(center.y - 8), int(center.x + 6), int(center.y + 8), stripe)
+
+  def _draw_download_icon(self, center: rl.Vector2, color: rl.Color):
+    shaft_top = rl.Vector2(center.x, center.y - 18)
+    shaft_bottom = rl.Vector2(center.x, center.y + 8)
+    left_head = rl.Vector2(center.x - 11, center.y - 2)
+    right_head = rl.Vector2(center.x + 11, center.y - 2)
+    tray_left = rl.Vector2(center.x - 14, center.y + 18)
+    tray_right = rl.Vector2(center.x + 14, center.y + 18)
+    rl.draw_line_ex(shaft_top, shaft_bottom, 4, color)
+    rl.draw_line_ex(left_head, shaft_bottom, 4, color)
+    rl.draw_line_ex(right_head, shaft_bottom, 4, color)
+    rl.draw_line_ex(tray_left, tray_right, 4, color)
+
+  def _draw_utility_section(self, x: float, y: float, width: float, rows: list[dict]):
+    title_rect = rl.Rectangle(x, y, width - 18, SECTION_HEADER_HEIGHT)
+    gui_label(title_rect, tr("Automation and Tuning"), 26, MODEL_SUBTEXT, FontWeight.MEDIUM)
+    y += SECTION_HEADER_HEIGHT + SECTION_HEADER_GAP
+
+    container_rect = rl.Rectangle(x, y, width - 18, len(rows) * UTILITY_ROW_HEIGHT)
+    rl.draw_rectangle_rounded(container_rect, 0.055, 18, rl.Color(255, 255, 255, 4))
+    rl.draw_rectangle_rounded_lines_ex(container_rect, 0.055, 18, 1, rl.Color(255, 255, 255, 15))
+
+    for index, row in enumerate(rows):
+      row_rect = rl.Rectangle(x, y + index * UTILITY_ROW_HEIGHT, width - 18, UTILITY_ROW_HEIGHT)
+      self._draw_utility_row(row_rect, row, is_last=index == len(rows) - 1)
+
+  def _draw_utility_row(self, rect: rl.Rectangle, row: dict, is_last: bool):
+    mouse_pos = gui_app.last_mouse_event.pos
+    hovered = rl.check_collision_point_rec(mouse_pos, rect)
+    pressed = self._pressed_target == f"utility:{row['id']}"
+    bg = rl.Color(255, 255, 255, 0)
+    if hovered:
+      bg = rl.Color(255, 255, 255, 8)
+    if pressed:
+      bg = rl.Color(255, 255, 255, 14)
+    if bg.a:
+      rl.draw_rectangle_rounded(rect, ROW_RADIUS, 18, bg)
+
+    if not is_last:
+      line_y = int(rect.y + rect.height - 1)
+      rl.draw_line(int(rect.x + 22), line_y, int(rect.x + rect.width - 22), line_y, MODEL_ROW_SEPARATOR)
+
+    self._utility_rects[row["id"]] = rect
+    label_rect = rl.Rectangle(rect.x + 24, rect.y + 14, rect.width * 0.55, 28)
+    subtitle_rect = rl.Rectangle(rect.x + 24, rect.y + 46, rect.width * 0.60, 24)
+    gui_label(label_rect, row["title"], 28, MODEL_HEADER_TEXT, FontWeight.MEDIUM)
+    if row.get("subtitle"):
+      gui_label(subtitle_rect, row["subtitle"], 20, MODEL_SUBTEXT, FontWeight.NORMAL)
+
+    if row["type"] == "toggle":
+      self._draw_toggle(rect, bool(row["value"]))
+    else:
+      value_rect = rl.Rectangle(rect.x + rect.width - 270, rect.y + 20, 220, 28)
+      gui_label(value_rect, row["value"], 24, MODEL_HEADER_TEXT, FontWeight.MEDIUM, alignment=rl.GuiTextAlignment.TEXT_ALIGN_RIGHT)
+      gui_label(rl.Rectangle(rect.x + rect.width - 62, rect.y + 18, 26, 26), "›", 32, MODEL_MUTED, FontWeight.MEDIUM,
+                alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_toggle(self, rect: rl.Rectangle, enabled: bool):
+    toggle_w = 78
+    toggle_h = 42
+    toggle_rect = rl.Rectangle(rect.x + rect.width - toggle_w - 34, rect.y + (rect.height - toggle_h) / 2, toggle_w, toggle_h)
+    track = MODEL_PRIMARY if enabled else rl.Color(255, 255, 255, 24)
+    knob_x = toggle_rect.x + toggle_rect.width - 20 if enabled else toggle_rect.x + 20
+    rl.draw_rectangle_rounded(toggle_rect, 1.0, 16, track)
+    rl.draw_circle(int(knob_x), int(toggle_rect.y + toggle_rect.height / 2), 16, rl.WHITE)
+
+  def _draw_button(self, rect: rl.Rectangle, label: str, enabled: bool, emphasized: bool):
+    hovered = enabled and rl.check_collision_point_rec(gui_app.last_mouse_event.pos, rect)
+    pressed = enabled and self._pressed_target == ("header:primary" if emphasized else "header:secondary")
+    if emphasized:
+      bg = MODEL_PRIMARY if enabled else rl.Color(MODEL_PRIMARY.r, MODEL_PRIMARY.g, MODEL_PRIMARY.b, 80)
+      border = _with_alpha(MODEL_PRIMARY, 190 if enabled else 70)
+    else:
+      bg = rl.Color(255, 255, 255, 10 if enabled else 5)
+      border = rl.Color(255, 255, 255, 22 if enabled else 10)
+
+    if hovered:
+      bg = rl.Color(min(bg.r + 10, 255), min(bg.g + 10, 255), min(bg.b + 10, 255), bg.a)
+    if pressed:
+      bg = rl.Color(max(bg.r - 8, 0), max(bg.g - 8, 0), max(bg.b - 8, 0), bg.a)
+
+    rl.draw_rectangle_rounded(rect, 0.32, 16, bg)
+    rl.draw_rectangle_rounded_lines_ex(rect, 0.32, 16, 1, border)
+    label_color = MODEL_HEADER_TEXT if enabled else MODEL_MUTED
+    gui_label(rect, label, 24, label_color, FontWeight.MEDIUM, alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_chip(self, rect: rl.Rectangle, label: str, fill: rl.Color, border: rl.Color, text: rl.Color, pill: bool = False):
+    roundness = 1.0 if pill else 0.4
+    rl.draw_rectangle_rounded(rect, roundness, 18, fill)
+    rl.draw_rectangle_rounded_lines_ex(rect, roundness, 18, 1, _with_alpha(border, 110))
+    gui_label(rect, label, 20 if pill else 18, text, FontWeight.MEDIUM, alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+  def _draw_scrollbar(self, rect: rl.Rectangle):
+    track_rect = rl.Rectangle(rect.x + rect.width - 7, rect.y + 8, 4, rect.height - 16)
+    rl.draw_rectangle_rounded(track_rect, 1.0, 12, MODEL_SCROLL_TRACK)
+
+    max_scroll = max(self._content_height - rect.height, 1.0)
+    thumb_height = max(46.0, track_rect.height * (rect.height / self._content_height))
+    thumb_range = max(track_rect.height - thumb_height, 0.0)
+    thumb_y = track_rect.y + (-self._scroll_offset / max_scroll) * thumb_range
+    thumb_rect = rl.Rectangle(track_rect.x, thumb_y, track_rect.width, thumb_height)
+    rl.draw_rectangle_rounded(thumb_rect, 1.0, 12, MODEL_SCROLL_THUMB)
+
+  def _row_transition_style(self, key: str) -> tuple[int, float, float]:
+    if key not in self._transition_starts:
+      return 255, 0.0, 1.0
+
+    started_at, direction = self._transition_starts[key]
+    elapsed = min(max((time.monotonic() - started_at) / TRANSITION_SECONDS, 0.0), 1.0)
+    eased = 1.0 - (1.0 - elapsed) * (1.0 - elapsed)
+    alpha = int(150 + 105 * eased)
+    offset_y = direction * (1.0 - eased) * 14
+    scale = 0.965 + 0.035 * eased
+    return alpha, offset_y, scale
+
+
 class StarPilotDrivingModelLayout(StarPilotPanel):
   def __init__(self):
     super().__init__()
@@ -53,142 +700,41 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     self._current_model_key = self._default_model_key()
     self._current_model_name = self._default_model_name()
 
-    self.SECTIONS = [
-      {
-        "title": tr_noop("Model Selection"),
-        "columns": 1,
-        "uniform_width": True,
-        "categories": [
-          {
-            "title": tr_noop("Select Model"),
-            "type": "value",
-            "icon": "toggle_icons/icon_steering.png",
-            "on_click": self._on_select_model_clicked,
-            "get_value": lambda: self._current_model_name,
-            "visible": lambda: not self._params.get_bool("ModelRandomizer"),
-            "color": "#597497"
-          },
-        ],
-      },
-      {
-        "title": tr_noop("Model Actions"),
-        "columns": 2,
-        "uniform_width": True,
-        "categories": [
-          {
-            "title": tr_noop("Download Models"),
-            "type": "hub",
-            "icon": "toggle_icons/icon_system.png",
-            "on_click": self._on_download_clicked,
-            "color": "#597497",
-            "get_status": lambda: self._params_memory.get("ModelDownloadProgress", encoding="utf-8") if self._is_download_active() else ""
-          },
-          {
-            "title": tr_noop("Delete Models"),
-            "type": "hub",
-            "icon": "toggle_icons/icon_system.png",
-            "on_click": self._on_delete_clicked,
-            "color": "#597497"
-          },
-        ],
-      },
-      {
-        "title": tr_noop("Automation"),
-        "columns": 2,
-        "uniform_width": True,
-        "categories": [
-          {
-            "title": tr_noop("Model Randomizer"),
-            "type": "toggle",
-            "icon": "toggle_icons/icon_conditional.png",
-            "get_state": lambda: self._params.get_bool("ModelRandomizer"),
-            "set_state": self._on_model_randomizer_toggled,
-            "color": "#597497"
-          },
-          {
-            "title": tr_noop("Auto Download"),
-            "type": "toggle",
-            "icon": "toggle_icons/icon_system.png",
-            "get_state": lambda: self._params.get_bool("AutomaticallyDownloadModels"),
-            "set_state": lambda s: self._params.put_bool("AutomaticallyDownloadModels", s),
-            "color": "#597497"
-          },
-        ],
-      },
-      {
-        "title": tr_noop("Randomizer Details"),
-        "columns": 2,
-        "uniform_width": True,
-        "visible": lambda: self._params.get_bool("ModelRandomizer"),
-        "categories": [
-          {
-            "title": tr_noop("Blacklist"),
-            "type": "hub",
-            "icon": "toggle_icons/icon_system.png",
-            "on_click": self._on_blacklist_clicked,
-            "color": "#597497"
-          },
-          {
-            "title": tr_noop("Ratings"),
-            "type": "hub",
-            "icon": "toggle_icons/icon_system.png",
-            "on_click": self._on_scores_clicked,
-            "color": "#597497"
-          },
-        ],
-      },
-      {
-        "title": tr_noop("Advanced Tuning"),
-        "columns": 2,
-        "uniform_width": True,
-        "visible": lambda: self._params.get_int("TuningLevel") == 3,
-        "categories": [
-          {
-            "title": tr_noop("Recovery Power"),
-            "type": "value",
-            "icon": "toggle_icons/icon_road.png",
-            "get_value": lambda: f"{self._params.get_float('RecoveryPower'):.1f}",
-            "on_click": self._on_recovery_power_clicked,
-            "color": "#597497"
-          },
-          {
-            "title": tr_noop("Stop Distance"),
-            "type": "value",
-            "icon": "toggle_icons/icon_road.png",
-            "get_value": lambda: f"{self._params.get_float('StopDistance'):.1f}m",
-            "on_click": self._on_stop_distance_clicked,
-            "color": "#597497"
-          },
-        ],
-      },
-    ]
-    
     self._model_manager = ModelManager(self._params, self._params_memory)
-    self._download_thread = None
-    self._manifest_fetch_thread = None
+    self._download_thread: threading.Thread | None = None
+    self._manifest_fetch_thread: threading.Thread | None = None
     self._manifest_fetched = False
+    self._transient_status_text = ""
+    self._transient_status_until = 0.0
+    self._manager_view = DrivingModelManagerView(self)
 
     self._fetch_manifest_async()
     self._update_model_metadata()
-    self._rebuild_grid()
 
   def _render(self, rect: rl.Rectangle):
     self._update_state()
-    super()._render(rect)
+    self._manager_view.render(rect)
 
   def show_event(self):
     super().show_event()
     self._fetch_manifest_async()
     self._update_model_metadata()
+    self._manager_view.show_event()
+
+  def hide_event(self):
+    super().hide_event()
+    self._manager_view.hide_event()
 
   def _fetch_manifest_async(self):
     if self._manifest_fetch_thread is not None and self._manifest_fetch_thread.is_alive():
       return
-      
+
     def _task():
-      self._model_manager.update_models()
-      self._manifest_fetched = True
-        
+      try:
+        self._model_manager.update_models()
+      finally:
+        self._manifest_fetched = True
+
     self._manifest_fetch_thread = threading.Thread(target=_task, daemon=True)
     self._manifest_fetch_thread.start()
 
@@ -363,62 +909,21 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
       gui_app.set_modal_overlay(alert_dialog(tr("No options available.")))
       return
 
-    if isinstance(options, list):
-      def _on_close_list(res, val):
-        if res == DialogResult.CONFIRM: on_confirm(val)
-      dialog = SelectionDialog(title, options, current_val, on_close=_on_close_list)
-      gui_app.set_modal_overlay(dialog)
-      return
+    option_labels = list(options.values()) if isinstance(options, dict) else list(options)
+    dialog = MultiOptionDialog(title, option_labels, current_val)
 
-    grouped = {}
-    name_to_key = {}
-    key_to_display = {}
-    name_counts = {}
-    for key, name in options.items():
-      series = self._model_series_map.get(key, tr("Custom Series"))
-      if series not in grouped: grouped[series] = []
-      name_counts[name] = name_counts.get(name, 0) + 1
-      display_name = name if name_counts[name] == 1 else f"{name} [{key}]"
-      grouped[series].append(display_name)
-      name_to_key[display_name] = key
-      key_to_display[key] = display_name
-    
-    for series in grouped: grouped[series].sort()
-    sorted_series = sorted(grouped.keys())
-    if "StarPilot" in sorted_series:
-      sorted_series.remove("StarPilot")
-      sorted_series.insert(0, "StarPilot")
-    
-    final_grouped = {s: grouped[s] for s in sorted_series}
+    def _on_close(result):
+      if result == DialogResult.CONFIRM and dialog.selection:
+        if isinstance(options, dict):
+          reverse_map = {value: key for key, value in options.items()}
+          on_confirm(reverse_map.get(dialog.selection, dialog.selection))
+        else:
+          on_confirm(dialog.selection)
 
-    def _on_close_grouped(res, val):
-      if res == DialogResult.CONFIRM:
-        key = name_to_key.get(val, val)
-        on_confirm(key)
-
-    def _on_favorite_toggled(key):
-      favs = [f.strip() for f in (self._params.get("UserFavorites", encoding='utf-8') or "").split(",") if f.strip()]
-      if key in favs: favs.remove(key)
-      else: favs.append(key)
-      self._params.put("UserFavorites", ",".join(favs))
-
-    user_favs = [f.strip() for f in (self._params.get("UserFavorites", encoding='utf-8') or "").split(",") if f.strip()]
-    comm_favs = [f.strip() for f in (self._params.get("CommunityFavorites", encoding='utf-8') or "").split(",") if f.strip()]
-
-    current_display = key_to_display.get(current_key, current_val)
-
-    dialog = SelectionDialog(
-        title, final_grouped, current_display, on_close=_on_close_grouped,
-        model_released_dates=self._model_released_dates,
-        model_file_to_name=self._model_file_to_name,
-        user_favorites=user_favs,
-        community_favorites=comm_favs,
-        on_favorite_toggled=_on_favorite_toggled
-    )
-    gui_app.set_modal_overlay(dialog)
+    gui_app.set_modal_overlay(dialog, callback=_on_close)
 
   def _is_download_active(self) -> bool:
-    return bool(self._params_memory.get("ModelToDownload", encoding="utf-8") or self._params_memory.get_bool("DownloadAllModels"))
+    return bool(self._params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or self._params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM))
 
   def _selected_model_version(self, model_key: str) -> str:
     version = self._model_version_map.get(model_key, "")
@@ -441,57 +946,272 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
       return self._default_model_version()
     return ""
 
-  def _build_selectable_models(self) -> dict[str, str]:
-    models: dict[str, str] = {}
+  def installed_entries(self) -> list[ModelCatalogEntry]:
+    entries = [entry for entry in self._catalog_entries.values() if entry.installed]
+    return sorted(entries, key=lambda entry: (
+      0 if self.is_current_model(entry.key) else 1,
+      0 if entry.builtin else 1,
+      0 if entry.user_favorite else 1,
+      0 if entry.community_favorite else 1,
+      self._model_file_to_name_processed.get(entry.key, entry.name).lower(),
+      entry.key,
+    ))
+
+  def available_entries(self) -> list[ModelCatalogEntry]:
+    entries = [entry for entry in self._catalog_entries.values() if not entry.installed]
+    return sorted(entries, key=lambda entry: (
+      0 if entry.user_favorite else 1,
+      0 if entry.community_favorite else 1,
+      self._model_file_to_name_processed.get(entry.key, entry.name).lower(),
+      entry.key,
+    ))
+
+  def is_current_model(self, model_key: str) -> bool:
+    return canonical_model_key(model_key) == self._current_model_key
+
+  def is_model_removable(self, model_key: str) -> bool:
+    key = canonical_model_key(model_key)
+    if not key:
+      return False
+    if is_builtin_model_key(key):
+      return False
+    if key == self._default_model_key() or key == self._current_model_key:
+      return False
+    return self._catalog_entries.get(key, ModelCatalogEntry(key, "", "", "", "", False, False, False, False, False)).installed
+
+  def is_entry_actively_downloading(self, model_key: str, active_key: str | None) -> bool:
+    if not self._is_download_active():
+      return False
+    return canonical_model_key(model_key) == canonical_model_key(active_key or "")
+
+  def download_progress_text(self) -> str:
+    progress = self._params_memory.get(DOWNLOAD_PROGRESS_PARAM, encoding="utf-8") or ""
+    if progress:
+      return progress
+    if self._transient_status_text and time.monotonic() < self._transient_status_until:
+      return self._transient_status_text
+    return ""
+
+  def _model_key_for_progress(self, progress_text: str) -> str | None:
+    if not progress_text:
+      return None
+
+    lower_progress = progress_text.lower()
     for key, entry in self._catalog_entries.items():
-      if entry.installed:
-        models[key] = entry.name
+      if f'"{entry.name}"'.lower() in lower_progress:
+        return key
+      clean_name = _clean_model_name(entry.name).lower()
+      if clean_name and clean_name in lower_progress:
+        return key
+    return None
 
-    return models
+  def primary_header_button_state(self) -> tuple[str, bool]:
+    if self._is_download_active():
+      return tr("Cancel Download"), True
+    missing_count = len(self.available_entries())
+    if missing_count == 0:
+      return tr("All Models On Device"), False
+    if ui_state.started:
+      return tr("Downloads Pause Onroad"), False
+    return tr(f"Download All Missing ({missing_count})"), True
 
-  def _build_deletable_models(self) -> dict[str, str]:
-    installed = self._build_selectable_models()
-    default_key = self._default_model_key()
-    current_name = _clean_model_name(self._current_model_name)
-    default_name = _clean_model_name(installed.get(default_key, self._default_model_name()))
+  def secondary_header_button_state(self) -> tuple[str, bool]:
+    if self._manifest_fetch_thread is not None and self._manifest_fetch_thread.is_alive():
+      return tr("Refreshing..."), False
+    if ui_state.started or self._is_download_active():
+      return tr("Refresh Catalog"), False
+    return tr("Refresh Catalog"), True
 
-    deletable: dict[str, str] = {}
-    for key, display_name in installed.items():
-      processed_name = _clean_model_name(display_name)
-      if processed_name == current_name or processed_name == default_name:
-        continue
-      deletable[key] = display_name
-    return deletable
+  def header_description_text(self) -> str:
+    if self._is_download_active():
+      return self.download_progress_text() or tr("Downloading model files...")
+    if self._manifest_fetch_thread is not None and self._manifest_fetch_thread.is_alive():
+      return tr("Refreshing the driving model catalog in the background.")
+    if ui_state.started:
+      return tr("Downloads and removals pause while driving. Installed rows still show the active model.")
+    if self._params.get_bool("ModelRandomizer"):
+      return tr("Model Randomizer is active. Turn it off below to manually choose an installed model.")
+    return tr("Tap an installed model to make it active. Use the action rail to download or remove without opening more menus.")
 
-  def _on_select_model_clicked(self):
+  def empty_state_title(self) -> str:
+    if self._manifest_fetch_thread is not None and self._manifest_fetch_thread.is_alive():
+      return tr("Refreshing model catalog")
+    return tr("No models available")
+
+  def empty_state_body(self) -> str:
+    if self._manifest_fetch_thread is not None and self._manifest_fetch_thread.is_alive():
+      return tr("StarPilot is pulling the latest driving model list. This panel will populate automatically when the refresh completes.")
+    return tr("Try refreshing the catalog once the device is offroad and connected.")
+
+  def utility_rows(self) -> list[dict]:
+    rows = [
+      {
+        "id": "randomizer",
+        "title": tr("Model Randomizer"),
+        "subtitle": tr("Automatically rotates between installed models."),
+        "type": "toggle",
+        "value": self._params.get_bool("ModelRandomizer"),
+      },
+      {
+        "id": "auto_download",
+        "title": tr("Auto Download"),
+        "subtitle": tr("Fetch new driving models automatically when updates need them."),
+        "type": "toggle",
+        "value": self._params.get_bool("AutomaticallyDownloadModels"),
+      },
+    ]
+
+    if self._params.get_bool("ModelRandomizer"):
+      blacklist_count = len([m.strip() for m in (self._params.get("BlacklistedModels", encoding="utf-8") or "").split(",") if m.strip()])
+      rows.extend([
+        {
+          "id": "blacklist",
+          "title": tr("Blacklist"),
+          "subtitle": tr("Keep specific installed models out of the rotation."),
+          "type": "value",
+          "value": tr(f"{blacklist_count} blocked" if blacklist_count else "Manage"),
+        },
+        {
+          "id": "ratings",
+          "title": tr("Ratings"),
+          "subtitle": tr("Review recorded drives and model score history."),
+          "type": "value",
+          "value": tr("View"),
+        },
+      ])
+
+    if self._params.get_int("TuningLevel") == 3:
+      rows.extend([
+        {
+          "id": "recovery_power",
+          "title": tr("Recovery Power"),
+          "subtitle": tr("How assertively the model recenters after disturbances."),
+          "type": "value",
+          "value": f"{self._params.get_float('RecoveryPower'):.1f}x",
+        },
+        {
+          "id": "stop_distance",
+          "title": tr("Stop Distance"),
+          "subtitle": tr("Preferred gap held at a complete stop."),
+          "type": "value",
+          "value": f"{self._params.get_float('StopDistance'):.1f}m",
+        },
+      ])
+
+    return rows
+
+  def select_model(self, model_key: str):
+    selected_model = canonical_model_key(model_key)
+    entry = self._catalog_entries.get(selected_model)
+    if entry is None or not entry.installed:
+      gui_app.set_modal_overlay(alert_dialog(tr("Model is not available on this device.")))
+      return False
+    if self._params.get_bool("ModelRandomizer"):
+      gui_app.set_modal_overlay(alert_dialog(tr("Turn off Model Randomizer to choose a model manually.")))
+      return False
+    if selected_model == self._current_model_key:
+      return True
+
+    self._params.put("Model", selected_model)
+    self._params.put("DrivingModel", selected_model)
+    self._params.put("DrivingModelName", entry.name)
+    resolved_version = self._selected_model_version(selected_model)
+    resolved_version = resolved_version or entry.version or self._default_model_version()
+    self._params.put("ModelVersion", resolved_version)
+    self._params.put("DrivingModelVersion", resolved_version)
+    update_starpilot_toggles()
     self._update_model_metadata()
-    installed_models = self._build_selectable_models()
-    if not installed_models:
-      gui_app.set_modal_overlay(alert_dialog(tr("No downloaded models found.")))
-      return
+    if ui_state.started:
+      self._params.put_bool("OnroadCycleRequested", True)
+      gui_app.set_modal_overlay(alert_dialog(tr("Drive-cycle requested for immediate apply.")))
+    return True
 
-    def _on_confirm(model_key):
-      selected_model = canonical_model_key(model_key)
-      self._params.put("Model", selected_model)
-      self._params.put("DrivingModel", selected_model)
-      self._params.put("DrivingModelName", installed_models[model_key])
-      resolved_version = self._selected_model_version(selected_model)
-      if resolved_version:
-        self._params.put("ModelVersion", resolved_version)
-        self._params.put("DrivingModelVersion", resolved_version)
-      update_starpilot_toggles()
-      self._update_model_metadata()
-      if ui_state.started:
-        self._params.put_bool("OnroadCycleRequested", True)
-        gui_app.set_modal_overlay(alert_dialog(tr("Drive-cycle requested for immediate apply.")))
+  def start_download(self, model_key: str):
+    self._update_model_metadata()
+    if ui_state.started:
+      gui_app.set_modal_overlay(alert_dialog(tr("Cannot download models while driving.")))
+      return False
+    if self._is_download_active():
+      gui_app.set_modal_overlay(alert_dialog(tr("A model download is already in progress.")))
+      return False
 
-    self._show_selection_dialog(tr("Select Driving Model"), installed_models, self._current_model_name, _on_confirm, current_key=self._current_model_key)
+    entry = self._catalog_entries.get(canonical_model_key(model_key))
+    if entry is None:
+      gui_app.set_modal_overlay(alert_dialog(tr("Unknown model.")))
+      return False
+    if entry.installed:
+      gui_app.set_modal_overlay(alert_dialog(tr("Model is already on this device.")))
+      return False
+
+    self._params_memory.remove(CANCEL_DOWNLOAD_PARAM)
+    self._params_memory.remove(MODEL_DOWNLOAD_ALL_PARAM)
+    self._params_memory.put(MODEL_DOWNLOAD_PARAM, entry.key)
+    self._params_memory.put(DOWNLOAD_PROGRESS_PARAM, f'Downloading "{entry.name}"...')
+    return True
+
+  def download_all_missing(self):
+    self._update_model_metadata()
+    if ui_state.started:
+      gui_app.set_modal_overlay(alert_dialog(tr("Cannot download models while driving.")))
+      return False
+    if self._is_download_active():
+      gui_app.set_modal_overlay(alert_dialog(tr("A model download is already in progress.")))
+      return False
+    if not self.available_entries():
+      return False
+
+    self._params_memory.remove(CANCEL_DOWNLOAD_PARAM)
+    self._params_memory.remove(MODEL_DOWNLOAD_PARAM)
+    self._params_memory.put_bool(MODEL_DOWNLOAD_ALL_PARAM, True)
+    self._params_memory.put(DOWNLOAD_PROGRESS_PARAM, "Downloading...")
+    return True
+
+  def cancel_active_download(self):
+    if self._is_download_active():
+      self._params_memory.put_bool(CANCEL_DOWNLOAD_PARAM, True)
+
+  def refresh_manifest(self):
+    if ui_state.started:
+      gui_app.set_modal_overlay(alert_dialog(tr("Cannot refresh the model catalog while driving.")))
+      return False
+    if self._is_download_active():
+      gui_app.set_modal_overlay(alert_dialog(tr("Cannot refresh the model catalog during an active download.")))
+      return False
+    self._fetch_manifest_async()
+    return True
+
+  def delete_model(self, model_key: str):
+    self._update_model_metadata()
+    key = canonical_model_key(model_key)
+    entry = self._catalog_entries.get(key)
+    if entry is None:
+      gui_app.set_modal_overlay(alert_dialog(tr("Unknown model.")))
+      return False
+    if ui_state.started:
+      gui_app.set_modal_overlay(alert_dialog(tr("Cannot delete model files while driving.")))
+      return False
+    if self._is_download_active():
+      gui_app.set_modal_overlay(alert_dialog(tr("Cannot delete model files while a download is in progress.")))
+      return False
+    if not self.is_model_removable(key):
+      gui_app.set_modal_overlay(alert_dialog(tr("This model is protected and cannot be removed.")))
+      return False
+
+    for file in self._model_dir.iterdir():
+      if not (file.name == f"{key}.thneed" or file.name == f"{key}.pkl" or file.name.startswith(f"{key}_")):
+        continue
+      if file.is_dir():
+        shutil.rmtree(file, ignore_errors=True)
+      elif file.is_file():
+        file.unlink(missing_ok=True)
+
+    self._update_model_metadata()
+    return True
 
   def _on_recovery_power_clicked(self):
     def on_close(res, val):
       if res == DialogResult.CONFIRM:
         self._params.put_float("RecoveryPower", float(val))
-        self._rebuild_grid()
 
     gui_app.set_modal_overlay(AetherSliderDialog(tr("Recovery Power"), 0.5, 2.0, 0.1, self._params.get_float("RecoveryPower"), on_close, unit="x", color="#597497"))
 
@@ -499,104 +1219,70 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     def on_close(res, val):
       if res == DialogResult.CONFIRM:
         self._params.put_float("StopDistance", float(val))
-        self._rebuild_grid()
 
     gui_app.set_modal_overlay(AetherSliderDialog(tr("Stop Distance"), 4.0, 10.0, 0.1, self._params.get_float("StopDistance"), on_close, unit="m", color="#597497"))
 
-  def _on_download_clicked(self):
-    self._update_model_metadata()
-    if ui_state.started:
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot download models while driving.")))
-      return
-
-    is_downloading = self._is_download_active()
-    if is_downloading:
-      self._params_memory.put_bool("CancelModelDownload", True)
-      return
-
-    not_installed = {key: entry.name for key, entry in self._catalog_entries.items() if not entry.installed}
-    if not not_installed:
-      gui_app.set_modal_overlay(alert_dialog(tr("All models are already installed.")))
-      return
-
-    self._show_selection_dialog(tr("Select Model to Download"), not_installed, "", lambda mk: self._params_memory.put("ModelToDownload", mk))
-
-  def _on_delete_clicked(self):
-    self._update_model_metadata()
-    if ui_state.started:
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot delete model files while driving.")))
-      return
-    if self._is_download_active():
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot delete model files while a download is in progress.")))
-      return
-
-    deletable = self._build_deletable_models()
-
-    if not deletable:
-      gui_app.set_modal_overlay(alert_dialog(tr("No deletable models found.")))
-      return
-    
-    def _on_confirm(mk):
-      def _execute_delete(res):
-        if res == DialogResult.CONFIRM:
-          for file in self._model_dir.iterdir():
-            if not (file.name == f"{mk}.thneed" or file.name == f"{mk}.pkl" or file.name.startswith(f"{mk}_")):
-              continue
-            if file.is_file():
-              file.unlink(missing_ok=True)
-          self._update_model_metadata()
-          self._rebuild_grid()
-      gui_app.set_modal_overlay(ConfirmDialog(tr(f"Delete '{deletable[mk]}'?"), tr("Delete"), on_close=_execute_delete))
-
-    self._show_selection_dialog(tr("Select Model to Delete"), deletable, "", _on_confirm)
-
   def _on_blacklist_clicked(self):
-    blacklisted = [m.strip() for m in (self._params.get("BlacklistedModels", encoding='utf-8') or "").split(",") if m.strip()]
-    def _on_action_selected(res, val):
-        if res == DialogResult.CONFIRM:
-            if val == tr("ADD"):
-                blacklistable = {k: v for k, v in self._model_file_to_name.items() if k not in blacklisted}
-                self._show_selection_dialog(tr("Add to Blacklist"), blacklistable, "", lambda k: self._params.put("BlacklistedModels", ",".join(blacklisted + [k])))
-            elif val == tr("REMOVE"):
-                options = {k: self._model_file_to_name.get(k, k) for k in blacklisted}
-                def _remove(k):
-                   blacklisted.remove(k)
-                   self._params.put("BlacklistedModels", ",".join(blacklisted))
-                self._show_selection_dialog(tr("Remove from Blacklist"), options, "", _remove)
-            elif val == tr("RESET ALL"): self._params.remove("BlacklistedModels")
+    blacklisted = [m.strip() for m in (self._params.get("BlacklistedModels", encoding="utf-8") or "").split(",") if m.strip()]
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Manage Blacklist"), [tr("ADD"), tr("REMOVE"), tr("RESET ALL")], on_close=_on_action_selected))
+    dialog = MultiOptionDialog(tr("Manage Blacklist"), [tr("Add"), tr("Remove"), tr("Reset All")])
+
+    def _on_close(result):
+      if result != DialogResult.CONFIRM or not dialog.selection:
+        return
+      if dialog.selection == tr("Add"):
+        blacklistable = {k: v for k, v in self._model_file_to_name.items() if k not in blacklisted}
+        self._show_selection_dialog(tr("Add to Blacklist"), blacklistable, "", lambda k: self._params.put("BlacklistedModels", ",".join(blacklisted + [k])))
+      elif dialog.selection == tr("Remove"):
+        options = {k: self._model_file_to_name.get(k, k) for k in blacklisted}
+
+        def _remove(k):
+          blacklisted.remove(k)
+          self._params.put("BlacklistedModels", ",".join(blacklisted))
+
+        self._show_selection_dialog(tr("Remove from Blacklist"), options, "", _remove)
+      elif dialog.selection == tr("Reset All"):
+        self._params.remove("BlacklistedModels")
+
+    gui_app.set_modal_overlay(dialog, callback=_on_close)
 
   def _on_scores_clicked(self):
-    scores_raw = self._params.get("ModelDrivesAndScores", encoding='utf-8') or ""
+    scores_raw = self._params.get("ModelDrivesAndScores", encoding="utf-8") or ""
     if not scores_raw:
       gui_app.set_modal_overlay(alert_dialog(tr("No model ratings found.")))
       return
     try:
-        scores = json.loads(scores_raw)
-        lines = [f"{k}: {v.get('Score', 0)}% ({v.get('Drives', 0)} drives)" for k, v in scores.items()]
-        gui_app.set_modal_overlay(ConfirmDialog("\n".join(lines), tr("Close"), rich=True))
-    except: pass
+      scores = json.loads(scores_raw)
+      lines = [f"{key}: {value.get('Score', 0)}% ({value.get('Drives', 0)} drives)" for key, value in scores.items()]
+      gui_app.set_modal_overlay(ConfirmDialog("\n".join(lines), tr("Close"), rich=True))
+    except Exception:
+      gui_app.set_modal_overlay(alert_dialog(tr("Unable to read model ratings.")))
 
   def _on_model_randomizer_toggled(self, state: bool):
     self._params.put_bool("ModelRandomizer", state)
     if state:
-        not_installed = [key for key, entry in self._catalog_entries.items() if not entry.installed]
-        if not_installed:
-            def _on_download_confirm(res):
-                if res == DialogResult.CONFIRM:
-                    self._params_memory.put_bool("DownloadAllModels", True)
-                    self._params_memory.put("ModelDownloadProgress", "Downloading...")
-            gui_app.set_modal_overlay(ConfirmDialog(tr("Download all models for Randomizer?"), tr("Download All"), on_close=_on_download_confirm))
+      not_installed = [key for key, entry in self._catalog_entries.items() if not entry.installed]
+      if not_installed:
+        if ui_state.started:
+          gui_app.set_modal_overlay(alert_dialog(tr("Download remaining models offroad if you want Randomizer to use the full catalog.")))
+          return
+
+        def _on_download_confirm(res):
+          if res == DialogResult.CONFIRM:
+            self.download_all_missing()
+
+        gui_app.set_modal_overlay(ConfirmDialog(tr("Download all models for Randomizer?"), tr("Download All"), on_close=_on_download_confirm))
 
   def _update_state(self):
-    if getattr(self, "_manifest_fetched", False):
+    if self._transient_status_text and time.monotonic() >= self._transient_status_until:
+      self._transient_status_text = ""
+
+    if self._manifest_fetched:
       self._manifest_fetched = False
       self._update_model_metadata()
-      self._rebuild_grid()
 
-    model_to_download = self._params_memory.get("ModelToDownload", encoding='utf-8') or ""
-    download_all = self._params_memory.get_bool("DownloadAllModels")
+    model_to_download = self._params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or ""
+    download_all = self._params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM)
     is_downloading = bool(model_to_download or download_all)
 
     if is_downloading and (self._download_thread is None or not self._download_thread.is_alive()):
@@ -609,13 +1295,16 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
         except Exception:
           pass
         finally:
-          self._params_memory.remove("CancelModelDownload")
-          self._params_memory.remove("ModelToDownload")
-          self._params_memory.put_bool("DownloadAllModels", False)
-          self._params_memory.remove("ModelDownloadProgress")
+          final_status = self._params_memory.get(DOWNLOAD_PROGRESS_PARAM, encoding="utf-8") or ""
+          self._params_memory.remove(CANCEL_DOWNLOAD_PARAM)
+          self._params_memory.remove(MODEL_DOWNLOAD_PARAM)
+          self._params_memory.put_bool(MODEL_DOWNLOAD_ALL_PARAM, False)
+          self._params_memory.remove(DOWNLOAD_PROGRESS_PARAM)
+          if final_status:
+            self._transient_status_text = final_status
+            self._transient_status_until = time.monotonic() + 2.5
           self._download_thread = None
           self._update_model_metadata()
-          self._rebuild_grid()
 
       self._download_thread = threading.Thread(target=_download_task, daemon=True)
       self._download_thread.start()

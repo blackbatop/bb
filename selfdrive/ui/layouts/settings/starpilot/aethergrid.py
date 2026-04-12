@@ -6,6 +6,7 @@ from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget, DialogResult
+from openpilot.selfdrive.ui.layouts.settings.starpilot.asset_loader import starpilot_texture
 
 
 GEOMETRY_OFFSET = 10
@@ -207,7 +208,7 @@ class HubTile(AetherTile):
     self.title = title
     self.desc = desc
     if icon_path:
-      if starpilot_icon: self._icon = gui_app.starpilot_texture(icon_path, 100, 100)
+      if starpilot_icon: self._icon = starpilot_texture(icon_path, 100, 100)
       else: self._icon = gui_app.texture(icon_path, 100, 100)
     else: self._icon = None
     self._font_title = gui_app.font(FontWeight.BOLD)
@@ -254,7 +255,7 @@ class ToggleTile(AetherTile):
     self.get_state = get_state
     self.set_state = set_state
     self.set_enabled(is_enabled or True)
-    self._icon = gui_app.starpilot_texture(icon_path, 80, 80) if icon_path else None
+    self._icon = starpilot_texture(icon_path, 80, 80) if icon_path else None
     self._font = gui_app.font(FontWeight.BOLD)
     self._font_desc = gui_app.font(FontWeight.NORMAL)
     self._active_color = self.surface_color
@@ -302,7 +303,7 @@ class ValueTile(AetherTile):
     self.desc = desc
     self.get_value = get_value
     self._enabled = is_enabled or (lambda: True)
-    self._icon = gui_app.starpilot_texture(icon_path, 80, 80) if icon_path else None
+    self._icon = starpilot_texture(icon_path, 80, 80) if icon_path else None
     self._font = gui_app.font(FontWeight.BOLD)
     self._font_desc = gui_app.font(FontWeight.NORMAL)
     self._active_color = self.surface_color
@@ -505,13 +506,13 @@ class AetherSliderDialog(Widget):
     if self._is_pressed_ok:
       self._ok_target = 0.0
       if rl.check_collision_point_rec(mouse_pos, self._ok_rect):
-        gui_app.set_modal_overlay(None)
+        gui_app.pop_widget()
         self._user_callback(DialogResult.CONFIRM, self._current_val)
       self._is_pressed_ok = False
     if self._is_pressed_cancel:
       self._cancel_target = 0.0
       if rl.check_collision_point_rec(mouse_pos, self._cancel_rect):
-        gui_app.set_modal_overlay(None)
+        gui_app.pop_widget()
         self._user_callback(DialogResult.CANCEL, self._current_val)
       self._is_pressed_cancel = False
 

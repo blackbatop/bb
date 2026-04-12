@@ -7,7 +7,7 @@ from openpilot.system.hardware.hw import Paths
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
-from openpilot.system.ui.widgets.selection_dialog import SelectionDialog
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 from openpilot.selfdrive.ui.layouts.settings.starpilot.panel import StarPilotPanel
 
 if HARDWARE.get_device_type() == "pc":
@@ -161,19 +161,21 @@ class StarPilotThemesLayout(StarPilotPanel):
     else:
       current = "Clear"
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        if val == "Stock":
+    dialog = MultiOptionDialog(tr("Startup Alert"), options, current)
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        if dialog.selection == "Stock":
           self._params.put("StartupMessageTop", "Be ready to take over at any time")
           self._params.put("StartupMessageBottom", "Always keep hands on wheel and eyes on road")
-        elif val == "StarPilot":
+        elif dialog.selection == "StarPilot":
           self._params.put("StartupMessageTop", "Hop in and buckle up!")
           self._params.put("StartupMessageBottom", "Human-tested, frog-approved")
         else:
           self._params.remove("StartupMessageTop")
           self._params.remove("StartupMessageBottom")
 
-    gui_app.set_modal_overlay(SelectionDialog(tr("Startup Alert"), options, current, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)
 
 
 class StarPilotPersonalizeLayout(StarPilotPanel):
@@ -317,12 +319,14 @@ class StarPilotPersonalizeLayout(StarPilotPanel):
     if not themes:
       return
 
-    def on_select(res, val):
-      if res == DialogResult.CONFIRM:
-        selected_slug = option_map.get(val)
+    dialog = MultiOptionDialog(tr(key), themes, current)
+
+    def on_select(res):
+      if res == DialogResult.CONFIRM and dialog.selection:
+        selected_slug = option_map.get(dialog.selection)
         if selected_slug is None:
           return
         self._params.put(key, selected_slug)
         self._rebuild_grid()
 
-    gui_app.set_modal_overlay(SelectionDialog(tr(key), themes, current, on_close=on_select))
+    gui_app.set_modal_overlay(dialog, callback=on_select)

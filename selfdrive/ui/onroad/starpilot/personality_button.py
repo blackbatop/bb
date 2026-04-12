@@ -2,7 +2,7 @@ import pyray as rl
 from cereal import log
 from openpilot.common.params import Params
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.system.ui.lib.application import gui_app
+from openpilot.selfdrive.ui.layouts.settings.starpilot.asset_loader import starpilot_texture
 from openpilot.system.ui.widgets import Widget
 
 BTN_SIZE = 192
@@ -20,10 +20,10 @@ class PersonalityButton(Widget):
 
     # 0=traffic, 1=aggressive, 2=standard, 3=relaxed
     self._icons = [
-      gui_app.starpilot_texture("stock_theme/distance_icons/traffic.png", ICON_SIZE, ICON_SIZE),
-      gui_app.starpilot_texture("stock_theme/distance_icons/aggressive.png", ICON_SIZE, ICON_SIZE),
-      gui_app.starpilot_texture("stock_theme/distance_icons/standard.png", ICON_SIZE, ICON_SIZE),
-      gui_app.starpilot_texture("stock_theme/distance_icons/relaxed.png", ICON_SIZE, ICON_SIZE),
+      starpilot_texture("stock_theme/distance_icons/traffic.png", ICON_SIZE, ICON_SIZE),
+      starpilot_texture("stock_theme/distance_icons/aggressive.png", ICON_SIZE, ICON_SIZE),
+      starpilot_texture("stock_theme/distance_icons/standard.png", ICON_SIZE, ICON_SIZE),
+      starpilot_texture("stock_theme/distance_icons/relaxed.png", ICON_SIZE, ICON_SIZE),
     ]
 
     self._rect = rl.Rectangle(0, 0, BTN_SIZE, BTN_SIZE)
