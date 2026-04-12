@@ -249,6 +249,25 @@ class Soundd:
     sd._initialize()
     return sd.OutputStream(channels=1, samplerate=SAMPLE_RATE, callback=self.callback, blocksize=SAMPLE_BUFFER)
 
+  def start_stream(self, sd):
+    stream = self.get_stream(sd)
+    stream.start()
+    cloudlog.info(f"soundd stream started: {stream.samplerate=} {stream.channels=} {stream.dtype=} {stream.device=}, {stream.blocksize=}")
+    return stream
+
+  def describe_stream(self, stream) -> str:
+    attrs = {
+      "active": getattr(stream, "active", None),
+      "stopped": getattr(stream, "stopped", None),
+      "closed": getattr(stream, "closed", None),
+      "samplerate": getattr(stream, "samplerate", None),
+      "channels": getattr(stream, "channels", None),
+      "dtype": getattr(stream, "dtype", None),
+      "device": getattr(stream, "device", None),
+      "blocksize": getattr(stream, "blocksize", None),
+    }
+    return " ".join(f"{k}={v!r}" for k, v in attrs.items())
+
   def soundd_thread(self):
     # sounddevice must be imported after forking processes
     import sounddevice as sd
@@ -257,39 +276,51 @@ class Soundd:
 
     sm = sm.extend(['starpilotSelfdriveState', 'starpilotPlan'])
 
-    with self.get_stream(sd) as stream:
-      rk = Ratekeeper(20)
+    while True:
+      stream = None
+      try:
+        stream = self.start_stream(sd)
+        rk = Ratekeeper(20)
 
-      cloudlog.info(f"soundd stream started: {stream.samplerate=} {stream.channels=} {stream.dtype=} {stream.device=}, {stream.blocksize=}")
-      while True:
-        sm.update(0)
+        while True:
+          sm.update(0)
 
-        if sm.updated['soundPressure'] and self.current_alert == AudibleAlert.none: # only update volume filter when not playing alert
-          self.spl_filter_weighted.update(sm["soundPressure"].soundPressureWeightedDb)
-          self.current_volume = self.calculate_volume(float(self.spl_filter_weighted.x))
+          if sm.updated['soundPressure'] and self.current_alert == AudibleAlert.none: # only update volume filter when not playing alert
+            self.spl_filter_weighted.update(sm["soundPressure"].soundPressureWeightedDb)
+            self.current_volume = self.calculate_volume(float(self.spl_filter_weighted.x))
 
-          if self.starpilot_toggles.alert_volume_controller:
-            self.auto_volume = self.current_volume
-            self.current_volume = 0.0
+            if self.starpilot_toggles.alert_volume_controller:
+              self.auto_volume = self.current_volume
+              self.current_volume = 0.0
 
-        elif self.current_alert != AudibleAlert.none and self.starpilot_toggles.alert_volume_controller:
-          self.current_volume = self.get_volume_override()
-          if self.current_volume == 1.01:
-            self.current_volume = self.auto_volume
+          elif self.current_alert != AudibleAlert.none and self.starpilot_toggles.alert_volume_controller:
+            self.current_volume = self.get_volume_override()
+            if self.current_volume == 1.01:
+              self.current_volume = self.auto_volume
 
-        self.get_audible_alert(sm)
+          self.get_audible_alert(sm)
 
-        rk.keep_time()
+          rk.keep_time()
 
-        assert stream.active
+          if not stream.active:
+            raise RuntimeError(f"soundd stream inactive: {self.describe_stream(stream)}")
 
-        starpilot_toggles = get_starpilot_toggles(sm)
-        if starpilot_toggles != self.starpilot_toggles:
-          self.starpilot_toggles = starpilot_toggles
+          starpilot_toggles = get_starpilot_toggles(sm)
+          if starpilot_toggles != self.starpilot_toggles:
+            self.starpilot_toggles = starpilot_toggles
 
-          stream = self.update_starpilot_sounds(sd, stream)
-        elif rk.frame % 5 == 0:
-          stream = self.update_starpilot_sounds(sd, stream)
+            stream = self.update_starpilot_sounds(sd, stream)
+          elif rk.frame % 5 == 0:
+            stream = self.update_starpilot_sounds(sd, stream)
+      except Exception:
+        cloudlog.exception("soundd: stream failed, restarting")
+        time.sleep(1)
+      finally:
+        if stream is not None:
+          try:
+            stream.close()
+          except Exception:
+            cloudlog.exception("soundd: failed to close stream")
 
   def update_starpilot_sounds(self, sd=None, stream=None):
     self.volume_map = {

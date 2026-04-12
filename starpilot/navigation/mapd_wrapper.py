@@ -101,7 +101,14 @@ def terminate_child(proc: subprocess.Popen[str]) -> None:
 
 
 def run_mapd_once() -> int:
-  OFFLINE_ROOT.mkdir(parents=True, exist_ok=True)
+  try:
+    OFFLINE_ROOT.mkdir(parents=True, exist_ok=True)
+  except PermissionError:
+    cloudlog.exception(f"mapd_wrapper cannot create offline directory: {OFFLINE_ROOT}")
+    return 2
+  except OSError:
+    cloudlog.exception(f"mapd_wrapper failed to prepare offline directory: {OFFLINE_ROOT}")
+    return 2
 
   proc = subprocess.Popen(
     [MAPD_BIN.as_posix()],

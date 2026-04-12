@@ -5,13 +5,10 @@
 #include <cerrno>
 #include <cmath>
 #include <chrono>
-#include <csignal>
 #include <cstdio>
 #include <cstdlib>
-#include <execinfo.h>
 #include <fcntl.h>
 #include <mutex>
-#include <pthread.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <thread>
@@ -48,8 +45,7 @@ std::atomic<uint64_t> ui_stall_frame{0};
 std::atomic<bool> ui_stall_reported{false};
 std::atomic<uint64_t> ui_stall_reported_ns{0};
 std::atomic<int> ui_stall_reported_phase{static_cast<int>(UIStallPhase::INIT)};
-std::atomic<int> ui_stall_dump_fd{-1};
-pthread_t ui_main_thread{};
+std::atomic<pid_t> ui_main_tid{0};
 
 double read_env_double(const char *name, double default_value) {
   const char *value = std::getenv(name);
@@ -84,25 +80,29 @@ std::string ui_stall_dump_dir() {
   return access("/data/log", W_OK) == 0 ? "/data/log" : "/tmp";
 }
 
-void ui_stall_signal_handler(int sig) {
-  const int fd = ui_stall_dump_fd.load(std::memory_order_relaxed);
-  if (fd < 0) {
+void write_stall_dump_section(int fd, const std::string &title, const std::string &body) {
+  std::string output = "== " + title + " ==\n";
+  output += body.empty() ? "<unavailable>\n" : body;
+  if (!output.empty() && output.back() != '\n') {
+    output += '\n';
+  }
+  HANDLE_EINTR(write(fd, output.data(), output.size()));
+}
+
+void write_ui_thread_snapshot(int fd) {
+  const pid_t tid = ui_main_tid.load(std::memory_order_relaxed);
+  if (tid <= 0) {
+    write_stall_dump_section(fd, "main_thread", "<unavailable>");
     return;
   }
 
-  char header[256];
-  const pid_t tid = static_cast<pid_t>(syscall(SYS_gettid));
-  const int header_len = std::snprintf(header, sizeof(header),
-                                       "=== UI stall backtrace (signal=%d pid=%d tid=%d) ===\n",
-                                       sig, getpid(), tid);
-  if (header_len > 0) {
-    write(fd, header, header_len);
-  }
+  write_stall_dump_section(fd, "main_thread", util::string_format("pid=%d tid=%d", getpid(), tid));
 
-  void *frames[128];
-  const int frame_count = backtrace(frames, 128);
-  backtrace_symbols_fd(frames, frame_count, fd);
-  write(fd, "\n", 1);
+  const std::string task_dir = "/proc/self/task/" + std::to_string(tid);
+  write_stall_dump_section(fd, "main_thread status", util::read_file(task_dir + "/status"));
+  write_stall_dump_section(fd, "main_thread wchan", util::read_file(task_dir + "/wchan"));
+  write_stall_dump_section(fd, "main_thread syscall", util::read_file(task_dir + "/syscall"));
+  write_stall_dump_section(fd, "main_thread kernel_stack", util::read_file(task_dir + "/stack"));
 }
 
 void ui_stall_progress(UIStallPhase phase, uint64_t frame = 0) {
@@ -126,8 +126,7 @@ void ui_stall_progress(UIStallPhase phase, uint64_t frame = 0) {
 void start_ui_stall_monitor() {
   static std::once_flag once;
   std::call_once(once, [] {
-    ui_main_thread = pthread_self();
-    std::signal(SIGUSR1, ui_stall_signal_handler);
+    ui_main_tid.store(static_cast<pid_t>(syscall(SYS_gettid)), std::memory_order_relaxed);
     ui_stall_progress(UIStallPhase::INIT, 0);
 
     const double stall_probe_dt = read_env_double("UI_STALL_PROBE_MAX_DT", 5.0);
@@ -176,10 +175,7 @@ void start_ui_stall_monitor() {
             write(fd, header, header_len);
           }
 
-          ui_stall_dump_fd.store(fd, std::memory_order_relaxed);
-          pthread_kill(ui_main_thread, SIGUSR1);
-          std::this_thread::sleep_for(50ms);
-          ui_stall_dump_fd.store(-1, std::memory_order_relaxed);
+          write_ui_thread_snapshot(fd);
           close(fd);
           LOGE("UI main thread stalled for %.1fs (phase=%s frame=%llu dump=%s)",
                stalled_for_s,
