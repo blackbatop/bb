@@ -40,13 +40,13 @@ MODEL_PANEL_GLOW = rl.Color(92, 116, 151, 34)
 MODEL_HEADER_TEXT = rl.Color(236, 242, 250, 255)
 MODEL_SUBTEXT = rl.Color(164, 177, 196, 255)
 MODEL_MUTED = rl.Color(126, 139, 158, 255)
-MODEL_ROW_BG = rl.Color(20, 25, 34, 255)
-MODEL_ROW_BORDER = rl.Color(255, 255, 255, 18)
+MODEL_ROW_BG = rl.Color(255, 255, 255, 0)
+MODEL_ROW_BORDER = rl.Color(255, 255, 255, 0)
 MODEL_ROW_SEPARATOR = rl.Color(255, 255, 255, 16)
-MODEL_ROW_HOVER = rl.Color(255, 255, 255, 10)
-MODEL_CURRENT_BG = rl.Color(39, 55, 88, 255)
-MODEL_CURRENT_BORDER = rl.Color(108, 138, 196, 105)
-MODEL_ACTION_BG = rl.Color(255, 255, 255, 6)
+MODEL_ROW_HOVER = rl.Color(255, 255, 255, 8)
+MODEL_CURRENT_BG = rl.Color(89, 116, 151, 18)
+MODEL_CURRENT_BORDER = rl.Color(116, 136, 168, 44)
+MODEL_ACTION_BG = rl.Color(255, 255, 255, 0)
 MODEL_ACTION_SEPARATOR = rl.Color(255, 255, 255, 18)
 MODEL_PRIMARY = hex_to_color("#597497")
 MODEL_PRIMARY_SOFT = rl.Color(89, 116, 151, 48)
@@ -58,11 +58,11 @@ MODEL_WARNING = rl.Color(204, 158, 83, 255)
 MODEL_SCROLL_TRACK = rl.Color(255, 255, 255, 10)
 MODEL_SCROLL_THUMB = rl.Color(255, 255, 255, 68)
 
-MAX_CONTENT_WIDTH = 1280
-OUTER_MARGIN_X = 34
+MAX_CONTENT_WIDTH = 1560
+OUTER_MARGIN_X = 18
 OUTER_MARGIN_Y = 24
 PANEL_RADIUS = 0.055
-PANEL_PADDING_X = 28
+PANEL_PADDING_X = 16
 PANEL_PADDING_TOP = 28
 PANEL_PADDING_BOTTOM = 22
 HEADER_HEIGHT = 156
@@ -296,10 +296,6 @@ class DrivingModelManagerView(Widget):
     shell_h = rect.height - OUTER_MARGIN_Y * 2
     self._shell_rect = rl.Rectangle(shell_x, shell_y, shell_w, shell_h)
 
-    rl.draw_rectangle_rounded(rl.Rectangle(shell_x, shell_y + 8, shell_w, shell_h), PANEL_RADIUS, 24, MODEL_PANEL_GLOW)
-    rl.draw_rectangle_rounded(self._shell_rect, PANEL_RADIUS, 24, MODEL_PANEL_BG)
-    rl.draw_rectangle_rounded_lines_ex(self._shell_rect, PANEL_RADIUS, 24, 2, MODEL_PANEL_BORDER)
-
     header_rect = rl.Rectangle(
       shell_x + PANEL_PADDING_X,
       shell_y + PANEL_PADDING_TOP,
@@ -351,9 +347,6 @@ class DrivingModelManagerView(Widget):
 
     right_panel_w = min(390, rect.width * 0.35)
     right_rect = rl.Rectangle(rect.x + rect.width - right_panel_w, rect.y + 8, right_panel_w, 142)
-    summary_bg = rl.Color(255, 255, 255, 5)
-    rl.draw_rectangle_rounded(right_rect, 0.18, 18, summary_bg)
-    rl.draw_rectangle_rounded_lines_ex(right_rect, 0.18, 18, 1, rl.Color(255, 255, 255, 16))
 
     primary_label, primary_enabled = self._controller.primary_header_button_state()
     secondary_label, secondary_enabled = self._controller.secondary_header_button_state()
@@ -423,10 +416,6 @@ class DrivingModelManagerView(Widget):
     gui_label(title_rect, title, 26, MODEL_SUBTEXT, FontWeight.MEDIUM)
     y += SECTION_HEADER_HEIGHT + SECTION_HEADER_GAP
 
-    container_rect = rl.Rectangle(x, y, width - 18, len(entries) * ROW_HEIGHT)
-    rl.draw_rectangle_rounded(container_rect, 0.055, 18, rl.Color(255, 255, 255, 4))
-    rl.draw_rectangle_rounded_lines_ex(container_rect, 0.055, 18, 1, rl.Color(255, 255, 255, 15))
-
     for index, entry in enumerate(entries):
       row_rect = rl.Rectangle(x, y + index * ROW_HEIGHT, width - 18, ROW_HEIGHT)
       self._draw_model_row(row_rect, entry, is_last=index == len(entries) - 1)
@@ -445,22 +434,26 @@ class DrivingModelManagerView(Widget):
     row_bg = MODEL_CURRENT_BG if current else MODEL_ROW_BG
     row_border = MODEL_CURRENT_BORDER if current else MODEL_ROW_BORDER
     if row_hovered:
-      row_bg = rl.Color(min(row_bg.r + MODEL_ROW_HOVER.r, 255), min(row_bg.g + MODEL_ROW_HOVER.g, 255), min(row_bg.b + MODEL_ROW_HOVER.b, 255), row_bg.a)
+      row_bg = rl.Color(row_bg.r, row_bg.g, row_bg.b, min(row_bg.a + MODEL_ROW_HOVER.a, 255))
     if pressed:
-      row_bg = rl.Color(min(row_bg.r + 8, 255), min(row_bg.g + 8, 255), min(row_bg.b + 8, 255), row_bg.a)
+      row_bg = rl.Color(row_bg.r, row_bg.g, row_bg.b, min(row_bg.a + 8, 255))
 
     alpha, offset_y, scale = self._row_transition_style(entry.key)
     draw_rect = rl.Rectangle(rect.x + (rect.width * (1 - scale) / 2), rect.y + offset_y + (rect.height * (1 - scale) / 2), rect.width * scale, rect.height * scale)
 
-    rl.draw_rectangle_rounded(draw_rect, ROW_RADIUS, 18, _with_alpha(row_bg, alpha))
-    rl.draw_rectangle_rounded_lines_ex(draw_rect, ROW_RADIUS, 18, 1, _with_alpha(row_border, alpha if current else 22))
+    if row_bg.a > 0:
+      rl.draw_rectangle_rounded(draw_rect, ROW_RADIUS, 18, _with_alpha(row_bg, alpha))
+    if current and row_border.a > 0:
+      rl.draw_rectangle_rounded_lines_ex(draw_rect, ROW_RADIUS, 18, 1, _with_alpha(row_border, alpha))
     if not is_last:
       line_y = int(draw_rect.y + draw_rect.height - 1)
       rl.draw_line(int(draw_rect.x + 22), line_y, int(draw_rect.x + draw_rect.width - 22), line_y, _with_alpha(MODEL_ROW_SEPARATOR, alpha))
 
     action_x = draw_rect.x + draw_rect.width - ACTION_WIDTH
     action_rect = rl.Rectangle(action_x, draw_rect.y, ACTION_WIDTH, draw_rect.height)
-    rl.draw_rectangle_rec(action_rect, _with_alpha(MODEL_ACTION_BG, alpha))
+    action_fill = rl.Color(255, 255, 255, 6 if current else MODEL_ACTION_BG.a)
+    if action_fill.a > 0:
+      rl.draw_rectangle_rec(action_rect, _with_alpha(action_fill, alpha))
     rl.draw_line(int(action_x), int(draw_rect.y + 18), int(action_x), int(draw_rect.y + draw_rect.height - 18), _with_alpha(MODEL_ACTION_SEPARATOR, alpha))
 
     info_rect = rl.Rectangle(draw_rect.x + 24, draw_rect.y + 18, draw_rect.width - ACTION_WIDTH - 42, draw_rect.height - 36)
@@ -549,7 +542,7 @@ class DrivingModelManagerView(Widget):
 
   def _draw_current_action(self, rect: rl.Rectangle):
     chip_rect = rl.Rectangle(rect.x + 24, rect.y + (rect.height - 42) / 2, rect.width - 48, 42)
-    self._draw_chip(chip_rect, tr("Current"), MODEL_SUCCESS_SOFT, MODEL_SUCCESS, MODEL_HEADER_TEXT)
+    self._draw_chip(chip_rect, tr("Current"), rl.Color(89, 116, 151, 26), rl.Color(116, 136, 168, 52), MODEL_HEADER_TEXT)
 
   def _draw_protected_action(self, rect: rl.Rectangle):
     chip_rect = rl.Rectangle(rect.x + 20, rect.y + (rect.height - 42) / 2, rect.width - 40, 42)
