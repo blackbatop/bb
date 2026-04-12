@@ -306,8 +306,20 @@ class DeviceLayoutMici(NavScroller):
       params.remove("LiveDelay")
       params.put_bool("OnroadCycleRequested", True)
 
+    def reset_driver_monitoring_callback():
+      params = ui_state.params
+      params.remove("IsRhdDetected")
+      params.put_bool("OnroadCycleRequested", True)
+
     def uninstall_openpilot_callback():
       ui_state.params.put_bool("DoUninstall", True)
+
+    reset_driver_monitoring_btn = EngagedConfirmationButton(
+      "reset driver\nmonitoring",
+      "reset driver monitoring",
+      gui_app.texture("icons_mici/settings/device/cameras.png", 64, 64),
+      reset_driver_monitoring_callback,
+    )
 
     reset_calibration_btn = EngagedConfirmationButton("reset calibration", "reset", gui_app.texture("icons_mici/settings/device/lkas.png", 122, 64),
                                                       reset_calibration_callback)
@@ -343,6 +355,7 @@ class DeviceLayoutMici(NavScroller):
       PairBigButton(),
       review_training_guide_btn,
       driver_cam_btn,
+      reset_driver_monitoring_btn,
       terms_btn,
       regulatory_btn,
       reset_calibration_btn,
