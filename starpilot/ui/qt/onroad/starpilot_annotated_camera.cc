@@ -183,7 +183,7 @@ void StarPilotAnnotatedCameraWidget::updateState(const UIState &s, const StarPil
   roadCurvature = starpilotPlan.getRoadCurvature();
   roadName = QString::fromStdString(mapdOut.getRoadName());
   slcOverriddenSpeed = starpilotPlan.getSlcOverriddenSpeed();
-  speedLimit = starpilotPlan.getSlcSpeedLimit();
+  speedLimit = slcOverriddenSpeed != 0 ? slcOverriddenSpeed : starpilotPlan.getSlcSpeedLimit();
   speedLimitChanged = starpilotPlan.getSpeedLimitChanged();
   speedLimitSource = starpilotPlan.getSlcSpeedLimitSource();
   stoppingDistance = modelV2.getPosition().getX().size() > 33 - 1 ? modelV2.getPosition().getX()[33 - 1] : 0.0;
