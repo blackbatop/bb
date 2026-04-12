@@ -109,6 +109,57 @@
   width: 100%;
 }
 
+.toggle-control-status {
+  background-color: rgba(10, 12, 18, 0.35);
+  border: 1px solid rgba(94, 200, 200, 0.2);
+  border-radius: var(--border-radius-lg);
+  margin-top: var(--padding-base);
+  padding: var(--padding-base);
+}
+
+.toggle-control-status.error {
+  border-color: rgba(224, 85, 119, 0.4);
+}
+
+.toggle-control-status-title {
+  color: var(--text-color);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.toggle-control-status-line {
+  color: var(--text-color);
+  font-size: var(--font-size-sm);
+  margin: var(--margin-sm) 0 0;
+}
+
+.toggle-control-status-line.error {
+  color: var(--danger-fg);
+}
+
+.toggle-control-status-track {
+  background: var(--track-color);
+  border-radius: var(--border-radius-sm);
+  height: 10px;
+  margin-top: var(--margin-sm);
+  overflow: hidden;
+}
+
+.toggle-control-status-track.error {
+  border: 1px solid var(--danger-bg);
+}
+
+.toggle-control-status-fill {
+  background: linear-gradient(90deg, #5ec8c8 0%, #8b6cc5 100%);
+  border-radius: var(--border-radius-sm);
+  height: 100%;
+  transition: width var(--transition-base);
+}
+
+.toggle-control-status-fill.error {
+  background: linear-gradient(90deg, #b43a3a 0%, #de5656 100%);
+}
+
 @media only screen and (max-width: 768px) and (orientation: portrait) {
   .toggle-control-wrapper {
     flex-direction: column;

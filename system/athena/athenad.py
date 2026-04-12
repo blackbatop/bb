@@ -37,6 +37,7 @@ from openpilot.common.realtime import set_core_affinity
 from openpilot.system.hardware import HARDWARE, PC
 from openpilot.system.loggerd.xattr_cache import getxattr, setxattr
 from openpilot.common.swaglog import cloudlog
+from openpilot.system.athena.registration import UNREGISTERED_DONGLE_ID
 from openpilot.system.version import get_build_metadata
 from openpilot.system.hardware.hw import Paths
 
@@ -812,6 +813,20 @@ def backoff(retries: int) -> int:
   return random.randrange(0, min(128, int(2 ** retries)))
 
 
+def get_athena_dongle_id(params: Params) -> str | None:
+  dongle_id = params.get("DongleId", encoding="utf-8")
+  if dongle_id in (None, "", UNREGISTERED_DONGLE_ID):
+    return None
+  return dongle_id
+
+
+def wait_for_exit(exit_event: threading.Event | None, timeout: float) -> bool:
+  if exit_event is None:
+    time.sleep(timeout)
+    return False
+  return exit_event.wait(timeout)
+
+
 def main(exit_event: threading.Event = None):
   try:
     set_core_affinity([0, 1, 2, 3])
@@ -819,15 +834,28 @@ def main(exit_event: threading.Event = None):
     cloudlog.exception("failed to set core affinity")
 
   params = Params()
-  dongle_id = params.get("DongleId")
   UploadQueueCache.initialize(upload_queue)
-
-  ws_uri = ATHENA_HOST + "/ws/v2/" + dongle_id
-  api = Api(dongle_id)
 
   conn_start = None
   conn_retries = 0
+  waiting_for_dongle_id = False
   while exit_event is None or not exit_event.is_set():
+    dongle_id = get_athena_dongle_id(params)
+    if dongle_id is None:
+      if not waiting_for_dongle_id:
+        cloudlog.warning("athenad.main.missing_dongle_id")
+        waiting_for_dongle_id = True
+      conn_start = None
+      conn_retries = 0
+      params.remove("LastAthenaPingTime")
+      if wait_for_exit(exit_event, 5):
+        break
+      continue
+
+    waiting_for_dongle_id = False
+    ws_uri = ATHENA_HOST + "/ws/v2/" + dongle_id
+    api = Api(dongle_id)
+
     try:
       if conn_start is None:
         conn_start = time.monotonic()

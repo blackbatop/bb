@@ -2,20 +2,141 @@ import { html, reactive } from "/assets/vendor/arrow-core.js"
 import { Modal } from "/assets/components/modal.js"
 import { TailscaleControl } from "/assets/components/tailscale/tailscale.js"
 
-export function ToggleControl() {
-  const state = reactive({
-    showResetDefaultModal: false,
-    showResetStockModal: false,
-    showSaveMeModal: false,
-    factoryResetBusy: false,
-  });
+const FACTORY_RESET_STATUS_POLL_INTERVAL_MS = 1000
 
-  const fileInput = document.createElement("input")
+const state = reactive({
+  showResetDefaultModal: false,
+  showResetStockModal: false,
+  showSaveMeModal: false,
+  factoryResetBusy: false,
+  factoryResetStatus: null,
+})
+
+let initialized = false
+let fileInput = null
+let factoryResetPollHandle = null
+
+function isToggleRouteActive() {
+  return window.location.pathname === "/manage_toggles"
+}
+
+function isFactoryResetStatusRelevant(payload) {
+  return String(payload?.lastMode || "").trim() === "factory-reset"
+}
+
+function toPercent(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.min(100, n))
+}
+
+function shouldContinueFactoryResetPolling() {
+  return !!state.factoryResetStatus && (
+    !!state.factoryResetStatus.running
+    || state.factoryResetStatus.stage === "factory-resetting"
+    || state.factoryResetStatus.stage === "rebooting"
+    || state.factoryResetStatus.stage === "starting"
+  )
+}
+
+function stopFactoryResetPolling() {
+  if (!factoryResetPollHandle) return
+  clearTimeout(factoryResetPollHandle)
+  factoryResetPollHandle = null
+}
+
+function ensureFactoryResetPolling() {
+  if (factoryResetPollHandle) return
+
+  const poll = async () => {
+    if (!isToggleRouteActive()) {
+      factoryResetPollHandle = null
+      return
+    }
+
+    await fetchFactoryResetStatus()
+    if (shouldContinueFactoryResetPolling()) {
+      factoryResetPollHandle = setTimeout(poll, FACTORY_RESET_STATUS_POLL_INTERVAL_MS)
+    } else {
+      factoryResetPollHandle = null
+    }
+  }
+
+  factoryResetPollHandle = setTimeout(poll, FACTORY_RESET_STATUS_POLL_INTERVAL_MS)
+}
+
+async function fetchFactoryResetStatus() {
+  try {
+    const response = await fetch("/api/update/fast/status")
+    const payload = await response.json()
+    if (!response.ok) {
+      throw new Error(payload.error || response.statusText || "Failed to load factory reset status")
+    }
+
+    state.factoryResetStatus = isFactoryResetStatusRelevant(payload) ? {
+      running: !!payload.running,
+      stage: String(payload.stage || "idle"),
+      message: String(payload.message || ""),
+      lastError: String(payload.lastError || ""),
+      progressLabel: String(payload.progressLabel || ""),
+      progressDetail: String(payload.progressDetail || ""),
+      progressPercent: toPercent(payload.progressPercent),
+      progressStep: Number(payload.progressStep || 0),
+      progressTotalSteps: Number(payload.progressTotalSteps || 5),
+    } : null
+  } catch (error) {
+    if (!shouldContinueFactoryResetPolling()) {
+      state.factoryResetStatus = null
+    }
+  } finally {
+    if (shouldContinueFactoryResetPolling()) {
+      ensureFactoryResetPolling()
+    } else {
+      stopFactoryResetPolling()
+    }
+  }
+}
+
+async function restoreToggles(event) {
+  const uploadedFile = event.target.files[0]
+  if (uploadedFile) {
+    const fileContents = await uploadedFile.text()
+    const toggleData = JSON.parse(fileContents)
+
+    const response = await fetch("/api/toggles/restore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(toggleData),
+    })
+
+    const result = await response.json()
+    showSnackbar(result.message || "Toggles restored!")
+
+    event.target.value = ""
+  }
+}
+
+function initializeFileInput() {
+  if (fileInput) return
+
+  fileInput = document.createElement("input")
   fileInput.type = "file"
   fileInput.accept = ".json"
   fileInput.style.display = "none"
   fileInput.addEventListener("change", restoreToggles)
   document.body.appendChild(fileInput)
+}
+
+function initialize() {
+  if (initialized) return
+  initialized = true
+
+  initializeFileInput()
+}
+
+export function ToggleControl() {
+  initialize()
+  fetchFactoryResetStatus()
 
   async function backupToggles() {
     const response = await fetch("/api/toggles/backup", { method: "POST" })
@@ -27,25 +148,6 @@ export function ToggleControl() {
     downloadLink.download = "toggle-backup.json"
     downloadLink.click()
     URL.revokeObjectURL(downloadUrl)
-  }
-
-  async function restoreToggles(event) {
-    const uploadedFile = event.target.files[0]
-    if (uploadedFile) {
-      const fileContents = await uploadedFile.text()
-      const toggleData = JSON.parse(fileContents)
-
-      const response = await fetch("/api/toggles/restore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toggleData)
-      })
-
-      const result = await response.json()
-      showSnackbar(result.message || "Toggles restored!")
-
-      event.target.value = ""
-    }
   }
 
   function confirmResetDefault() {
@@ -94,7 +196,20 @@ export function ToggleControl() {
         throw new Error(payload.error || response.statusText || "Failed to start factory reset")
       }
 
+      state.factoryResetStatus = {
+        running: true,
+        stage: "starting",
+        message: payload.message || "Factory reset started. Device will reboot when complete.",
+        lastError: "",
+        progressLabel: "Preparing factory reset",
+        progressDetail: "Initializing factory reset...",
+        progressPercent: 0,
+        progressStep: 1,
+        progressTotalSteps: 5,
+      }
+      ensureFactoryResetPolling()
       showSnackbar(payload.message || "Factory reset started.")
+      fetchFactoryResetStatus()
     } catch (error) {
       showSnackbar(error?.message || "Failed to start factory reset", "error")
     } finally {
@@ -135,6 +250,22 @@ export function ToggleControl() {
             disabled="${() => state.factoryResetBusy}">
             ${() => state.factoryResetBusy ? "Starting..." : "SAVE ME"}
           </button>
+          ${() => state.factoryResetStatus ? html`
+            <div class="toggle-control-status ${state.factoryResetStatus.stage === "error" ? "error" : ""}">
+              <div class="toggle-control-status-title">Factory Reset Status</div>
+              <p class="toggle-control-status-line">
+                <strong>Step:</strong>
+                ${state.factoryResetStatus.progressStep}/${state.factoryResetStatus.progressTotalSteps}
+                ${state.factoryResetStatus.progressLabel ? `- ${state.factoryResetStatus.progressLabel}` : ""}
+              </p>
+              <div class="toggle-control-status-track ${state.factoryResetStatus.stage === "error" ? "error" : ""}">
+                <div class="toggle-control-status-fill ${state.factoryResetStatus.stage === "error" ? "error" : ""}" style="width: ${state.factoryResetStatus.progressPercent}%;"></div>
+              </div>
+              ${() => state.factoryResetStatus.message ? html`<p class="toggle-control-status-line">${state.factoryResetStatus.message}</p>` : ""}
+              ${() => state.factoryResetStatus.progressDetail ? html`<p class="toggle-control-status-line ${state.factoryResetStatus.stage === "error" ? "error" : ""}">${state.factoryResetStatus.progressDetail}</p>` : ""}
+              ${() => state.factoryResetStatus.lastError ? html`<p class="toggle-control-status-line error"><strong>Last Error:</strong> ${state.factoryResetStatus.lastError}</p>` : ""}
+            </div>
+          ` : ""}
         </div>
       </section>
 

@@ -110,6 +110,10 @@ function shouldShowPrimaryUpdateAction() {
   return !!state.checkedForUpdates && !!state.status?.updateAvailable
 }
 
+function isFactoryResetStatusActive() {
+  return String(state.status?.lastMode || "").trim() === "factory-reset"
+}
+
 function shouldContinuePolling() {
   return !!state.status?.running || state.status?.stage === "rebooting" || reconnectPending
 }
@@ -503,19 +507,21 @@ export function UpdateManager() {
             <p><strong>Onroad:</strong> ${state.status?.isOnroad ? "Yes" : "No"}</p>
           </div>
 
-          <div class="updateProgressCard">
-            <div class="updateProgressHeader">
-              <span>
-                Step ${state.status?.progressStep || 0}/${state.status?.progressTotalSteps || 5}:
-                ${state.status?.progressLabel || "Idle"}
-              </span>
-              <span>${Math.round(toPercent(state.status?.progressPercent))}%</span>
+          ${() => !isFactoryResetStatusActive() ? html`
+            <div class="updateProgressCard">
+              <div class="updateProgressHeader">
+                <span>
+                  Step ${state.status?.progressStep || 0}/${state.status?.progressTotalSteps || 5}:
+                  ${state.status?.progressLabel || "Idle"}
+                </span>
+                <span>${Math.round(toPercent(state.status?.progressPercent))}%</span>
+              </div>
+              <div class="updateProgressTrack ${state.status?.stage === "error" ? "error" : ""}">
+                <div class="updateProgressFill ${state.status?.stage === "error" ? "error" : ""}" style="width: ${toPercent(state.status?.progressPercent)}%;"></div>
+              </div>
+              ${() => state.status?.progressDetail ? html`<p class="updateProgressDetail ${state.status?.stage === "error" ? "error" : ""}">${state.status.progressDetail}</p>` : ""}
             </div>
-            <div class="updateProgressTrack ${state.status?.stage === "error" ? "error" : ""}">
-              <div class="updateProgressFill ${state.status?.stage === "error" ? "error" : ""}" style="width: ${toPercent(state.status?.progressPercent)}%;"></div>
-            </div>
-            ${() => state.status?.progressDetail ? html`<p class="updateProgressDetail ${state.status?.stage === "error" ? "error" : ""}">${state.status.progressDetail}</p>` : ""}
-          </div>
+          ` : html`<p class="updateHint">Factory reset status and errors are shown on Backup/Restore.</p>`}
 
           ${() => state.status?.isOnroad ? html`<p class="updateWarning"><strong>Onroad: actions disabled</strong></p>` : ""}
 
@@ -573,9 +579,9 @@ export function UpdateManager() {
             </div>
           ` : ""}
 
-          ${() => state.status?.message && state.status?.stage !== "rebooting" ? html`<p class="updateMessage">${state.status.message}</p>` : ""}
+          ${() => !isFactoryResetStatusActive() && state.status?.message && state.status?.stage !== "rebooting" ? html`<p class="updateMessage">${state.status.message}</p>` : ""}
           ${() => state.status?.remoteError ? html`<p class="updateError"><strong>Remote Check:</strong> ${state.status.remoteError}</p>` : ""}
-          ${() => state.status?.lastError ? html`<p class="updateError"><strong>Last Error:</strong> ${state.status.lastError}</p>` : ""}
+          ${() => !isFactoryResetStatusActive() && state.status?.lastError ? html`<p class="updateError"><strong>Last Error:</strong> ${state.status.lastError}</p>` : ""}
           ${() => state.error ? html`<p class="updateError"><strong>Error:</strong> ${state.error}</p>` : ""}
 
           <div class="updateActions">

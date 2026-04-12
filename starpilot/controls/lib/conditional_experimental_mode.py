@@ -199,7 +199,12 @@ class ConditionalExperimentalMode:
 
       model_stopping = self.starpilot_planner.model_length < v_ego * adjusted_model_time
 
-      self.stop_light_filter.update(self.starpilot_planner.model_stopped or model_stopping)
+      # `model_stopped` is a coarse horizon-length check (< 50 m with current constants)
+      # used elsewhere for force-stop/green-light behavior. Reusing it here causes
+      # ordinary low-speed cruising to look like a stop prediction and can latch the
+      # STOP_LIGHT CEM trigger. For the CEM detector, key strictly off the configured
+      # "predicted stop within N seconds" threshold.
+      self.stop_light_filter.update(model_stopping)
       self.stop_light_detected = bool(self.stop_light_filter.x >= THRESHOLD**2 and not self.starpilot_planner.tracking_lead)
     else:
       self.stop_light_filter.x = 0
