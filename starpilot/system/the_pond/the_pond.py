@@ -400,6 +400,9 @@ def _sanitize_json_value(value):
   if isinstance(value, (list, tuple)):
     return [_sanitize_json_value(item) for item in value]
 
+  if isinstance(value, datetime):
+    return value.isoformat()
+
   if isinstance(value, bytes):
     try:
       return value.decode("utf-8")
@@ -5881,10 +5884,11 @@ def setup(app):
         continue
 
       raw_value = params.get(key)
-      if isinstance(raw_value, bytes):
-        value = raw_value.decode("utf-8", errors="replace")
-      else:
-        value = raw_value or "0"
+      value = _sanitize_json_value(raw_value)
+      if value is None:
+        value = "0"
+      elif not isinstance(value, (str, int, float, bool, dict, list)):
+        value = str(value)
 
       toggle_values[key] = value
 

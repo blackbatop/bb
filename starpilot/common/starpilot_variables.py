@@ -195,6 +195,7 @@ EXCLUDED_KEYS = {
   "CommunityFavorites",
   "CurvatureData",
   "ExperimentalLongitudinalEnabled",
+  "InstallDate",
   "StarPilotCarParamsPersistent",
   "KonikMinutes",
   "LastUpdateTime",
@@ -214,6 +215,7 @@ EXCLUDED_KEYS = {
   "UpdaterCurrentDescription",
   "UpdaterCurrentReleaseNotes",
   "UpdaterFetchAvailable",
+  "UpdaterLastFetchTime",
   "UpdaterTargetBranch",
   "UserFavorites",
   "UptimeOffroad"
