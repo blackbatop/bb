@@ -6,6 +6,7 @@ from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget, DialogResult
+from openpilot.system.ui.widgets.label import gui_label
 from openpilot.selfdrive.ui.layouts.settings.starpilot.asset_loader import starpilot_texture
 
 
@@ -60,6 +61,149 @@ _SUBSTRATE_MAP = {
 _DEFAULT_SUBSTRATE = hex_to_color("#1E0A4D")
 
 
+def _resolve_value(value, default=""):
+  if callable(value):
+    return value()
+  return value if value is not None else default
+
+
+def _with_alpha(color: rl.Color, alpha: int) -> rl.Color:
+  return rl.Color(color.r, color.g, color.b, max(0, min(255, int(alpha))))
+
+
+class AetherListColors:
+  PANEL_BG = rl.Color(8, 8, 10, 255)
+  PANEL_BORDER = rl.Color(255, 255, 255, 22)
+  PANEL_GLOW = rl.Color(92, 116, 151, 34)
+  HEADER = rl.Color(236, 242, 250, 255)
+  SUBTEXT = rl.Color(164, 177, 196, 255)
+  MUTED = rl.Color(126, 139, 158, 255)
+  ROW_BG = rl.Color(255, 255, 255, 0)
+  ROW_BORDER = rl.Color(255, 255, 255, 0)
+  ROW_SEPARATOR = rl.Color(255, 255, 255, 16)
+  ROW_HOVER = rl.Color(255, 255, 255, 8)
+  CURRENT_BG = rl.Color(89, 116, 151, 18)
+  CURRENT_BORDER = rl.Color(116, 136, 168, 44)
+  ACTION_BG = rl.Color(255, 255, 255, 0)
+  ACTION_SEPARATOR = rl.Color(255, 255, 255, 18)
+  PRIMARY = hex_to_color("#597497")
+  PRIMARY_SOFT = rl.Color(89, 116, 151, 48)
+  DANGER = rl.Color(173, 78, 90, 255)
+  DANGER_SOFT = rl.Color(173, 78, 90, 44)
+  SUCCESS = rl.Color(94, 168, 130, 255)
+  SUCCESS_SOFT = rl.Color(94, 168, 130, 44)
+  WARNING = rl.Color(204, 158, 83, 255)
+  SCROLL_TRACK = rl.Color(255, 255, 255, 10)
+  SCROLL_THUMB = rl.Color(255, 255, 255, 68)
+
+
+class AetherButton(Widget):
+  def __init__(
+    self,
+    text: str | Callable[[], str],
+    click_callback: Callable[[], None] | None = None,
+    enabled: bool | Callable[[], bool] = True,
+    emphasized: bool = False,
+    font_size: int = 24,
+  ):
+    super().__init__()
+    self._text = text
+    self._emphasized = emphasized
+    self._font_size = font_size
+    self.set_click_callback(click_callback)
+    self.set_enabled(enabled)
+
+  @property
+  def text(self) -> str:
+    return str(_resolve_value(self._text, ""))
+
+  def set_text(self, text: str | Callable[[], str]):
+    self._text = text
+
+  def set_emphasized(self, emphasized: bool):
+    self._emphasized = emphasized
+
+  def _render(self, rect: rl.Rectangle):
+    enabled = self.enabled
+    hovered = enabled and rl.check_collision_point_rec(gui_app.last_mouse_event.pos, rect)
+    pressed = enabled and self.is_pressed
+
+    if self._emphasized:
+      bg = AetherListColors.PRIMARY if enabled else rl.Color(AetherListColors.PRIMARY.r, AetherListColors.PRIMARY.g, AetherListColors.PRIMARY.b, 80)
+      border = _with_alpha(AetherListColors.PRIMARY, 190 if enabled else 70)
+    else:
+      bg = rl.Color(255, 255, 255, 10 if enabled else 5)
+      border = rl.Color(255, 255, 255, 22 if enabled else 10)
+
+    if hovered:
+      bg = rl.Color(min(bg.r + 10, 255), min(bg.g + 10, 255), min(bg.b + 10, 255), bg.a)
+    if pressed:
+      bg = rl.Color(max(bg.r - 8, 0), max(bg.g - 8, 0), max(bg.b - 8, 0), bg.a)
+
+    rl.draw_rectangle_rounded(rect, 0.32, 16, bg)
+    rl.draw_rectangle_rounded_lines_ex(rect, 0.32, 16, 1, border)
+    gui_label(
+      rect,
+      self.text,
+      self._font_size,
+      AetherListColors.HEADER if enabled else AetherListColors.MUTED,
+      FontWeight.MEDIUM,
+      alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER,
+    )
+
+
+class AetherChip:
+  def __init__(self, text: str | Callable[[], str], fill: rl.Color, border: rl.Color, text_color: rl.Color, pill: bool = False, font_size: int = 18):
+    self._text = text
+    self._fill = fill
+    self._border = border
+    self._text_color = text_color
+    self._pill = pill
+    self._font_size = font_size
+
+  @property
+  def text(self) -> str:
+    return str(_resolve_value(self._text, ""))
+
+  def render(self, rect: rl.Rectangle):
+    roundness = 1.0 if self._pill else 0.4
+    rl.draw_rectangle_rounded(rect, roundness, 18, self._fill)
+    rl.draw_rectangle_rounded_lines_ex(rect, roundness, 18, 1, _with_alpha(self._border, 110))
+    gui_label(rect, self.text, 20 if self._pill else self._font_size, self._text_color, FontWeight.MEDIUM, alignment=rl.GuiTextAlignment.TEXT_ALIGN_CENTER)
+
+
+class AetherScrollbar:
+  def __init__(
+    self,
+    track_color: rl.Color = AetherListColors.SCROLL_TRACK,
+    thumb_color: rl.Color = AetherListColors.SCROLL_THUMB,
+    track_width: int = 4,
+    track_inset_x: int = 7,
+    track_inset_y: int = 8,
+    min_thumb_height: float = 46.0,
+  ):
+    self._track_color = track_color
+    self._thumb_color = thumb_color
+    self._track_width = track_width
+    self._track_inset_x = track_inset_x
+    self._track_inset_y = track_inset_y
+    self._min_thumb_height = min_thumb_height
+
+  def render(self, rect: rl.Rectangle, content_height: float, scroll_offset: float):
+    if content_height <= 0 or content_height <= rect.height:
+      return
+
+    track_rect = rl.Rectangle(rect.x + rect.width - self._track_inset_x, rect.y + self._track_inset_y, self._track_width, rect.height - self._track_inset_y * 2)
+    rl.draw_rectangle_rounded(track_rect, 1.0, 12, self._track_color)
+
+    max_scroll = max(content_height - rect.height, 1.0)
+    thumb_height = max(self._min_thumb_height, track_rect.height * (rect.height / content_height))
+    thumb_range = max(track_rect.height - thumb_height, 0.0)
+    thumb_y = track_rect.y + (-scroll_offset / max_scroll) * thumb_range
+    thumb_rect = rl.Rectangle(track_rect.x, thumb_y, track_rect.width, thumb_height)
+    rl.draw_rectangle_rounded(thumb_rect, 1.0, 12, self._thumb_color)
+
+
 class AetherTile(Widget):
   def __init__(self, surface_color: rl.Color | str | None = None, substrate_color: rl.Color | str | None = None, on_click: Callable | None = None):
     super().__init__()
@@ -81,8 +225,10 @@ class AetherTile(Widget):
   @property
   def _hit_rect(self) -> rl.Rectangle:
     return rl.Rectangle(
-      self._rect.x - GEOMETRY_OFFSET, self._rect.y - GEOMETRY_OFFSET,
-      self._rect.width + 2 * GEOMETRY_OFFSET, self._rect.height + 2 * GEOMETRY_OFFSET,
+      self._rect.x - GEOMETRY_OFFSET,
+      self._rect.y - GEOMETRY_OFFSET,
+      self._rect.width + 2 * GEOMETRY_OFFSET,
+      self._rect.height + 2 * GEOMETRY_OFFSET,
     )
 
   def _handle_mouse_press(self, mouse_pos: MousePos):
@@ -134,7 +280,18 @@ class AetherTile(Widget):
 
     return surf_rect
 
-  def _draw_text_fit(self, font: rl.Font, text: str, pos: rl.Vector2, max_width: float, font_size: float, align_center: bool = False, align_right: bool = False, letter_spacing: float = 0, uppercase: bool = False):
+  def _draw_text_fit(
+    self,
+    font: rl.Font,
+    text: str,
+    pos: rl.Vector2,
+    max_width: float,
+    font_size: float,
+    align_center: bool = False,
+    align_right: bool = False,
+    letter_spacing: float = 0,
+    uppercase: bool = False,
+  ):
     if uppercase:
       text = text.upper()
     spacing = round(letter_spacing if letter_spacing > 0 else font_size * 0.15)
@@ -158,7 +315,9 @@ class AetherTile(Widget):
     rl.draw_text_ex(font, text, shadow_pos, actual_font_size, spacing, rl.Color(0, 0, 0, 90))
     rl.draw_text_ex(font, text, rl.Vector2(round(draw_x), round(pos.y + nudge_y)), actual_font_size, spacing, rl.WHITE)
 
-  def _centered_content(self, face: rl.Rectangle, icon: rl.Texture2D | None, icon_scale: float, title_font_size: float, text_lines: int, line_heights: list[float]):
+  def _centered_content(
+    self, face: rl.Rectangle, icon: rl.Texture2D | None, icon_scale: float, title_font_size: float, text_lines: int, line_heights: list[float]
+  ):
     line_spacing = SPACING.line_gap
     total_h = sum(line_heights) + line_spacing * (text_lines - 1)
     icon_w = icon.width * icon_scale if icon else 0
@@ -168,7 +327,9 @@ class AetherTile(Widget):
     group_top = face.y + (face.height - total_h) / 2
     if icon:
       ix = face.x + (face.width - icon_w) / 2
-      rl.draw_texture_pro(icon, rl.Rectangle(0, 0, icon.width, icon.height), rl.Rectangle(ix + 1, group_top + 2, icon_w, icon_h), rl.Vector2(0, 0), 0, rl.Color(0, 0, 0, 90))
+      rl.draw_texture_pro(
+        icon, rl.Rectangle(0, 0, icon.width, icon.height), rl.Rectangle(ix + 1, group_top + 2, icon_w, icon_h), rl.Vector2(0, 0), 0, rl.Color(0, 0, 0, 90)
+      )
       rl.draw_texture_pro(icon, rl.Rectangle(0, 0, icon.width, icon.height), rl.Rectangle(ix, group_top, icon_w, icon_h), rl.Vector2(0, 0), 0, rl.WHITE)
       ty = group_top + icon_h + line_spacing
     else:
@@ -199,7 +360,16 @@ class AetherTile(Widget):
 
 
 class HubTile(AetherTile):
-  def __init__(self, title: str, desc: str, icon_path: str, on_click: Callable | None = None, starpilot_icon: bool = False, bg_color: rl.Color | str | None = None, get_status: Callable[[], str] | None = None):
+  def __init__(
+    self,
+    title: str,
+    desc: str,
+    icon_path: str,
+    on_click: Callable | None = None,
+    starpilot_icon: bool = False,
+    bg_color: rl.Color | str | None = None,
+    get_status: Callable[[], str] | None = None,
+  ):
     if bg_color:
       super().__init__(surface_color=bg_color, on_click=on_click)
     else:
@@ -208,24 +378,28 @@ class HubTile(AetherTile):
     self.title = title
     self.desc = desc
     if icon_path:
-      if starpilot_icon: self._icon = starpilot_texture(icon_path, 100, 100)
-      else: self._icon = gui_app.texture(icon_path, 100, 100)
-    else: self._icon = None
+      if starpilot_icon:
+        self._icon = starpilot_texture(icon_path, 100, 100)
+      else:
+        self._icon = gui_app.texture(icon_path, 100, 100)
+    else:
+      self._icon = None
     self._font_title = gui_app.font(FontWeight.BOLD)
     self._font_desc = gui_app.font(FontWeight.NORMAL)
 
   def _render(self, rect: rl.Rectangle):
     face = self._render_layers(rect)
-    
+
     status_text = self.get_status() if self.get_status else ""
     if status_text:
       import re
+
       m = re.search(r'(\d+)%$', status_text)
       if m:
         ratio = min(1.0, max(0.0, float(m.group(1)) / 100.0))
         if ratio > 0.05:
-            fill_rect = rl.Rectangle(face.x, face.y, face.width * ratio, face.height)
-            rl.draw_rectangle_rounded(fill_rect, TILE_RADIUS, 10, rl.Color(255, 255, 255, 40))
+          fill_rect = rl.Rectangle(face.x, face.y, face.width * ratio, face.height)
+          rl.draw_rectangle_rounded(fill_rect, TILE_RADIUS, 10, rl.Color(255, 255, 255, 40))
 
     content_pad = SPACING.tile_content
     max_w = face.width - (content_pad * 2)
@@ -246,10 +420,21 @@ class HubTile(AetherTile):
 
 
 class ToggleTile(AetherTile):
-  def __init__(self, title: str, get_state: Callable[[], bool], set_state: Callable[[bool], None], icon_path: str | None = None,
-               bg_color: rl.Color | str | None = None, desc: str = "", is_enabled: Callable[[], bool] | None = None, disabled_label: str = ""):
-    if bg_color: super().__init__(surface_color=bg_color)
-    else: super().__init__(surface_color=rl.Color(0, 163, 0, 255))
+  def __init__(
+    self,
+    title: str,
+    get_state: Callable[[], bool],
+    set_state: Callable[[bool], None],
+    icon_path: str | None = None,
+    bg_color: rl.Color | str | None = None,
+    desc: str = "",
+    is_enabled: Callable[[], bool] | None = None,
+    disabled_label: str = "",
+  ):
+    if bg_color:
+      super().__init__(surface_color=bg_color)
+    else:
+      super().__init__(surface_color=rl.Color(0, 163, 0, 255))
     self.title = title
     self.desc = desc
     self.get_state = get_state
@@ -296,8 +481,16 @@ class ToggleTile(AetherTile):
 
 
 class ValueTile(AetherTile):
-  def __init__(self, title: str, get_value: Callable[[], str], on_click: Callable, icon_path: str | None = None,
-               bg_color: rl.Color | str | None = None, is_enabled: Callable[[], bool] | None = None, desc: str = ""):
+  def __init__(
+    self,
+    title: str,
+    get_value: Callable[[], str],
+    on_click: Callable,
+    icon_path: str | None = None,
+    bg_color: rl.Color | str | None = None,
+    is_enabled: Callable[[], bool] | None = None,
+    desc: str = "",
+  ):
     super().__init__(surface_color=bg_color, on_click=on_click)
     self.title = title
     self.desc = desc
@@ -329,7 +522,17 @@ class ValueTile(AetherTile):
 
 
 class AetherSlider(Widget):
-  def __init__(self, min_val: float, max_val: float, step: float, current_val: float, on_change: Callable[[float], None], unit: str = "", labels: dict[float, str] | None = None, color: rl.Color = rl.Color(54, 77, 239, 255)):
+  def __init__(
+    self,
+    min_val: float,
+    max_val: float,
+    step: float,
+    current_val: float,
+    on_change: Callable[[float], None],
+    unit: str = "",
+    labels: dict[float, str] | None = None,
+    color: rl.Color = rl.Color(54, 77, 239, 255),
+  ):
     super().__init__()
     self.min_val, self.max_val, self.step, self.current_val = min_val, max_val, step, current_val
     self.on_change, self.unit, self.labels, self.color = on_change, unit, labels or {}, color
@@ -408,7 +611,9 @@ class AetherSlider(Widget):
     t_face_rect = rl.Rectangle(thumb_x + thumb_offset, thumb_y + thumb_offset, thumb_w, thumb_h)
     rl.draw_rectangle_rounded(t_face_rect, 0.2, 10, rl.WHITE)
     rl.draw_rectangle_rounded(rl.Rectangle(t_face_rect.x + 1, t_face_rect.y + 1, t_face_rect.width - 2, t_face_rect.height - 2), 0.2, 10, rl.Color(0, 0, 0, 80))
-    rl.draw_rectangle_rounded(rl.Rectangle(t_face_rect.x, t_face_rect.y, t_face_rect.width - 1.5, t_face_rect.height - 1.5), 0.2, 10, rl.Color(255, 255, 255, 110))
+    rl.draw_rectangle_rounded(
+      rl.Rectangle(t_face_rect.x, t_face_rect.y, t_face_rect.width - 1.5, t_face_rect.height - 1.5), 0.2, 10, rl.Color(255, 255, 255, 110)
+    )
     val_str = self.labels.get(self.current_val, f"{self.current_val:.2f}".rstrip('0').rstrip('.') + self.unit)
     ts = measure_text_cached(self._font, val_str, 35)
     val_pos = rl.Vector2(thumb_x + (thumb_w - ts.x) / 2, thumb_y - 45)
@@ -454,7 +659,9 @@ class AetherSlider(Widget):
           self.on_change(self.current_val)
     if self._plus_pressed:
       self._plus_pressed = False
-      if rl.check_collision_point_rec(mouse_pos, rl.Rectangle(self._rect.x + self._rect.width - SLIDER_BUTTON_SIZE, self._rect.y, SLIDER_BUTTON_SIZE, self._rect.height)):
+      if rl.check_collision_point_rec(
+        mouse_pos, rl.Rectangle(self._rect.x + self._rect.width - SLIDER_BUTTON_SIZE, self._rect.y, SLIDER_BUTTON_SIZE, self._rect.height)
+      ):
         new_val = self._clamp_and_snap(self.current_val + self.step)
         if new_val != self.current_val:
           self.current_val = new_val
@@ -477,7 +684,18 @@ class AetherSlider(Widget):
 
 
 class AetherSliderDialog(Widget):
-  def __init__(self, title: str, min_val: float, max_val: float, step: float, current_val: float, on_close: Callable, unit: str = "", labels: dict[float, str] | None = None, color: rl.Color | str = "#F57371"):
+  def __init__(
+    self,
+    title: str,
+    min_val: float,
+    max_val: float,
+    step: float,
+    current_val: float,
+    on_close: Callable,
+    unit: str = "",
+    labels: dict[float, str] | None = None,
+    color: rl.Color | str = "#F57371",
+  ):
     super().__init__()
     self.title, self._user_callback = title, on_close
     self._color = hex_to_color(color) if isinstance(color, str) else color
@@ -536,7 +754,12 @@ class AetherSliderDialog(Widget):
     slider_rect = rl.Rectangle(dx + SPACING.xxl, dy + 200, dialog_w - (SPACING.xxl * 2), 100)
     self._slider.render(slider_rect)
     c_shadow_alpha = int(255 * (1.0 - 0.9 * self._cancel_offset))
-    rl.draw_rectangle_rounded(rl.Rectangle(self._cancel_rect.x + GEOMETRY_OFFSET, self._cancel_rect.y + GEOMETRY_OFFSET, button_width, button_height), 0.2, 10, rl.Color(30, 30, 30, c_shadow_alpha))
+    rl.draw_rectangle_rounded(
+      rl.Rectangle(self._cancel_rect.x + GEOMETRY_OFFSET, self._cancel_rect.y + GEOMETRY_OFFSET, button_width, button_height),
+      0.2,
+      10,
+      rl.Color(30, 30, 30, c_shadow_alpha),
+    )
     c_face_x = self._cancel_rect.x + GEOMETRY_OFFSET * self._cancel_offset
     c_face_y = self._cancel_rect.y + GEOMETRY_OFFSET * self._cancel_offset
     c_face = rl.Rectangle(c_face_x, c_face_y, button_width, button_height)
@@ -548,7 +771,12 @@ class AetherSliderDialog(Widget):
     rl.draw_text_ex(self._font_btn, tr("CANCEL"), rl.Vector2(round(cancel_text_pos.x + 1), round(cancel_text_pos.y + 2)), 35, 0, rl.Color(0, 0, 0, 90))
     rl.draw_text_ex(self._font_btn, tr("CANCEL"), rl.Vector2(round(cancel_text_pos.x), round(cancel_text_pos.y)), 35, 0, rl.WHITE)
     o_shadow_alpha = int(255 * (1.0 - 0.9 * self._ok_offset))
-    rl.draw_rectangle_rounded(rl.Rectangle(self._ok_rect.x + GEOMETRY_OFFSET, self._ok_rect.y + GEOMETRY_OFFSET, button_width, button_height), 0.2, 10, rl.Color(self._color.r, self._color.g, self._color.b, int(o_shadow_alpha * 0.4)))
+    rl.draw_rectangle_rounded(
+      rl.Rectangle(self._ok_rect.x + GEOMETRY_OFFSET, self._ok_rect.y + GEOMETRY_OFFSET, button_width, button_height),
+      0.2,
+      10,
+      rl.Color(self._color.r, self._color.g, self._color.b, int(o_shadow_alpha * 0.4)),
+    )
     o_face_x = self._ok_rect.x + GEOMETRY_OFFSET * self._ok_offset
     o_face_y = self._ok_rect.y + GEOMETRY_OFFSET * self._ok_offset
     o_face = rl.Rectangle(o_face_x, o_face_y, button_width, button_height)
@@ -573,7 +801,8 @@ class RadioTileGroup(Widget):
     self._option_offsets: list[float] = []
     self._option_targets: list[float] = []
 
-  def set_index(self, index: int): self.current_index = index
+  def set_index(self, index: int):
+    self.current_index = index
 
   def _handle_mouse_press(self, mouse_pos: MousePos):
     for i, r in enumerate(self._option_rects):
@@ -621,13 +850,19 @@ class RadioTileGroup(Widget):
       color = self._active_color if is_active else self._inactive_color
       offset = self._option_offsets[i] if i < len(self._option_offsets) else 0.0
       extrusion_alpha = int(255 * (1.0 - 0.9 * offset))
-      rl.draw_rectangle_rounded(rl.Rectangle(r.x + GEOMETRY_OFFSET, r.y + GEOMETRY_OFFSET, r.width, r.height), TILE_RADIUS, 10, rl.Color(30, 30, 30, extrusion_alpha))
+      rl.draw_rectangle_rounded(
+        rl.Rectangle(r.x + GEOMETRY_OFFSET, r.y + GEOMETRY_OFFSET, r.width, r.height), TILE_RADIUS, 10, rl.Color(30, 30, 30, extrusion_alpha)
+      )
       face_x = r.x + GEOMETRY_OFFSET * offset
       face_y = r.y + GEOMETRY_OFFSET * offset
       face_rect = rl.Rectangle(face_x, face_y, r.width, r.height)
       rl.draw_rectangle_rounded(face_rect, TILE_RADIUS, 10, color)
-      rl.draw_rectangle_rounded(rl.Rectangle(face_rect.x + 1, face_rect.y + 1, face_rect.width - 2, face_rect.height - 2), TILE_RADIUS, 10, rl.Color(0, 0, 0, 80))
-      rl.draw_rectangle_rounded(rl.Rectangle(face_rect.x, face_rect.y, face_rect.width - 1.5, face_rect.height - 1.5), TILE_RADIUS, 10, rl.Color(255, 255, 255, 110))
+      rl.draw_rectangle_rounded(
+        rl.Rectangle(face_rect.x + 1, face_rect.y + 1, face_rect.width - 2, face_rect.height - 2), TILE_RADIUS, 10, rl.Color(0, 0, 0, 80)
+      )
+      rl.draw_rectangle_rounded(
+        rl.Rectangle(face_rect.x, face_rect.y, face_rect.width - 1.5, face_rect.height - 1.5), TILE_RADIUS, 10, rl.Color(255, 255, 255, 110)
+      )
       font_size = 30
       spacing = round(font_size * 0.08)
       max_width = r.width - (SPACING.lg + SPACING.xs)
@@ -653,9 +888,11 @@ class TileGrid(Widget):
   def gap(self) -> int:
     return self._gap
 
-  def add_tile(self, tile: Widget): self.tiles.append(tile)
+  def add_tile(self, tile: Widget):
+    self.tiles.append(tile)
 
-  def clear(self): self.tiles.clear()
+  def clear(self):
+    self.tiles.clear()
 
   def get_column_count(self, tile_count: int | None = None) -> int:
     count = len(self.tiles) if tile_count is None else tile_count
@@ -663,11 +900,16 @@ class TileGrid(Widget):
       return self._columns or 1
     if self._columns is not None:
       return self._columns
-    if count == 1: return 1
-    if count == 2: return 2
-    if count == 3: return 3
-    if count == 4: return 2
-    if count <= 6: return 3
+    if count == 1:
+      return 1
+    if count == 2:
+      return 2
+    if count == 3:
+      return 3
+    if count == 4:
+      return 2
+    if count <= 6:
+      return 3
     return 4
 
   def get_row_count(self, tile_count: int | None = None) -> int:
@@ -694,7 +936,8 @@ class TileGrid(Widget):
     tile_idx = 0
     for r in range(rows):
       remaining = count - tile_idx
-      if remaining <= 0: break
+      if remaining <= 0:
+        break
       items_in_row = min(cols, remaining)
       if self._uniform_width:
         row_tile_w = uniform_tile_w
