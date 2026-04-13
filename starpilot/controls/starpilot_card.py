@@ -34,7 +34,7 @@ class StarPilotCard:
     self.always_on_lateral_set = bool(FPCP.alternativeExperience & ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL)
     self.frogs_go_moo = is_FrogsGoMoo()
 
-    self.long_press_threshold = CRUISE_LONG_PRESS * (1.5 if self.CP.brand == "gm" else 1)
+    self.long_press_threshold = CRUISE_LONG_PRESS
     self.very_long_press_threshold = CRUISE_LONG_PRESS * 5
 
     self.error_log = ERROR_LOGS_PATH / "error.txt"
