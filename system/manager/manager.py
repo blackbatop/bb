@@ -35,6 +35,7 @@ from openpilot.starpilot.common.starpilot_variables import (
 LEGACY_BOLT_FP_MIGRATION_FLAG = Path("/data") / "legacy_bolt_fp_migration_v1"
 STARPILOT_DEFAULTS_PARITY_MIGRATION_FLAG = Path("/data") / "starpilot_defaults_parity_v1"
 STARPILOT_HUMANLIKE_DISABLE_MIGRATION_FLAG = Path("/data") / "starpilot_humanlike_disable_v1"
+STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG = Path("/data") / "starpilot_cluster_offset_v1"
 STARPILOT_PARAM_RENAME_MIGRATION_FLAG = Path("/data") / "starpilot_param_rename_v1"
 STARPILOT_PARAM_CANONICALIZATION_MIGRATION_FLAG = Path("/data") / "starpilot_param_canonicalization_v1"
 STARPILOT_PC_ROOT_MIGRATION_FLAG = Path("/data") / "starpilot_pc_root_v1"
@@ -401,6 +402,37 @@ def migrate_disable_humanlike_defaults(params: Params, params_cache: Params) -> 
     cloudlog.exception(f"Failed to write migration flag: {STARPILOT_HUMANLIKE_DISABLE_MIGRATION_FLAG}")
 
 
+def migrate_cluster_offset_default(params: Params, params_cache: Params) -> None:
+  if STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG.exists():
+    return
+
+  legacy_default_detected = False
+  for params_obj in (params, params_cache):
+    raw_value = _read_raw_param_bytes(params_obj, "ClusterOffset")
+    if not raw_value:
+      continue
+
+    try:
+      parsed_value = float(raw_value.decode("utf-8", errors="strict").strip())
+    except Exception:
+      continue
+
+    if abs(parsed_value - 1.015) < 1e-6:
+      legacy_default_detected = True
+      break
+
+  if legacy_default_detected:
+    params.put_float("ClusterOffset", 1.0)
+    params_cache.put_float("ClusterOffset", 1.0)
+    cloudlog.warning("Applied one-time ClusterOffset migration from 1.015 to 1.0")
+
+  try:
+    STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG.parent.mkdir(parents=True, exist_ok=True)
+    STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG.write_text(f"{datetime.datetime.now(datetime.UTC).isoformat()}\n")
+  except Exception:
+    cloudlog.exception(f"Failed to write migration flag: {STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG}")
+
+
 def _read_raw_param_bytes(params: Params, key: str | bytes):
   try:
     path = params.get_param_path(key)
@@ -568,6 +600,7 @@ def manager_init() -> None:
   migrate_param_type_canonicalization(params)
   migrate_starpilot_default_parity(params, params_cache)
   migrate_disable_humanlike_defaults(params, params_cache)
+  migrate_cluster_offset_default(params, params_cache)
 
   # set unset params to their default value
   for k in params.all_keys():

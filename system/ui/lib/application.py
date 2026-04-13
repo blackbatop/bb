@@ -218,6 +218,7 @@ class GuiApplication:
     self._ffmpeg_queue: queue.Queue | None = None
     self._ffmpeg_thread: threading.Thread | None = None
     self._ffmpeg_stop_event: threading.Event | None = None
+    self._progress_hook: Callable[[str], None] | None = None
     self._textures: dict[str, rl.Texture] = {}
     self._target_fps: int = _DEFAULT_FPS
     self._last_fps_log_time: float = time.monotonic()
@@ -447,6 +448,13 @@ class GuiApplication:
     if tick_function in self._nav_stack_ticks:
       self._nav_stack_ticks.remove(tick_function)
 
+  def set_progress_hook(self, hook: Callable[[str], None] | None) -> None:
+    self._progress_hook = hook
+
+  def _mark_progress(self, phase: str) -> None:
+    if self._progress_hook is not None:
+      self._progress_hook(phase)
+
   def set_should_render(self, should_render: bool):
     self._should_render = should_render
 
@@ -585,6 +593,7 @@ class GuiApplication:
         self._render_profiler.enable()
 
       while not (self._window_close_requested or rl.window_should_close()):
+        self._mark_progress("gui_app.loop_start")
         if PC:
           # Thread is not used on PC, need to manually add mouse events
           self._mouse._handle_mouse_event()
@@ -596,6 +605,7 @@ class GuiApplication:
 
         # Skip rendering when screen is off
         if not self._should_render:
+          self._mark_progress("gui_app.skip_render")
           if PC:
             rl.poll_input_events()
           time.sleep(1 / self._target_fps)
@@ -603,43 +613,63 @@ class GuiApplication:
           continue
 
         if self._render_texture:
+          self._mark_progress("gui_app.before_begin_texture_mode")
           rl.begin_texture_mode(self._render_texture)
+          self._mark_progress("gui_app.after_begin_texture_mode")
+          self._mark_progress("gui_app.before_clear_background")
           rl.clear_background(rl.BLACK)
+          self._mark_progress("gui_app.after_clear_background")
         else:
+          self._mark_progress("gui_app.before_begin_drawing")
           rl.begin_drawing()
+          self._mark_progress("gui_app.after_begin_drawing")
+          self._mark_progress("gui_app.before_clear_background")
           rl.clear_background(rl.BLACK)
+          self._mark_progress("gui_app.after_clear_background")
 
         if self._scale != 1.0:
           rl.rl_push_matrix()
           rl.rl_scalef(self._scale, self._scale, 1.0)
 
         # Allow a Widget to still run a function regardless of the stack depth
+        self._mark_progress("gui_app.before_nav_ticks")
         for tick in self._nav_stack_ticks:
           tick()
+        self._mark_progress("gui_app.after_nav_ticks")
 
         # Only render top widgets
+        self._mark_progress("gui_app.before_widget_render")
         for widget in self._nav_stack[-self._nav_stack_widgets_to_render:]:
           widget.render(rl.Rectangle(0, 0, self.width, self.height))
+        self._mark_progress("gui_app.after_widget_render")
 
+        self._mark_progress("gui_app.frame_ready")
         yield True
 
         if self._scale != 1.0:
           rl.rl_pop_matrix()
 
         if self._render_texture:
+          self._mark_progress("gui_app.end_texture_mode")
           rl.end_texture_mode()
+          self._mark_progress("gui_app.before_present_begin_drawing")
           rl.begin_drawing()
+          self._mark_progress("gui_app.after_present_begin_drawing")
+          self._mark_progress("gui_app.before_present_clear_background")
           rl.clear_background(rl.BLACK)
+          self._mark_progress("gui_app.after_present_clear_background")
           src_rect = rl.Rectangle(0, 0, float(self._scaled_width), -float(self._scaled_height))
           dst_rect = rl.Rectangle(0, 0, float(self._scaled_width), float(self._scaled_height))
           texture = self._render_texture.texture
           if texture:
+            self._mark_progress("gui_app.before_present_draw_texture")
             if BURN_IN_MODE and self._burn_in_shader:
               rl.begin_shader_mode(self._burn_in_shader)
               rl.draw_texture_pro(texture, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
               rl.end_shader_mode()
             else:
               rl.draw_texture_pro(texture, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
+            self._mark_progress("gui_app.after_present_draw_texture")
 
         if self._show_fps:
           rl.draw_fps(10, 10)
@@ -650,7 +680,9 @@ class GuiApplication:
         if self._grid_size > 0:
           self._draw_grid()
 
+        self._mark_progress("gui_app.before_end_drawing")
         rl.end_drawing()
+        self._mark_progress("gui_app.after_end_drawing")
 
         if RECORD:
           image = rl.load_image_from_texture(self._render_texture.texture)
@@ -661,6 +693,7 @@ class GuiApplication:
 
         self._monitor_fps()
         self._frame += 1
+        self._mark_progress("gui_app.loop_idle")
 
         if self._profile_render_frames > 0 and self._frame >= self._profile_render_frames:
           self._output_render_profile()

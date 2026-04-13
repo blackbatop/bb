@@ -192,7 +192,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"CEStatus", {CLEAR_ON_OFFROAD_TRANSITION, INT, "0", "0"}},
     {"CEStopLights", {PERSISTENT, BOOL, "1", "0", 1}},
     {"CEStoppedLead", {PERSISTENT, BOOL, "1", "0", 1}},
-    {"ClusterOffset", {PERSISTENT, FLOAT, "1.015", "1.015", 2}},
+    {"ClusterOffset", {PERSISTENT, FLOAT, "1.0", "1.0", 2}},
     {"ColorScheme", {PERSISTENT, STRING, "frog", "stock", 0}},
     {"ColorToDownload", {CLEAR_ON_MANAGER_START, STRING, "", ""}},
     {"BootLogoToDownload", {CLEAR_ON_MANAGER_START, STRING, "", ""}},

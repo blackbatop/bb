@@ -191,6 +191,32 @@ class TestManager:
     assert not params_cache.get_bool("HumanFollowing")
     assert not params_cache.get_bool("HumanLaneChanges")
 
+  def test_migrate_cluster_offset_default_resets_legacy_default_only(self, tmp_path, monkeypatch):
+    monkeypatch.setattr(manager, "STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG", tmp_path / "starpilot_cluster_offset_v1")
+
+    params = FileBackedFakeParams(tmp_path / "params", {
+      "ClusterOffset": 1.015,
+    })
+    params_cache = FileBackedFakeParams(tmp_path / "cache", {})
+
+    manager.migrate_cluster_offset_default(params, params_cache)
+
+    assert params.get("ClusterOffset") == "1.0"
+    assert params_cache.get("ClusterOffset") == "1.0"
+
+  def test_migrate_cluster_offset_default_preserves_custom_values(self, tmp_path, monkeypatch):
+    monkeypatch.setattr(manager, "STARPILOT_CLUSTER_OFFSET_MIGRATION_FLAG", tmp_path / "starpilot_cluster_offset_v1")
+
+    params = FileBackedFakeParams(tmp_path / "params", {
+      "ClusterOffset": 1.02,
+    })
+    params_cache = FileBackedFakeParams(tmp_path / "cache", {})
+
+    manager.migrate_cluster_offset_default(params, params_cache)
+
+    assert params.get("ClusterOffset") == "1.02"
+    assert params_cache.get("ClusterOffset") is None
+
   @pytest.mark.skip("this test is flaky the way it's currently written, should be moved to test_onroad")
   def test_clean_exit(self, subtests):
     """
