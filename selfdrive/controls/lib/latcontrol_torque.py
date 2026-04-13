@@ -165,6 +165,15 @@ SILVERADO_TRAILER_UNWIND_FRICTION_REDUCTION_LEFT = 0.03
 SILVERADO_TRAILER_UNWIND_FRICTION_REDUCTION_RIGHT = 0.08
 
 
+def _sigmoid(x: float) -> float:
+  if x >= 0.0:
+    z = math.exp(-x)
+    return 1.0 / (1.0 + z)
+
+  z = math.exp(x)
+  return z / (1.0 + z)
+
+
 def get_friction_threshold(v_ego: float) -> float:
   # Keep the speed-scaled friction threshold behavior.
   return float(np.interp(v_ego, [1 * CV.MPH_TO_MS, 20 * CV.MPH_TO_MS, 75 * CV.MPH_TO_MS], [0.16, 0.19, 0.27]))
@@ -175,7 +184,7 @@ def bolt_2017_lateral_testing_ground_active() -> bool:
 
 
 def _bolt_2017_sigmoid(x: float) -> float:
-  return 1.0 / (1.0 + math.exp(-x))
+  return _sigmoid(x)
 
 
 def _bolt_2017_high_speed_factor(v_ego: float) -> float:
@@ -233,7 +242,7 @@ def bolt_2018_2021_lateral_testing_ground_active() -> bool:
 
 
 def _bolt_2018_2021_sigmoid(x: float) -> float:
-  return 1.0 / (1.0 + math.exp(-x))
+  return _sigmoid(x)
 
 
 def _bolt_2018_2021_low_speed_factor(v_ego: float) -> float:
@@ -315,7 +324,7 @@ def bolt_2022_2023_lateral_testing_ground_active() -> bool:
 
 
 def _bolt_2022_2023_sigmoid(x: float) -> float:
-  return 1.0 / (1.0 + math.exp(-x))
+  return _sigmoid(x)
 
 
 def _bolt_2022_2023_low_speed_factor(v_ego: float) -> float:
@@ -389,7 +398,7 @@ def silverado_trailer_lateral_testing_ground_active() -> bool:
 
 
 def _silverado_trailer_sigmoid(x: float) -> float:
-  return 1.0 / (1.0 + math.exp(-x))
+  return _sigmoid(x)
 
 
 def _silverado_trailer_speed_factor(v_ego: float) -> float:
@@ -562,16 +571,16 @@ class LatControlTorque(LatControl):
         ff_scale = np.interp(ff, [-FF_SCALE_BLEND_LAT_ACCEL, 0.0, FF_SCALE_BLEND_LAT_ACCEL],
                              [self.torque_ff_scale_neg, 1.0, self.torque_ff_scale_pos])
         ff *= ff_scale
-      bolt_2022_2023_test_active = self.is_bolt_2022_2023 and bolt_2022_2023_lateral_testing_ground_active()
-      bolt_2018_2021_test_active = self.is_bolt_2018_2021 and bolt_2018_2021_lateral_testing_ground_active()
+      bolt_2022_2023_tuned_path_active = self.is_bolt_2022_2023
+      bolt_2018_2021_tuned_path_active = self.is_bolt_2018_2021
       silverado_trailer_test_active = self.is_silverado and silverado_trailer_lateral_testing_ground_active()
       friction_threshold = get_friction_threshold(CS.vEgo)
       friction_scale = 1.0
-      if bolt_2022_2023_test_active:
+      if bolt_2022_2023_tuned_path_active:
         ff *= get_bolt_2022_2023_ff_scale(setpoint, desired_lateral_jerk, CS.vEgo)
         friction_threshold = get_bolt_2022_2023_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
         friction_scale = get_bolt_2022_2023_friction_scale(CS.vEgo, setpoint, desired_lateral_jerk)
-      elif bolt_2018_2021_test_active:
+      elif bolt_2018_2021_tuned_path_active:
         friction_threshold = get_bolt_2018_2021_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
         friction_scale = get_bolt_2018_2021_friction_scale(CS.vEgo, setpoint, desired_lateral_jerk)
       elif silverado_trailer_test_active:
@@ -594,9 +603,9 @@ class LatControlTorque(LatControl):
                            CS.vEgo < self.low_speed_reset_threshold or unwind_detected)
       output_lataccel = self.pid.update(pid_log.error, error_rate=-measurement_rate, speed=CS.vEgo, feedforward=ff, freeze_integrator=freeze_integrator)
       output_torque = self.torque_from_lateral_accel(output_lataccel, self.torque_params)
-      if self.is_bolt_2017 and bolt_2017_lateral_testing_ground_active():
+      if self.is_bolt_2017:
         output_torque *= get_bolt_2017_torque_scale(setpoint, desired_lateral_jerk, CS.vEgo)
-      elif bolt_2018_2021_test_active:
+      elif bolt_2018_2021_tuned_path_active:
         output_torque *= get_bolt_2018_2021_dynamic_torque_scale(setpoint, desired_lateral_jerk, CS.vEgo)
 
       pid_log.active = True

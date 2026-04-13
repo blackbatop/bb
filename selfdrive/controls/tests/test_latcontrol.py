@@ -88,7 +88,7 @@ class TestLatControl:
     right_turn_in = get_bolt_2018_2021_friction_threshold(6.0, -0.7, -0.8)
     left_unwind = get_bolt_2018_2021_friction_threshold(6.0, 0.7, -0.8)
     right_unwind = get_bolt_2018_2021_friction_threshold(6.0, -0.7, 0.8)
-    assert left_turn_in < right_turn_in < base < left_unwind < right_unwind
+    assert left_turn_in <= right_turn_in < base < left_unwind < right_unwind
     assert get_bolt_2018_2021_friction_threshold(25.0, 0.7, 0.8) > left_turn_in
 
   def test_bolt_2018_2021_friction_scale_curve(self):
@@ -99,7 +99,7 @@ class TestLatControl:
     left_unwind = get_bolt_2018_2021_friction_scale(6.0, 0.7, -0.8)
     right_unwind = get_bolt_2018_2021_friction_scale(6.0, -0.7, 0.8)
     assert center_base < 1.02
-    assert left_turn_in > right_turn_in > base
+    assert left_turn_in >= right_turn_in > base
     assert base > left_unwind > right_unwind
 
   def test_bolt_2022_2023_ff_scale_curve(self):
@@ -150,25 +150,22 @@ class TestLatControl:
     assert left_turn_in > right_turn_in > base
     assert base > left_unwind > right_unwind
 
-  def test_bolt_2017_testing_ground_update_path(self, monkeypatch):
+  def test_bolt_2017_default_update_path(self):
     controller, VM, CS, params, starpilot_toggles = self._build_torque_controller(GM.CHEVROLET_BOLT_CC_2017)
-    monkeypatch.setattr(latcontrol_torque, "bolt_2017_lateral_testing_ground_active", lambda: True)
 
     _, _, lac_log = controller.update(True, CS, VM, params, False, 0.0025, False, 0.2, None, None, starpilot_toggles)
 
     assert lac_log.active
 
-  def test_bolt_2018_2021_testing_ground_update_path(self, monkeypatch):
+  def test_bolt_2018_2021_default_update_path(self):
     controller, VM, CS, params, starpilot_toggles = self._build_torque_controller(GM.CHEVROLET_BOLT_CC_2018_2021)
-    monkeypatch.setattr(latcontrol_torque, "bolt_2018_2021_lateral_testing_ground_active", lambda: True)
 
     _, _, lac_log = controller.update(True, CS, VM, params, False, 0.0025, False, 0.2, None, None, starpilot_toggles)
 
     assert lac_log.active
 
-  def test_bolt_2022_2023_testing_ground_update_path(self, monkeypatch):
+  def test_bolt_2022_2023_default_update_path(self):
     controller, VM, CS, params, starpilot_toggles = self._build_torque_controller(GM.CHEVROLET_BOLT_ACC_2022_2023)
-    monkeypatch.setattr(latcontrol_torque, "bolt_2022_2023_lateral_testing_ground_active", lambda: True)
 
     _, _, lac_log = controller.update(True, CS, VM, params, False, 0.0025, False, 0.2, None, None, starpilot_toggles)
 

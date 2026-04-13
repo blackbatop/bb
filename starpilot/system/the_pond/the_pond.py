@@ -2623,6 +2623,31 @@ def _normalize_testing_ground_variant(slot_id, variant, slot=None):
   normalized_variant = str(variant or "").strip().upper()
   return normalized_variant if normalized_variant in allowed_variants else _TESTING_GROUNDS_DEFAULT_VARIANT
 
+def _set_testing_ground_variant_fields(slot, variant_labels):
+  for key in list(slot.keys()):
+    if not isinstance(key, str) or not key.endswith("Label"):
+      continue
+    variant = key[:-5].strip()
+    if len(variant) == 1 and variant.isalpha():
+      slot.pop(key, None)
+
+  slot["variantLabels"] = variant_labels
+  for variant, label in variant_labels.items():
+    slot[f"{variant.lower()}Label"] = label
+
+  return slot
+
+def _get_first_selectable_testing_ground_slot_id(slots):
+  for slot in slots:
+    if _is_unused_testing_ground_slot(slot):
+      continue
+
+    slot_id = str(slot.get("id") or "").strip()
+    if slot_id:
+      return slot_id
+
+  return "1"
+
 def _build_testing_ground_fallback_slots():
   definitions_by_id = {}
 
@@ -2635,45 +2660,34 @@ def _build_testing_ground_fallback_slots():
       continue
 
     variant_labels = _get_testing_ground_variant_labels(slot_id, definition)
-    definitions_by_id[slot_id] = {
+    slot = {
       "id": slot_id,
       "name": str(definition.get("name") or "Unused").strip() or "Unused",
       "description": str(definition.get("description") or "").strip(),
-      "variantLabels": variant_labels,
-      "aLabel": variant_labels.get("A", "A"),
-      "bLabel": variant_labels.get("B", "B"),
     }
+    definitions_by_id[slot_id] = _set_testing_ground_variant_fields(slot, variant_labels)
 
   slots = []
   for slot_number in range(1, _TESTING_GROUNDS_SLOT_COUNT + 1):
     slot_id = str(slot_number)
-    default_variant_labels = {
-      _TESTING_GROUNDS_DEFAULT_VARIANT: _TESTING_GROUNDS_DEFAULT_VARIANT,
-      "B": "B",
-    }
     fallback_slot = definitions_by_id.get(slot_id, {
       "id": slot_id,
       "name": "Unused",
       "description": "",
-      "variantLabels": default_variant_labels,
-      "aLabel": "A",
-      "bLabel": "B",
     })
     slot = dict(fallback_slot)
     slot_variant_labels = _get_testing_ground_variant_labels(slot_id, slot)
-    slot["variantLabels"] = slot_variant_labels
-    slot["aLabel"] = slot_variant_labels.get("A", slot.get("aLabel", "A"))
-    slot["bLabel"] = slot_variant_labels.get("B", slot.get("bLabel", "B"))
-    slots.append(slot)
+    slots.append(_set_testing_ground_variant_fields(slot, slot_variant_labels))
 
   return slots
 
 def _default_testing_grounds_state():
+  slots = _build_testing_ground_fallback_slots()
   return {
     "schemaVersion": _TESTING_GROUNDS_SCHEMA_VERSION,
-    "activeSlot": "1",
+    "activeSlot": _get_first_selectable_testing_ground_slot_id(slots),
     "activeVariant": _TESTING_GROUNDS_DEFAULT_VARIANT,
-    "slots": _build_testing_ground_fallback_slots(),
+    "slots": slots,
   }
 
 def _normalize_testing_ground_slot(raw_slot, fallback_slot):
@@ -2689,11 +2703,7 @@ def _normalize_testing_ground_slot(raw_slot, fallback_slot):
   variant_labels = _get_testing_ground_variant_labels(slot.get("id"), raw_slot)
   if not variant_labels:
     variant_labels = _get_testing_ground_variant_labels(slot.get("id"), slot)
-  slot["variantLabels"] = variant_labels
-  slot["aLabel"] = variant_labels.get("A", slot.get("aLabel", "A"))
-  slot["bLabel"] = variant_labels.get("B", slot.get("bLabel", "B"))
-
-  return slot
+  return _set_testing_ground_variant_fields(slot, variant_labels)
 
 def _load_testing_grounds_state_unlocked():
   state = _default_testing_grounds_state()
@@ -2741,15 +2751,25 @@ def _load_testing_grounds_state_unlocked():
   else:
     needs_write = True
 
+  selectable_slot_ids = {
+    str(slot.get("id") or "").strip()
+    for slot in state["slots"]
+    if not _is_unused_testing_ground_slot(slot)
+  }
+  default_slot_id = _get_first_selectable_testing_ground_slot_id(state["slots"])
   active_slot = str(raw_state.get("activeSlot") or "").strip()
-  if active_slot not in fallback_slot_ids:
-    active_slot = state["activeSlot"]
+  active_slot_migrated = active_slot not in fallback_slot_ids or active_slot not in selectable_slot_ids
+  if active_slot_migrated:
+    active_slot = default_slot_id
     needs_write = True
   state["activeSlot"] = active_slot
 
   active_slot_data = _find_testing_ground_slot(state, active_slot)
   raw_active_variant = str(raw_state.get("activeVariant") or "").strip().upper()
-  active_variant = _normalize_testing_ground_variant(active_slot, raw_active_variant, active_slot_data)
+  if active_slot_migrated:
+    active_variant = _TESTING_GROUNDS_DEFAULT_VARIANT
+  else:
+    active_variant = _normalize_testing_ground_variant(active_slot, raw_active_variant, active_slot_data)
   if raw_active_variant != active_variant:
     needs_write = True
   state["activeVariant"] = active_variant
@@ -2868,6 +2888,9 @@ def _set_testing_ground_selection(slot_id, variant):
       raise ValueError(f"Unknown testing ground slot '{normalized_slot_id}'.")
 
     slot = _find_testing_ground_slot(state, normalized_slot_id)
+    if _is_unused_testing_ground_slot(slot):
+      raise ValueError(f"Testing ground slot '{normalized_slot_id}' is unavailable.")
+
     allowed_variant_labels = _get_testing_ground_variant_labels(normalized_slot_id, slot)
     if requested_variant not in allowed_variant_labels:
       allowed_variants = ", ".join(sorted(allowed_variant_labels.keys()))

@@ -19,8 +19,6 @@ from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, S
 from openpilot.selfdrive.controls.lib.latcontrol_torque import (
   BOLT_2018_2021_STEER_RATIO_TEST_SCALE,
   LatControlTorque,
-  bolt_2018_2021_lateral_testing_ground_active,
-  bolt_2017_lateral_testing_ground_active,
   get_bolt_2017_steer_ratio_scale,
 )
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
@@ -99,9 +97,9 @@ class Controls:
     lp = self.sm['liveParameters']
     x = max(lp.stiffnessFactor, 0.1)
     sr = max(lp.steerRatio, 0.1)
-    if self.CP.carFingerprint == GM_CAR.CHEVROLET_BOLT_CC_2017 and bolt_2017_lateral_testing_ground_active():
+    if self.CP.carFingerprint == GM_CAR.CHEVROLET_BOLT_CC_2017:
       sr *= get_bolt_2017_steer_ratio_scale(CS.vEgo)
-    elif self.CP.carFingerprint == GM_CAR.CHEVROLET_BOLT_CC_2018_2021 and bolt_2018_2021_lateral_testing_ground_active():
+    elif self.CP.carFingerprint == GM_CAR.CHEVROLET_BOLT_CC_2018_2021:
       sr *= BOLT_2018_2021_STEER_RATIO_TEST_SCALE
     self.VM.update_params(x, sr)
 

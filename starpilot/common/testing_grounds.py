@@ -47,24 +47,21 @@ TESTING_GROUNDS_SLOT_DEFINITIONS = (
   },
   {
     "id": TESTING_GROUND_3,
-    "name": "Bolt 2017 Lat Tune",
-    "description": "2017 Bolt manual lateral A/B sandbox for steer-ratio and torque-curve testing.",
-    "aLabel": "A - Installed tune",
-    "bLabel": "B - 2017 lateral test",
+    "name": "Unused",
+    "description": "",
+    "aLabel": "A",
   },
   {
     "id": TESTING_GROUND_4,
-    "name": "Bolt 18-21 Lat Tune",
-    "description": "Bolt 2018-2021 lateral torque A/B sandbox.",
-    "aLabel": "A - Installed tune",
-    "bLabel": "B - Bolt lateral test",
+    "name": "Unused",
+    "description": "",
+    "aLabel": "A",
   },
   {
     "id": TESTING_GROUND_5,
-    "name": "Bolt 22-23 Lat Tune",
-    "description": "Bolt 2022-2023 lateral torque A/B sandbox.",
-    "aLabel": "A - Installed tune",
-    "bLabel": "B - 2022 lateral test",
+    "name": "Unused",
+    "description": "",
+    "aLabel": "A",
   },
   {
     "id": TESTING_GROUND_6,
@@ -82,7 +79,18 @@ TESTING_GROUNDS_SLOT_DEFINITIONS = (
   },
 )
 
-_DEFAULT_ACTIVE_SLOT = TESTING_GROUND_1
+
+def _is_unused_testing_ground_slot(slot_definition):
+  name = str(dict(slot_definition or {}).get("name") or "").strip().lower()
+  return name == "unused" or name.startswith("unused ")
+
+
+_VISIBLE_TESTING_GROUND_IDS = tuple(
+  str(slot.get("id") or "").strip()
+  for slot in TESTING_GROUNDS_SLOT_DEFINITIONS
+  if str(slot.get("id") or "").strip() in TESTING_GROUND_IDS and not _is_unused_testing_ground_slot(slot)
+)
+_DEFAULT_ACTIVE_SLOT = _VISIBLE_TESTING_GROUND_IDS[0] if _VISIBLE_TESTING_GROUND_IDS else TESTING_GROUND_1
 DEFAULT_TESTING_GROUND_VARIANT = "A"
 TESTING_GROUND_TEST_VARIANT = "B"
 _CACHE_LOCK = threading.Lock()
@@ -133,6 +141,29 @@ def _normalize_variant(value, slot_id=None):
   return variant if variant in allowed_variants else DEFAULT_TESTING_GROUND_VARIANT
 
 
+def _normalize_selection(slot_id, variant):
+  normalized_slot_id = str(slot_id or "").strip()
+  if normalized_slot_id not in _VISIBLE_TESTING_GROUND_IDS:
+    return _DEFAULT_ACTIVE_SLOT, DEFAULT_TESTING_GROUND_VARIANT
+  return normalized_slot_id, _normalize_variant(variant, normalized_slot_id)
+
+
+def _write_testing_ground_selection(payload, slot_id, variant):
+  normalized_payload = dict(payload) if isinstance(payload, dict) else {}
+  normalized_payload["schemaVersion"] = TESTING_GROUNDS_SCHEMA_VERSION
+  normalized_payload["activeSlot"] = slot_id
+  normalized_payload["activeVariant"] = variant
+
+  try:
+    TESTING_GROUNDS_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = TESTING_GROUNDS_STATE_PATH.with_name(f".tmp_{TESTING_GROUNDS_STATE_PATH.name}")
+    tmp_path.write_text(json.dumps(normalized_payload, indent=2), encoding="utf-8")
+    tmp_path.replace(TESTING_GROUNDS_STATE_PATH)
+    return TESTING_GROUNDS_STATE_PATH.stat().st_mtime_ns
+  except Exception:
+    return None
+
+
 def get_testing_ground_selection(refresh_interval_s=0.5):
   global _CACHE_LAST_REFRESH, _CACHE_LAST_MTIME_NS, _CACHE_ACTIVE_SLOT, _CACHE_ACTIVE_VARIANT
 
@@ -163,13 +194,25 @@ def get_testing_ground_selection(refresh_interval_s=0.5):
     if not isinstance(payload, dict):
       return _CACHE_ACTIVE_SLOT, _CACHE_ACTIVE_VARIANT
 
-    slot_id = str(payload.get("activeSlot") or _DEFAULT_ACTIVE_SLOT).strip()
-    if slot_id not in TESTING_GROUND_IDS:
-      slot_id = _DEFAULT_ACTIVE_SLOT
+    raw_slot_id = str(payload.get("activeSlot") or "").strip()
+    raw_variant = payload.get("activeVariant")
+    normalized_slot_id, normalized_variant = _normalize_selection(raw_slot_id, raw_variant)
+    raw_variant_text = str(raw_variant or "").strip().upper()
+    if (
+      payload.get("schemaVersion") != TESTING_GROUNDS_SCHEMA_VERSION or
+      raw_slot_id != normalized_slot_id or
+      raw_variant_text != normalized_variant
+    ):
+      migrated_mtime_ns = _write_testing_ground_selection(payload, normalized_slot_id, normalized_variant)
+      if migrated_mtime_ns is not None:
+        _CACHE_LAST_MTIME_NS = migrated_mtime_ns
+      else:
+        _CACHE_LAST_MTIME_NS = stat_result.st_mtime_ns
+    else:
+      _CACHE_LAST_MTIME_NS = stat_result.st_mtime_ns
 
-    _CACHE_ACTIVE_SLOT = slot_id
-    _CACHE_ACTIVE_VARIANT = _normalize_variant(payload.get("activeVariant"), slot_id)
-    _CACHE_LAST_MTIME_NS = stat_result.st_mtime_ns
+    _CACHE_ACTIVE_SLOT = normalized_slot_id
+    _CACHE_ACTIVE_VARIANT = normalized_variant
     return _CACHE_ACTIVE_SLOT, _CACHE_ACTIVE_VARIANT
 
 
