@@ -59,11 +59,6 @@ NON_LINEAR_TORQUE_PARAMS = {
     "right": [3.8, 0.81, 0.24, 0.0465122],
   },
 }
-SILVERADO_TRAILER_MODE_TESTING_GROUND_ID = testing_ground.id_6
-SILVERADO_TRAILER_NON_LINEAR_TORQUE_PARAMS = {
-  "left": [4.1, 0.84, 0.262, 0.0465122],
-  "right": [3.8, 0.81, 0.24, 0.0465122],
-}
 
 PEDAL_MSG = 0x201
 CAM_MSG = 0x320
@@ -106,16 +101,6 @@ BOLT_GEN1_CANCEL_PERSONALITY_CARS = {
 CANCEL_REMAP_DISTANCE_CARS = BOLT_GEN1_CANCEL_PERSONALITY_CARS
 
 
-def silverado_trailer_mode_active() -> bool:
-  return testing_ground.use(SILVERADO_TRAILER_MODE_TESTING_GROUND_ID)
-
-
-def get_non_linear_torque_params(candidate: str):
-  if candidate == CAR.CHEVROLET_SILVERADO and silverado_trailer_mode_active():
-    return SILVERADO_TRAILER_NON_LINEAR_TORQUE_PARAMS
-  return NON_LINEAR_TORQUE_PARAMS.get(candidate)
-
-
 class CarInterface(CarInterfaceBase):
   CarState = CarState
   CarController = CarController
@@ -156,7 +141,7 @@ class CarInterface(CarInterfaceBase):
       # The "lat_accel vs torque" relationship is assumed to be the sum of "sigmoid + linear" curves
       # An important thing to consider is that the slope at 0 should be > 0 (ideally >1)
       # This has big effect on the stability about 0 (noise when going straight)
-      non_linear_torque_params = get_non_linear_torque_params(self.CP.carFingerprint)
+      non_linear_torque_params = NON_LINEAR_TORQUE_PARAMS.get(self.CP.carFingerprint)
       assert non_linear_torque_params, "The params are not defined"
       if isinstance(non_linear_torque_params, dict):
         side_key = "left" if lateral_acceleration >= 0 else "right"
@@ -174,7 +159,7 @@ class CarInterface(CarInterfaceBase):
     return torque_values, lataccel_values
 
   def torque_from_lateral_accel(self) -> TorqueFromLateralAccelCallbackType:
-    if get_non_linear_torque_params(self.CP.carFingerprint) is not None:
+    if self.CP.carFingerprint in NON_LINEAR_TORQUE_PARAMS:
       torque_values, lataccel_values = self.get_lataccel_torque_siglin()
 
       def torque_from_lateral_accel_siglin(lateral_acceleration: float, torque_params: structs.CarParams.LateralTorqueTuning):
@@ -184,7 +169,7 @@ class CarInterface(CarInterfaceBase):
       return self.torque_from_lateral_accel_linear
 
   def lateral_accel_from_torque(self) -> LateralAccelFromTorqueCallbackType:
-    if get_non_linear_torque_params(self.CP.carFingerprint) is not None:
+    if self.CP.carFingerprint in NON_LINEAR_TORQUE_PARAMS:
       torque_values, lataccel_values = self.get_lataccel_torque_siglin()
 
       def lateral_accel_from_torque_siglin(torque: float, torque_params: structs.CarParams.LateralTorqueTuning):

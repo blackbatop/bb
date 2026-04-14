@@ -384,6 +384,7 @@ class LatControlTorque(LatControl):
     self.is_bolt_2022_2023 = CP.carFingerprint in BOLT_2022_2023_CARS
     self.is_bolt_2018_2021 = CP.carFingerprint in BOLT_2018_2021_CARS
     self.is_bolt_2017 = CP.carFingerprint in BOLT_2017_CARS
+    self.is_silverado = CP.carFingerprint == GM_CAR.CHEVROLET_SILVERADO
     self.use_bolt_ff_scaling = self.is_bolt_2022_2023 or self.is_bolt_2018_2021 or self.is_bolt_2017
     self.use_bolt_ki_multiplier = self.use_bolt_ff_scaling
     self.torque_ff_scale_pos = 1.0

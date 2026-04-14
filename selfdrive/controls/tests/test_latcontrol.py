@@ -144,13 +144,6 @@ class TestLatControl:
 
     assert lac_log.active
 
-  def test_silverado_default_update_path(self):
-    controller, VM, CS, params, starpilot_toggles = self._build_torque_controller(GM.CHEVROLET_SILVERADO)
-
-    _, _, lac_log = controller.update(True, CS, VM, params, False, 0.0025, False, 0.2, None, None, starpilot_toggles)
-
-    assert lac_log.active
-
   @parameterized.expand([(HONDA.HONDA_CIVIC, LatControlPID), (TOYOTA.TOYOTA_RAV4, LatControlTorque),
                          (NISSAN.NISSAN_LEAF, LatControlAngle), (GM.CHEVROLET_BOLT_ACC_2022_2023, LatControlTorque)])
   def test_saturation(self, car_name, controller):

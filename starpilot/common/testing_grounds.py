@@ -65,10 +65,9 @@ TESTING_GROUNDS_SLOT_DEFINITIONS = (
   },
   {
     "id": TESTING_GROUND_6,
-    "name": "Silverado Trailer Mode",
-    "description": "Silverado/Sierra lateral A/B sandbox for trailer-related hugging and turn-in response.",
-    "aLabel": "A - Installed tune",
-    "bLabel": "B - Trailer assist tune",
+    "name": "Unused",
+    "description": "",
+    "aLabel": "A",
   },
   {
     "id": TESTING_GROUND_7,
