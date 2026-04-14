@@ -521,6 +521,128 @@ class ValueTile(AetherTile):
       self._draw_text_fit(self._font_desc, self.desc, rl.Vector2(face.x + content_pad, ty + 28 + SPACING.line_gap + 34), max_w, 18, align_center=True)
 
 
+class SliderTile(AetherTile):
+  def __init__(
+    self,
+    title: str,
+    get_value: Callable[[], float],
+    set_value: Callable[[float], None],
+    min_val: float,
+    max_val: float,
+    step: float,
+    icon_path: str | None = None,
+    bg_color: rl.Color | str | None = None,
+    is_enabled: Callable[[], bool] | None = None,
+    desc: str = "",
+    unit: str = "",
+    labels: dict[float, str] | None = None,
+  ):
+    super().__init__(surface_color=bg_color)
+    self.title = title
+    self.desc = desc
+    self.get_value = get_value
+    self.set_value = set_value
+    self.min_val = min_val
+    self.max_val = max_val
+    self.step = step
+    self.unit = unit
+    self.labels = labels or {}
+    self.set_enabled(is_enabled or (lambda: True))
+    self._icon = starpilot_texture(icon_path, 80, 80) if icon_path else None
+    self._font = gui_app.font(FontWeight.BOLD)
+    self._font_desc = gui_app.font(FontWeight.NORMAL)
+    self._active_color = self.surface_color
+    self._disabled_color = rl.Color(120, 120, 120, 255)
+
+    self._is_dragging = False
+    self._last_mouse_x = 0.0
+    self._velocity = 0.0
+    self._smooth_value = get_value()
+
+  def _handle_mouse_press(self, mouse_pos: MousePos):
+    if rl.check_collision_point_rec(mouse_pos, self._hit_rect) and self.enabled:
+      self._is_pressed = True
+      self._is_dragging = True
+      self._last_mouse_x = mouse_pos.x
+      self._velocity = 0.0
+
+  def _handle_mouse_release(self, mouse_pos: MousePos):
+    if self._is_dragging:
+      self._is_dragging = False
+      self._is_pressed = False
+
+  def _handle_mouse_event(self, mouse_event):
+    if not rl.check_collision_point_rec(mouse_event.pos, self._hit_rect):
+      if not self._is_dragging:
+        self._plate_target = 0.0
+
+    if self._is_dragging:
+      dt = rl.get_frame_time()
+      current_val = self.get_value()
+      mouse_pos = mouse_event.pos
+      dx = mouse_pos.x - self._last_mouse_x
+      self._velocity = dx / max(dt, 0.001)
+      self._last_mouse_x = mouse_pos.x
+
+      rect_w = self._rect.width
+      if rect_w > 0:
+        val_range = self.max_val - self.min_val
+        val_dx = (dx / rect_w) * val_range
+        new_val = current_val + val_dx
+
+        abs_vel = abs(self._velocity)
+        snap_threshold = 800
+        coarse_step = 10 if val_range >= 100 else self.step * 5
+        dynamic_step = coarse_step if abs_vel > snap_threshold else self.step
+
+        snapped = round(new_val / dynamic_step) * dynamic_step
+        snapped = max(self.min_val, min(self.max_val, snapped))
+
+        if abs(snapped - current_val) >= self.step:
+          self.set_value(float(snapped))
+
+  def _render(self, rect: rl.Rectangle):
+    enabled = self.enabled
+    current_val = self.get_value()
+    dt = rl.get_frame_time()
+
+    self._smooth_value += (current_val - self._smooth_value) * (1 - math.exp(-dt / 0.1))
+
+    self.surface_color = self._active_color if enabled else self._disabled_color
+    if not enabled:
+      self._plate_offset = 0.0
+      self._plate_target = 0.0
+
+    face = self._render_layers(rect)
+
+    frac = (self._smooth_value - self.min_val) / (self.max_val - self.min_val)
+    fill_w = face.width * frac
+    if fill_w > 1:
+      fill_rect = rl.Rectangle(face.x, face.y, fill_w, face.height)
+      fill_color = rl.Color(
+        min(self.surface_color.r + 30, 255),
+        min(self.surface_color.g + 30, 255),
+        min(self.surface_color.b + 30, 255),
+        140
+      )
+      rl.draw_rectangle_rounded(fill_rect, TILE_RADIUS, 10, fill_color)
+      edge_x = face.x + fill_w
+      rl.draw_rectangle_rec(rl.Rectangle(edge_x - 3, face.y, 3, face.height), rl.Color(255, 255, 255, 80))
+
+    line_heights = [28, 28]
+    _, ty = self._centered_content(face, self._icon, 0.75, 28, len(line_heights), line_heights)
+    content_pad = SPACING.tile_content
+    max_w = face.width - (content_pad * 2)
+
+    self._draw_text_fit(self._font, self.title, rl.Vector2(face.x + content_pad, ty), max_w, 28, align_center=True, uppercase=True)
+
+    val_str = self.labels.get(current_val, f"{int(current_val)}{self.unit}")
+    self._draw_text_fit(self._font, val_str, rl.Vector2(face.x + content_pad, ty + 28 + SPACING.line_gap), max_w, 28, align_center=True, uppercase=True)
+
+    if self.desc:
+      self._draw_text_fit(self._font_desc, self.desc, rl.Vector2(face.x + content_pad, ty + 28 + SPACING.line_gap + 34), max_w, 18, align_center=True)
+
+
 class AetherSlider(Widget):
   def __init__(
     self,

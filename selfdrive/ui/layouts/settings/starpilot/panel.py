@@ -8,7 +8,7 @@ import pyray as rl
 from openpilot.common.params import Params
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
-from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, ToggleTile, ValueTile, SPACING
+from openpilot.selfdrive.ui.layouts.settings.starpilot.aethergrid import TileGrid, HubTile, ToggleTile, ValueTile, SliderTile, SPACING
 from openpilot.selfdrive.ui.layouts.settings.starpilot.sectioned_panel import SectionedTileLayout, TileSection
 
 
@@ -92,6 +92,22 @@ class StarPilotPanel(Widget):
 
         if tile_type == "value":
             return ValueTile(title=tr(cat["title"]), get_value=cat["get_value"], on_click=cat["on_click"], icon_path=cat.get("icon"), bg_color=cat.get("color"), is_enabled=cat.get("is_enabled"), desc=tr(cat.get("desc", "")))
+
+        if tile_type == "slider":
+            return SliderTile(
+                title=tr(cat["title"]),
+                get_value=cat["get_value"],
+                set_value=cat["set_value"],
+                min_val=cat["min_val"],
+                max_val=cat["max_val"],
+                step=cat["step"],
+                unit=cat.get("unit", ""),
+                labels=cat.get("labels", {}),
+                icon_path=cat.get("icon"),
+                bg_color=cat.get("color"),
+                is_enabled=cat.get("is_enabled"),
+                desc=tr(cat.get("desc", ""))
+            )
 
         return None
 
