@@ -153,7 +153,7 @@ class GalaxyBigButton(BigButton):
       gui_app.push_widget(dialog)
       return
 
-    gui_app.push_widget(BigInputDialog("enter galaxy pin...", default_text="", minimum_length=6, confirm_callback=self._pair_with_pin))
+    gui_app.push_widget(BigInputDialog("create galaxy pin...", default_text="", minimum_length=6, confirm_callback=self._pair_with_pin))
 
   def _update_state(self):
     self.set_value("paired" if self._is_paired() else "pair")

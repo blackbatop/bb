@@ -56,7 +56,6 @@ class DRIVER_MONITOR_SETTINGS:
     self._YAW_MIN_OFFSET = -0.0246
 
     self._DCAM_UNCERTAIN_ALERT_THRESHOLD = 0.1
-    self._DCAM_UNCERTAIN_ALERT_COUNT = int(60  / self._DT_DMON)
     self._DCAM_UNCERTAIN_RESET_COUNT = int(20  / self._DT_DMON)
     self._POSESTD_THRESHOLD = 0.3
     self._HI_STD_FALLBACK_TIME = int(10  / self._DT_DMON)  # fall back to wheel touch if model is uncertain for 10s
@@ -162,11 +161,11 @@ class DriverMonitoring:
     self.threshold_pre = self.settings._DISTRACTED_PRE_TIME_TILL_TERMINAL / self.settings._DISTRACTED_TIME
     self.threshold_prompt = self.settings._DISTRACTED_PROMPT_TIME_TILL_TERMINAL / self.settings._DISTRACTED_TIME
     self.dcam_uncertain_cnt = 0
-    self.dcam_uncertain_alerted = False # once per drive
     self.dcam_reset_cnt = 0
 
     self.params = Params()
     self.too_distracted = self.params.get_bool("DriverTooDistracted")
+    set_offroad_alert("Offroad_DriverMonitoringUncertain", False)
 
     self._reset_awareness()
     self._set_timers(active_monitoring=True)
@@ -387,11 +386,6 @@ class DriverMonitoring:
 
     if alert is not None:
       self.current_events.add(alert)
-
-    if self.dcam_uncertain_cnt > self.settings._DCAM_UNCERTAIN_ALERT_COUNT and not self.dcam_uncertain_alerted:
-      set_offroad_alert("Offroad_DriverMonitoringUncertain", True)
-      self.dcam_uncertain_alerted = True
-
 
   def get_state_packet(self, valid=True):
     # build driverMonitoringState packet
