@@ -547,9 +547,13 @@ _FAST_UPDATE_PROGRESS_UPDATE_INTERVAL_S = 5.0
 _FAST_UPDATE_REBOOT_NOTICE_SECONDS = 6.0
 _FAST_UPDATE_FETCH_TIMEOUT_S = 60
 _FAST_BRANCH_SWITCH_FETCH_TIMEOUT_S = 60
+_FAST_ROLLBACK_FETCH_TIMEOUT_S = 60
 _FACTORY_RESET_DELETE_TIMEOUT_S = 1800
 _GIT_PROGRESS_PERCENT_RE = re.compile(r'([A-Za-z][A-Za-z /_-]+):\s*([0-9]{1,3})%')
 _GIT_SUBMODULE_SECTION_RE = re.compile(r'^\s*\[submodule\s+"[^"]+"\]\s*$', re.MULTILINE)
+_ROLLBACK_REF = "refs/starpilot/rollback"
+_ROLLBACK_BRANCH_CONFIG_KEY = "starpilot.rollbackbranch"
+_ROLLBACK_RECORDED_AT_CONFIG_KEY = "starpilot.rollbackrecordedat"
 _TESTING_GROUNDS_SCHEMA_VERSION = SHARED_TESTING_GROUNDS_SCHEMA_VERSION
 _TESTING_GROUNDS_SLOT_COUNT = len(SHARED_TESTING_GROUNDS_SLOT_DEFINITIONS)
 _TESTING_GROUNDS_DEFAULT_VARIANT = SHARED_DEFAULT_TESTING_GROUND_VARIANT
@@ -1121,6 +1125,18 @@ def _build_shallow_fetch_args(branch):
     branch,
   ]
 
+def _build_shallow_fetch_commit_args(commit):
+  return [
+    "-c", "gc.auto=0",
+    "-c", "maintenance.auto=false",
+    "fetch",
+    "--progress",
+    "--depth=1",
+    "--no-recurse-submodules",
+    "origin",
+    commit,
+  ]
+
 def _run_git_with_progress(repo_path, args, timeout, step, label):
   cmd = [*_git_base_cmd(), *args]
 
@@ -1295,6 +1311,83 @@ def _git_stdout(repo_path, args, timeout=15):
     raise RuntimeError(stderr)
   return (result.stdout or "").strip()
 
+def _git_config_get(repo_path, key):
+  try:
+    return _git_stdout(repo_path, ["config", "--local", "--get", key], timeout=10)
+  except Exception:
+    return ""
+
+def _git_config_set(repo_path, key, value):
+  result = _run_git(repo_path, ["config", "--local", "--replace-all", key, str(value)], timeout=15)
+  if result.returncode != 0:
+    raise RuntimeError((result.stderr or result.stdout or f"git config failed for {key}").strip())
+
+def _git_config_unset(repo_path, key):
+  result = _run_git(repo_path, ["config", "--local", "--unset-all", key], timeout=15)
+  if result.returncode not in (0, 5):
+    raise RuntimeError((result.stderr or result.stdout or f"git config unset failed for {key}").strip())
+
+def _git_update_ref(repo_path, ref_name, commit):
+  result = _run_git(repo_path, ["update-ref", ref_name, commit], timeout=15)
+  if result.returncode != 0:
+    raise RuntimeError((result.stderr or result.stdout or f"git update-ref failed for {ref_name}").strip())
+
+def _git_delete_ref(repo_path, ref_name):
+  result = _run_git(repo_path, ["update-ref", "-d", ref_name], timeout=15)
+  if result.returncode not in (0, 1):
+    raise RuntimeError((result.stderr or result.stdout or f"git update-ref delete failed for {ref_name}").strip())
+
+def _git_has_commit(repo_path, commit):
+  result = _run_git(repo_path, ["cat-file", "-e", f"{commit}^{{commit}}"], timeout=15)
+  return result.returncode == 0
+
+def _save_rollback_target(repo_path, branch, commit):
+  safe_commit = str(commit or "").strip()
+  if not safe_commit:
+    raise RuntimeError("Missing rollback commit")
+
+  safe_branch = str(branch or "").strip()
+  if safe_branch and not _is_valid_git_branch_name(repo_path, safe_branch):
+    raise RuntimeError(f"Invalid rollback branch '{safe_branch}'")
+
+  _git_update_ref(repo_path, _ROLLBACK_REF, safe_commit)
+  if safe_branch:
+    _git_config_set(repo_path, _ROLLBACK_BRANCH_CONFIG_KEY, safe_branch)
+  else:
+    _git_config_unset(repo_path, _ROLLBACK_BRANCH_CONFIG_KEY)
+  _git_config_set(repo_path, _ROLLBACK_RECORDED_AT_CONFIG_KEY, datetime.now(timezone.utc).isoformat())
+
+def _clear_rollback_target(repo_path):
+  _git_delete_ref(repo_path, _ROLLBACK_REF)
+  _git_config_unset(repo_path, _ROLLBACK_BRANCH_CONFIG_KEY)
+  _git_config_unset(repo_path, _ROLLBACK_RECORDED_AT_CONFIG_KEY)
+
+def _load_rollback_target(repo_path):
+  commit = ""
+  try:
+    commit = _git_stdout(repo_path, ["rev-parse", "--verify", f"{_ROLLBACK_REF}^{{commit}}"], timeout=10)
+  except Exception:
+    pass
+
+  branch = _git_config_get(repo_path, _ROLLBACK_BRANCH_CONFIG_KEY)
+  recorded_at = _git_config_get(repo_path, _ROLLBACK_RECORDED_AT_CONFIG_KEY)
+
+  current_branch = ""
+  current_commit = ""
+  try:
+    current_branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"], timeout=10)
+    current_commit = _git_stdout(repo_path, ["rev-parse", "HEAD"], timeout=10)
+  except Exception:
+    pass
+
+  available = bool(commit) and (commit != current_commit or (branch and branch != current_branch))
+  return {
+    "rollbackBranch": branch,
+    "rollbackCommit": commit,
+    "rollbackRecordedAt": recorded_at,
+    "rollbackAvailable": available,
+  }
+
 def _is_valid_git_branch_name(repo_path, branch_name):
   branch = str(branch_name or "").strip()
   if not branch or branch.startswith("-") or "\x00" in branch:
@@ -1463,6 +1556,7 @@ def _collect_fast_update_info(include_remote=True):
   remote_error = ""
   origin_remote = ""
   commits_url = ""
+  rollback_data = _load_rollback_target(repo_path)
 
   try:
     branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
@@ -1481,6 +1575,7 @@ def _collect_fast_update_info(include_remote=True):
       "remoteError": str(exception),
       "originRemote": origin_remote,
       "commitsUrl": commits_url,
+      **rollback_data,
     }
 
   if origin_remote:
@@ -1518,6 +1613,7 @@ def _collect_fast_update_info(include_remote=True):
     "remoteError": remote_error,
     "originRemote": origin_remote,
     "commitsUrl": commits_url,
+    **rollback_data,
   }
 
 def _fast_update_worker():
@@ -1527,6 +1623,11 @@ def _fast_update_worker():
   try:
     _set_fast_update_progress(1, "Preparing update", 10.0, "Resolving active branch...")
     branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    current_commit = _git_stdout(repo_path, ["rev-parse", "HEAD"])
+    try:
+      _save_rollback_target(repo_path, branch, current_commit)
+    except Exception as exception:
+      print(f"Fast update rollback target save failed: {exception}")
     _set_fast_update_progress(1, "Preparing update", 100.0, f"Branch: {branch}")
     _set_fast_update_state(
       running=True,
@@ -1570,6 +1671,11 @@ def _branch_switch_worker(target_branch):
   try:
     _set_fast_update_progress(1, "Preparing branch switch", 10.0, f"Target: {target_branch}")
     current_branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    current_commit = _git_stdout(repo_path, ["rev-parse", "HEAD"])
+    try:
+      _save_rollback_target(repo_path, current_branch, current_commit)
+    except Exception as exception:
+      print(f"Branch switch rollback target save failed: {exception}")
     _set_fast_update_progress(1, "Preparing branch switch", 100.0, f"{current_branch} -> {target_branch}")
     _set_fast_update_state(
       running=True,
@@ -1611,6 +1717,78 @@ def _branch_switch_worker(target_branch):
     )
   except Exception as exception:
     _set_fast_update_error_state("Fast branch switch failed.", exception)
+
+def _rollback_worker():
+  started_at = time.time()
+  repo_path = str(_get_openpilot_root())
+
+  try:
+    rollback_state = _load_rollback_target(repo_path)
+    target_branch = str(rollback_state.get("rollbackBranch") or "").strip()
+    target_commit = str(rollback_state.get("rollbackCommit") or "").strip()
+    if not target_commit:
+      raise RuntimeError("No previous installed version has been recorded yet.")
+
+    current_branch = _git_stdout(repo_path, ["rev-parse", "--abbrev-ref", "HEAD"])
+    current_commit = _git_stdout(repo_path, ["rev-parse", "HEAD"])
+    if target_commit == current_commit and (not target_branch or target_branch == current_branch):
+      raise RuntimeError("Current install already matches the saved rollback target.")
+
+    if not target_branch:
+      raise RuntimeError("Saved rollback branch is missing.")
+    if not _is_valid_git_branch_name(repo_path, target_branch):
+      raise RuntimeError(f"Saved rollback branch '{target_branch}' is invalid.")
+
+    short_commit = target_commit[:10]
+    _set_fast_update_progress(1, "Preparing rollback", 10.0, f"Target: {target_branch} @ {short_commit}")
+    _set_fast_update_state(
+      running=True,
+      stage="rolling-back",
+      message=f"Rolling back to the previous installed version on '{target_branch}'...",
+      lastError="",
+      lastBranch=target_branch,
+      lastMode="rollback",
+      startedAt=started_at,
+      finishedAt=0.0,
+    )
+    _set_fast_update_progress(1, "Preparing rollback", 100.0, f"{current_branch} -> {target_branch} @ {short_commit}")
+
+    if _git_has_commit(repo_path, target_commit):
+      _set_fast_update_progress(2, "Resolving rollback target", 100.0, "Previous installed version is already available locally.")
+    else:
+      _set_fast_update_progress(2, "Resolving rollback target", 0.0, f"Fetching saved version {short_commit} from origin...")
+      fetch_rc, fetch_output = _run_git_with_progress(
+        repo_path,
+        _build_shallow_fetch_commit_args(target_commit),
+        timeout=_FAST_ROLLBACK_FETCH_TIMEOUT_S,
+        step=2,
+        label="Resolving rollback target",
+      )
+      if fetch_rc != 0 or not _git_has_commit(repo_path, target_commit):
+        raise RuntimeError(fetch_output.strip() or f"Unable to fetch rollback commit {short_commit}")
+
+    _set_fast_update_progress(3, "Applying rollback target", 20.0, f"Checking out {target_branch} @ {short_commit}...")
+    checkout = _run_git(repo_path, ["checkout", "--force", "-B", target_branch, target_commit], timeout=120)
+    if checkout.returncode != 0:
+      raise RuntimeError((checkout.stderr or checkout.stdout or "git checkout failed").strip())
+
+    reset = _run_git(repo_path, ["reset", "--hard", target_commit], timeout=120)
+    if reset.returncode != 0:
+      raise RuntimeError((reset.stderr or reset.stdout or "git reset failed").strip())
+
+    _run_git(repo_path, ["branch", "--set-upstream-to", f"origin/{target_branch}", target_branch], timeout=30)
+    _set_fast_update_progress(3, "Applying rollback target", 100.0, f"Now on {target_branch} @ {short_commit}.")
+
+    _run_submodule_update_if_needed(repo_path, step=4)
+    try:
+      _clear_rollback_target(repo_path)
+    except Exception as exception:
+      print(f"Rollback target clear failed: {exception}")
+    _finish_update_and_reboot(
+      f"Rolled back to the previous installed version on '{target_branch}'. Automatic updates were disabled and the device is rebooting now."
+    )
+  except Exception as exception:
+    _set_fast_update_error_state("Rollback failed.", exception)
 
 def _get_openpilot_root():
   global _openpilot_root_cache
@@ -4880,6 +5058,52 @@ def setup(app):
     return jsonify({
       "message": f"Branch switch started for '{target_branch}'. Device will reboot when complete.",
       "warning": "Fast update skips backup creation and finalization safeguards.",
+    }), 202
+
+  @app.route("/api/update/rollback", methods=["POST"])
+  def run_update_rollback():
+    if params.get_bool("IsOnroad"):
+      return jsonify({"error": "Cannot roll back while driving."}), 409
+
+    repo_path = str(_get_openpilot_root())
+    rollback_state = _load_rollback_target(repo_path)
+    target_branch = str(rollback_state.get("rollbackBranch") or "").strip()
+    target_commit = str(rollback_state.get("rollbackCommit") or "").strip()
+    rollback_available = bool(rollback_state.get("rollbackAvailable"))
+
+    if not target_commit:
+      return jsonify({"error": "No previous installed version has been recorded yet."}), 409
+    if not target_branch:
+      return jsonify({"error": "Saved rollback branch is missing."}), 409
+    if not rollback_available:
+      return jsonify({"error": "Current install already matches the saved previous version."}), 409
+
+    with _fast_update_lock:
+      if _fast_update_state.get("running"):
+        return jsonify({"error": "Another update action is already in progress."}), 409
+      _fast_update_state.update({
+        "running": True,
+        "stage": "starting",
+        "message": f"Starting rollback to '{target_branch}'...",
+        "lastError": "",
+        "lastBranch": target_branch,
+        "lastMode": "rollback",
+        "startedAt": time.time(),
+        "finishedAt": 0.0,
+        "progressStep": 1,
+        "progressTotalSteps": _FAST_UPDATE_TOTAL_STEPS,
+        "progressStepPercent": 0.0,
+        "progressPercent": 0.0,
+        "progressLabel": "Preparing rollback",
+        "progressDetail": "Initializing rollback...",
+      })
+
+    params.put_bool("AutomaticUpdates", False)
+    threading.Thread(target=_rollback_worker, daemon=True).start()
+
+    return jsonify({
+      "message": f"Rollback started for the previous installed version on '{target_branch}'. Automatic updates were disabled and the device will reboot when complete.",
+      "warning": "Rollback restores the previously installed version recorded before the last Galaxy update.",
     }), 202
 
   @app.route("/api/update/factory_reset", methods=["POST"])

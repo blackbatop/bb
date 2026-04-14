@@ -146,6 +146,10 @@
   margin-top: var(--margin-base);
 }
 
+.updateRollbackSection {
+  margin-top: var(--margin-base);
+}
+
 .updateAdvancedNote {
   font-size: var(--font-size-sm);
   margin-top: var(--margin-sm);
@@ -163,6 +167,15 @@
   display: flex;
   gap: var(--gap-sm);
   margin-top: var(--margin-sm);
+}
+
+.updateRollbackMeta {
+  margin-top: var(--margin-sm);
+}
+
+.updateRollbackMeta p {
+  font-size: var(--font-size-sm);
+  margin: 0 0 var(--margin-xs) 0;
 }
 
 .updateSelect {

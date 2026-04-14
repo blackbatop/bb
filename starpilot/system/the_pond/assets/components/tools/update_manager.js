@@ -15,6 +15,7 @@ const state = reactive({
   branchesError: "",
   branchesBusy: false,
   switchBusy: false,
+  rollbackBusy: false,
 })
 
 let initialized = false
@@ -102,6 +103,27 @@ function activeCommitsLabel() {
   return branch
     ? `View latest commit for the "${branch}" branch`
     : "View latest commit for this branch"
+}
+
+function formatRecordedAt(value) {
+  const text = String(value || "").trim()
+  if (!text) return "Unknown"
+
+  const parsed = new Date(text)
+  if (Number.isNaN(parsed.getTime())) return text
+  return parsed.toLocaleString()
+}
+
+function rollbackTargetSummary() {
+  const branch = String(state.status?.rollbackBranch || "").trim()
+  const commit = String(state.status?.rollbackCommit || "").trim()
+  if (!branch && !commit) return "No previous installed version recorded yet."
+  if (branch && commit) return `${branch} / ${shortHash(commit)}`
+  return branch || shortHash(commit)
+}
+
+function hasRecordedRollbackTarget() {
+  return !!String(state.status?.rollbackCommit || "").trim()
 }
 
 function shouldShowPrimaryUpdateAction() {
@@ -468,6 +490,70 @@ async function runBranchSwitch() {
   }
 }
 
+async function runRollback() {
+  if (state.rollbackBusy) return
+  if (state.status?.running) {
+    showSnackbar("An update action is already running.")
+    return
+  }
+  if (state.status?.isOnroad) {
+    showSnackbar("Actions are blocked while onroad.", "error")
+    return
+  }
+
+  const rollbackCommit = String(state.status?.rollbackCommit || "").trim()
+  const rollbackBranch = String(state.status?.rollbackBranch || "").trim()
+  if (!rollbackCommit || !state.status?.rollbackAvailable) {
+    showSnackbar("No previous installed version is available to roll back to.", "error")
+    return
+  }
+
+  const confirmed = window.confirm(
+    "Roll back to the previous installed version?\n\n" +
+    `Target: ${rollbackBranch || "Unknown"} @ ${shortHash(rollbackCommit)}\n\n` +
+    "- This restores the version this device was running before the last Galaxy update.\n" +
+    "- Automatic updates will be turned off.\n" +
+    "- Your device will reboot when the rollback is done.\n\n" +
+    "Continue?"
+  )
+  if (!confirmed) return
+
+  state.rollbackBusy = true
+  try {
+    reconnectPending = false
+    rebootNoticeShown = false
+    const response = await fetch("/api/update/rollback", { method: "POST" })
+    const payload = await readJsonPayload(response)
+    if (!response.ok) {
+      throw new Error(payload.error || response.statusText || "Failed to start rollback")
+    }
+
+    state.status = {
+      ...(state.status || {}),
+      running: true,
+      stage: "starting",
+      progressStep: 1,
+      progressTotalSteps: state.status?.progressTotalSteps || 5,
+      progressStepPercent: 0,
+      progressPercent: 0,
+      progressLabel: "Preparing rollback",
+      progressDetail: "Initializing rollback...",
+      message: payload.message || "Rollback started. Device will reboot when complete.",
+      lastError: "",
+      lastMode: "rollback",
+      automaticUpdates: false,
+    }
+    state.error = ""
+    showSnackbar(payload.message || "Rollback started.")
+    await fetchStatus(false)
+    ensurePolling()
+  } catch (error) {
+    showSnackbar(error?.message || "Failed to start rollback", "error")
+  } finally {
+    state.rollbackBusy = false
+  }
+}
+
 function initialize() {
   if (initialized) return
   initialized = true
@@ -576,6 +662,32 @@ export function UpdateManager() {
                 </button>
               </div>
               ${() => state.branchesError ? html`<p class="updateError"><strong>Branch List:</strong> ${state.branchesError}</p>` : ""}
+            </div>
+
+            <div class="updateRollbackSection">
+              <div class="updateBranchHeader">
+                <strong>Rollback</strong>
+              </div>
+              <p class="updateAdvancedNote">
+                Restores the previous installed version recorded before the last Galaxy update on this device.
+              </p>
+              <div class="updateRollbackMeta">
+                <p><strong>Previous Installed Version:</strong> ${() => rollbackTargetSummary()}</p>
+                <p><strong>Saved:</strong> ${() => formatRecordedAt(state.status?.rollbackRecordedAt)}</p>
+              </div>
+              <button
+                class="updateButton danger"
+                disabled="${() => !!state.status?.isOnroad || !!state.status?.running || state.rollbackBusy || !state.status?.rollbackAvailable || false}"
+                @click="${() => runRollback()}">
+                ${() => (state.status?.running && state.status?.lastMode === "rollback")
+                  ? "Rolling Back..."
+                  : (state.rollbackBusy ? "Starting..." : "Roll Back to Previous Version")}
+              </button>
+              ${() => !state.status?.rollbackAvailable
+                ? html`<p class="updateHint">${hasRecordedRollbackTarget()
+                  ? "Current install already matches the saved previous version."
+                  : "A rollback target appears here after the next successful Galaxy update or branch switch."}</p>`
+                : html`<p class="updateHint">Rollback disables automatic updates so the device does not immediately update forward again.</p>`}
             </div>
           ` : ""}
 
