@@ -45,6 +45,9 @@ bool hyundai_alt_limits_2 = false;
 extern bool hyundai_has_lda_button;
 bool hyundai_has_lda_button = false;
 
+extern bool hyundai_aol_lkas_on_engage;
+bool hyundai_aol_lkas_on_engage = false;
+
 static uint8_t hyundai_last_button_interaction;  // button messages since the user pressed an enable button
 
 void hyundai_common_init(uint16_t param) {
@@ -57,6 +60,7 @@ void hyundai_common_init(uint16_t param) {
   const uint16_t HYUNDAI_PARAM_ALT_LIMITS_2 = 512;
 
   const int HYUNDAI_PARAM_HAS_LDA_BUTTON = 1024;
+  const uint16_t HYUNDAI_PARAM_AOL_LKAS_ON_ENGAGE = 2048;
 
   hyundai_ev_gas_signal = GET_FLAG(param, HYUNDAI_PARAM_EV_GAS);
   hyundai_hybrid_gas_signal = !hyundai_ev_gas_signal && GET_FLAG(param, HYUNDAI_PARAM_HYBRID_GAS);
@@ -67,6 +71,7 @@ void hyundai_common_init(uint16_t param) {
   hyundai_alt_limits_2 = GET_FLAG(param, HYUNDAI_PARAM_ALT_LIMITS_2);
 
   hyundai_has_lda_button = GET_FLAG(param, HYUNDAI_PARAM_HAS_LDA_BUTTON);
+  hyundai_aol_lkas_on_engage = GET_FLAG(param, HYUNDAI_PARAM_AOL_LKAS_ON_ENGAGE);
 
   hyundai_last_button_interaction = HYUNDAI_PREV_BUTTON_SAMPLES;
 
@@ -108,6 +113,10 @@ void hyundai_common_cruise_buttons_check(const int cruise_button, const bool mai
     bool res = (cruise_button != HYUNDAI_BTN_RESUME) && (cruise_button_prev == HYUNDAI_BTN_RESUME);
     if (set || res) {
       controls_allowed = true;
+
+      if (hyundai_aol_lkas_on_engage && ((alternative_experience & ALT_EXP_ALWAYS_ON_LATERAL) != 0)) {
+        lkas_on = true;
+      }
     }
 
     // exit controls on cancel press

@@ -2,12 +2,12 @@
 from parameterized import parameterized_class
 import unittest
 
-from opendbc.car.hyundai.values import HyundaiSafetyFlags
+from opendbc.car.hyundai.values import HyundaiSafetyFlags, HyundaiStarPilotSafetyFlags
 from opendbc.car.structs import CarParams
 from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.common import CANPackerSafety
-from opendbc.safety.tests.hyundai_common import HyundaiButtonBase, HyundaiLongitudinalBase
+from opendbc.safety.tests.hyundai_common import HyundaiAolLkasOnEngageBase, HyundaiButtonBase, HyundaiLongitudinalBase
 
 # All combinations of radar/camera-SCC and gas/hybrid/EV cars
 ALL_GAS_EV_HYBRID_COMBOS = [
@@ -324,6 +324,18 @@ class TestHyundaiCanfdLFASteeringLongAltButtons(TestHyundaiCanfdLFASteeringLongB
   def test_acc_cancel(self):
     # Alt buttons does not use SCC_CONTROL to cancel if longitudinal
     pass
+
+
+class TestHyundaiCanfdLKASteeringLongAolLkasOnEngageEV(HyundaiAolLkasOnEngageBase, TestHyundaiCanfdLKASteeringLongEV):
+  def setUp(self):
+    self.packer = CANPackerSafety("hyundai_canfd_generated")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd,
+                                 HyundaiSafetyFlags.CANFD_LKA_STEERING |
+                                 HyundaiSafetyFlags.LONG |
+                                 HyundaiSafetyFlags.EV_GAS |
+                                 HyundaiStarPilotSafetyFlags.AOL_LKAS_ON_ENGAGE)
+    self.safety.init_tests()
 
 
 

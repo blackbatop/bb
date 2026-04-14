@@ -218,6 +218,8 @@ class CarInterfaceBase(ABC):
 
         if CP.flags & HyundaiFlags.HAS_LDA_BUTTON:
           fp_ret.safetyConfigs[-1].safetyParam |= HyundaiStarPilotSafetyFlags.HAS_LDA_BUTTON.value
+        if CP.openpilotLongitudinalControl and starpilot_toggles.always_on_lateral_lkas:
+          fp_ret.safetyConfigs[-1].safetyParam |= HyundaiStarPilotSafetyFlags.AOL_LKAS_ON_ENGAGE.value
 
       elif platform in TOYOTA:
         fp_ret.canUsePedal = not CP.autoResumeSng

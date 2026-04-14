@@ -1,5 +1,6 @@
 import unittest
 
+from opendbc.safety import ALTERNATIVE_EXPERIENCE
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.safety.tests.common import make_msg
@@ -171,3 +172,22 @@ class HyundaiLongitudinalBase(common.LongitudinalAccelSafetyTest):
     self.assertFalse(self.safety.get_relay_malfunction())
     self._rx(make_msg(bus, addr, 8))
     self.assertTrue(self.safety.get_relay_malfunction())
+
+
+class HyundaiAolLkasOnEngageBase:
+  def test_aol_lkas_auto_enables_on_set_engagement(self):
+    torque_cmd = self.MAX_RATE_UP
+
+    self.safety.set_alternative_experience(ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL)
+    self.safety.set_controls_allowed(False)
+
+    self._set_prev_torque(0)
+    self.assertFalse(self._tx(self._torque_cmd_msg(torque_cmd)))
+
+    self._rx(self._button_msg(Buttons.SET))
+    self._rx(self._button_msg(Buttons.NONE))
+    self.assertTrue(self.safety.get_controls_allowed())
+
+    self.safety.set_controls_allowed(False)
+    self._set_prev_torque(0)
+    self.assertTrue(self._tx(self._torque_cmd_msg(torque_cmd)))
