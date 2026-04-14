@@ -240,9 +240,7 @@ prepare_env() {
   export SP_ALLOW_DESKTOP_FAKE_WIFI=0
 
   if [[ "$(uname -s)" == "Darwin" ]] || env_var_truthy "${ZMQ:-0}"; then
-    if [[ -n "${PREFIX_ARG}" || -n "${OPENPILOT_PREFIX:-}" ]]; then
-      echo "Ignoring OPENPILOT_PREFIX because the ZMQ backend does not support prefixes." >&2
-    fi
+    export OPENPILOT_ZMQ_NAMESPACE="${PREFIX_ARG:-${OPENPILOT_ZMQ_NAMESPACE:-desktop-onroad-$$}}"
     unset OPENPILOT_PREFIX
   else
     export OPENPILOT_PREFIX="${PREFIX_ARG:-${OPENPILOT_PREFIX:-desktop-onroad-$$}}"
@@ -355,6 +353,9 @@ prepare_env
 trap cleanup EXIT INT TERM
 
 echo "Using OPENPILOT_PREFIX=${OPENPILOT_PREFIX:-<default>}"
+if [[ -n "${OPENPILOT_ZMQ_NAMESPACE:-}" ]]; then
+  echo "Using OPENPILOT_ZMQ_NAMESPACE=${OPENPILOT_ZMQ_NAMESPACE}"
+fi
 echo "Preparing replay and desktop UI runtime..."
 
 build_replay

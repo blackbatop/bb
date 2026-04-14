@@ -47,6 +47,7 @@ export PATH="${ROOT_DIR}/.venv/bin:${PATH}"
 export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/starpilot/third_party"
 for d in "${ROOT_DIR}"/*_repo; do [[ -d "$d" ]] && export PYTHONPATH="${PYTHONPATH}:$d"; done
 [[ -d "${ROOT_DIR}/third_party/acados" ]] && export PYTHONPATH="${PYTHONPATH}:${ROOT_DIR}/third_party/acados"
+export OPENPILOT_ZMQ_NAMESPACE="${OPENPILOT_ZMQ_NAMESPACE:-desktop-c4-$$}"
 export BIG=0
 export NOBOARD=1
 export SIMULATION=1

@@ -220,6 +220,7 @@ prepare_host_artifacts
 export PYTHONPATH="${ROOT_DIR}:${ROOT_DIR}/starpilot/third_party"
 for d in "${ROOT_DIR}"/*_repo; do [[ -d "$d" ]] && export PYTHONPATH="${PYTHONPATH}:$d"; done
 [[ -d "${ROOT_DIR}/third_party/acados" ]] && export PYTHONPATH="${PYTHONPATH}:${ROOT_DIR}/third_party/acados"
+export OPENPILOT_ZMQ_NAMESPACE="${OPENPILOT_ZMQ_NAMESPACE:-desktop-c3-$$}"
 
 export SP_DISABLE_AUTO_DEVICE_SCONS=1
 scons -j"${jobs}" selfdrive/ui/ui

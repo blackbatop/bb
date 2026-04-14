@@ -19,9 +19,17 @@ static size_t fnv1a_hash(const std::string &str) {
     return hash_value;
 }
 
+static std::string namespaced_endpoint(std::string endpoint) {
+    const char *namespace_env = std::getenv("OPENPILOT_ZMQ_NAMESPACE");
+    if (namespace_env != nullptr && namespace_env[0] != '\0') {
+        endpoint = std::string(namespace_env) + ":" + endpoint;
+    }
+    return endpoint;
+}
+
 //FIXME: This is a hack to get the port number from the socket name, might have collisions
 static int get_port(std::string endpoint) {
-    size_t hash_value = fnv1a_hash(endpoint);
+    size_t hash_value = fnv1a_hash(namespaced_endpoint(std::move(endpoint)));
     int start_port = 8023;
     int max_port = 65535;
     int port = start_port + (hash_value % (max_port - start_port));
