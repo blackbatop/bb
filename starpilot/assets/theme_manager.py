@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 from openpilot.starpilot.common.starpilot_download_utilities import GITLAB_URL, download_file, get_repository_url, handle_error, verify_download
+from openpilot.starpilot.common.theme_asset_names import find_matching_theme_asset_file, find_matching_theme_asset_name
 from openpilot.starpilot.common.starpilot_utilities import delete_file, extract_zip, load_json_file, update_json_file
 from openpilot.starpilot.common.starpilot_variables import ACTIVE_THEME_PATH, RANDOM_EVENTS_PATH, RESOURCES_REPO, THEME_SAVE_PATH
 
@@ -798,8 +799,7 @@ class ThemeManager:
     if not default_boot_logo.exists():
       return
 
-    image_name = image.replace(" ", "_").lower()
-    source_file = next((file for file in (THEME_SAVE_PATH / "bootlogos").glob("*") if file.is_file() and file.stem.lower() == image_name), default_boot_logo)
+    source_file = find_matching_theme_asset_file(THEME_SAVE_PATH / "bootlogos", image) or default_boot_logo
 
     if source_file.resolve() == default_boot_logo.resolve():
       print(f"Boot logo unchanged: {default_boot_logo}")
@@ -862,9 +862,8 @@ class ThemeManager:
 
     boot_logos_path = THEME_SAVE_PATH / "bootlogos"
     for display_name in downloaded_data.get("boot_logos", []):
-      file_stem = display_name.replace(" ", "_").lower()
-      matching_files = list(boot_logos_path.glob(f"{file_stem}.*"))
-      if not matching_files:
+      if not find_matching_theme_asset_file(boot_logos_path, display_name):
+        file_stem = find_matching_theme_asset_name(downloadable_boot_logos, display_name) or display_name.replace(" ", "_").lower()
         print(f"Missing boot logo '{display_name}'. Downloading...")
         self.download_theme("boot_logos", file_stem, THEME_COMPONENT_PARAMS["boot_logos"], starpilot_toggles)
         self.update_active_theme(True, starpilot_toggles)

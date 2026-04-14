@@ -19,6 +19,7 @@ from openpilot.system.version import get_build_metadata
 from openpilot.starpilot.assets.theme_manager import ThemeManager
 from openpilot.starpilot.common.starpilot_backups import backup_starpilot
 from openpilot.starpilot.common.maps_catalog import normalize_schedule_value, sanitize_selected_locations_csv
+from openpilot.starpilot.common.theme_asset_names import find_matching_theme_asset_file
 from openpilot.starpilot.common.starpilot_utilities import get_starpilot_api_info, is_FrogsGoMoo, is_url_pingable, run_cmd, use_konik_server
 from openpilot.starpilot.common.starpilot_variables import (
   ERROR_LOGS_PATH, STARPILOT_API, FROGS_GO_MOO_PATH, HD_LOGS_PATH, KONIK_LOGS_PATH, MAPS_PATH, THEME_SAVE_PATH,
@@ -167,11 +168,11 @@ def update_boot_logo(starpilot=False, stock=False, selected_logo=None):
     target_logo = Path(BASEDIR) / "starpilot/assets/other_images/starpilot_boot_logo.jpg"
     if selected_logo:
       selected = selected_logo.decode("utf-8", "ignore") if isinstance(selected_logo, (bytes, bytearray)) else str(selected_logo)
-      selected = selected.strip().lower().replace(" ", "_")
-      if selected and selected not in {"stock", "default"}:
-        candidates = list((THEME_SAVE_PATH / "bootlogos").glob(f"{selected}.*"))
-        if candidates:
-          target_logo = candidates[0]
+      selected = selected.strip()
+      if selected.lower() not in {"", "stock", "default"}:
+        matched_logo = find_matching_theme_asset_file(THEME_SAVE_PATH / "bootlogos", selected)
+        if matched_logo is not None:
+          target_logo = matched_logo
   elif stock:
     target_logo = Path(BASEDIR) / "starpilot/assets/other_images/stock_bg.jpg"
   else:
