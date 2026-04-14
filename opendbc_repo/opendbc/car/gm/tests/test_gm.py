@@ -63,15 +63,26 @@ class TestGMInterface:
     fingerprint[0][0x201] = 8  # pedal detected
     fingerprint[0][0x2FF] = 8  # SASCM detected
 
-    monkeypatch.setattr(gm_interface.testing_ground, "use_2", True, raising=False)
+    monkeypatch.setattr(gm_interface, "testing_ground", SimpleNamespace(use_2=True))
 
     car_params = CarInterface.get_params(CAR.CHEVROLET_VOLT_ASCM, fingerprint, [], alpha_long=False, is_release=False, docs=False,
                                          starpilot_toggles=_test_starpilot_toggles())
 
-    assert list(car_params.longitudinalTuning.kpV) == [0.10, 0.072, 0.05, 0.04]
-    assert list(car_params.longitudinalTuning.kiV) == [0.025, 0.03, 0.04, 0.055]
+    assert list(car_params.longitudinalTuning.kpV) == pytest.approx([0.10, 0.072, 0.05, 0.04])
+    assert list(car_params.longitudinalTuning.kiV) == pytest.approx([0.025, 0.03, 0.04, 0.055])
     assert car_params.startingState
     assert car_params.startAccel == pytest.approx(1.15)
+
+  def test_silverado_testing_ground_uses_left_biased_non_linear_torque_params(self, monkeypatch):
+    stock_params = gm_interface.get_non_linear_torque_params(CAR.CHEVROLET_SILVERADO)
+
+    monkeypatch.setattr(gm_interface, "silverado_trailer_mode_active", lambda: True)
+    tuned_params = gm_interface.get_non_linear_torque_params(CAR.CHEVROLET_SILVERADO)
+
+    assert tuned_params["left"][0] > stock_params["left"][0]
+    assert tuned_params["left"][1] > stock_params["left"][1]
+    assert tuned_params["left"][2] > stock_params["left"][2]
+    assert tuned_params["right"] == stock_params["right"]
 
 
 class TestGMCarController:
