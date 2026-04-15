@@ -24,7 +24,8 @@ VisualAlert = structs.CarControl.HUDControl.VisualAlert
 ACCEL_WINDUP_LIMIT = 4.0 * DT_CTRL * 3  # m/s^2 / frame
 ACCEL_WINDDOWN_LIMIT = -4.0 * DT_CTRL * 3  # m/s^2 / frame
 ACCEL_PID_UNWIND = 0.03 * DT_CTRL * 3  # m/s^2 / frame
-PRIUS_INTEGRAL_MISMATCH_UNWIND = 4.0
+PRIUS_INTEGRAL_MISMATCH_UNWIND = 8.0
+PRIUS_POSITIVE_FEEDFORWARD_SCALE = 0.5
 
 MAX_PITCH_COMPENSATION = 1.5  # m/s^2
 
@@ -267,8 +268,9 @@ class CarController(CarControllerBase):
 
           feedforward = pcm_accel_cmd
           if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
-            # Preserve the smoother positive handoff, but let braking feedforward pull speed back down.
-            feedforward = min(feedforward, 0.0)
+            # Keep Prius positive handoffs softer than the stock tune, while restoring some launch authority.
+            if feedforward > 0.0:
+              feedforward *= PRIUS_POSITIVE_FEEDFORWARD_SCALE
 
           pcm_accel_cmd = self.long_pid.update(error_future,
                                                speed=CS.out.vEgo,
