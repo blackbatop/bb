@@ -71,6 +71,7 @@ from openpilot.starpilot.common.testing_grounds import (
   TESTING_GROUNDS_SCHEMA_VERSION as SHARED_TESTING_GROUNDS_SCHEMA_VERSION,
   TESTING_GROUNDS_SLOT_DEFINITIONS as SHARED_TESTING_GROUNDS_SLOT_DEFINITIONS,
   TESTING_GROUNDS_STATE_PATH as SHARED_TESTING_GROUNDS_STATE_PATH,
+  migrate_testing_ground_selection as migrate_shared_testing_ground_selection,
 )
 from openpilot.starpilot.system.the_pond import utilities
 
@@ -2936,6 +2937,8 @@ def _load_testing_grounds_state_unlocked():
   }
   default_slot_id = _get_first_selectable_testing_ground_slot_id(state["slots"])
   active_slot = str(raw_state.get("activeSlot") or "").strip()
+  raw_active_variant = str(raw_state.get("activeVariant") or "").strip().upper()
+  active_slot, migrated_variant, selection_migrated = migrate_shared_testing_ground_selection(active_slot, raw_active_variant, default_slot_id)
   active_slot_migrated = active_slot not in fallback_slot_ids or active_slot not in selectable_slot_ids
   if active_slot_migrated:
     active_slot = default_slot_id
@@ -2943,11 +2946,10 @@ def _load_testing_grounds_state_unlocked():
   state["activeSlot"] = active_slot
 
   active_slot_data = _find_testing_ground_slot(state, active_slot)
-  raw_active_variant = str(raw_state.get("activeVariant") or "").strip().upper()
-  if active_slot_migrated:
+  if active_slot_migrated or selection_migrated:
     active_variant = _TESTING_GROUNDS_DEFAULT_VARIANT
   else:
-    active_variant = _normalize_testing_ground_variant(active_slot, raw_active_variant, active_slot_data)
+    active_variant = _normalize_testing_ground_variant(active_slot, migrated_variant, active_slot_data)
   if raw_active_variant != active_variant:
     needs_write = True
   state["activeVariant"] = active_variant

@@ -24,7 +24,6 @@ from opendbc.car.gm.values import (
 from opendbc.car.interfaces import CarInterfaceBase, TorqueFromLateralAccelCallbackType, LateralAccelFromTorqueCallbackType
 from opendbc.safety import ALTERNATIVE_EXPERIENCE
 from openpilot.common.params import Params, UnknownKeyName
-from openpilot.starpilot.common.testing_grounds import testing_ground
 
 TransmissionType = structs.CarParams.TransmissionType
 NetworkLocation = structs.CarParams.NetworkLocation
@@ -77,7 +76,7 @@ VOLT_LIKE_CARS = {
   CAR.CHEVROLET_MALIBU_HYBRID_CC,
 }
 
-VOLT_LONG_TEST_TUNE_CARS = {
+VOLT_LONG_TUNE_CARS = {
   CAR.CHEVROLET_VOLT,
   CAR.CHEVROLET_VOLT_2019,
   CAR.CHEVROLET_VOLT_ASCM,
@@ -566,15 +565,14 @@ class CarInterface(CarInterfaceBase):
       ret.pcmCruise = False
       ret.openpilotLongitudinalControl = not disable_openpilot_long
 
-    volt_test_tune_active = (
-      testing_ground.use_2 and
+    volt_long_tune_active = (
       ret.openpilotLongitudinalControl and
-      candidate in VOLT_LONG_TEST_TUNE_CARS
+      candidate in VOLT_LONG_TUNE_CARS
     )
-    if volt_test_tune_active:
+    if volt_long_tune_active:
       # Volt long can still fall back to an all-I tune on both the interceptor and
-      # ASCM-int paths. The test-ground tune adds a modest P term, trims
-      # mid/high-speed I memory, and uses a dedicated starting state so
+      # ASCM-int paths. Use the promoted tune by default: add a modest P term,
+      # trim mid/high-speed I memory, and keep a dedicated starting state so
       # stop-and-go launches do not wind up the PID.
       ret.longitudinalTuning.kpBP = [0.0, 4.0, 12.0, 35.0]
       ret.longitudinalTuning.kpV = [0.10, 0.072, 0.050, 0.040]
