@@ -170,6 +170,7 @@ SAFE_MODE_MANAGED_KEYS = (
   "SubaruSNG",
   "VoltSNG",
   "GMPedalLongitudinal",
+  "GMDashSpoofOffsets",
   "LongPitch",
   "TacoTuneHacks",
 )

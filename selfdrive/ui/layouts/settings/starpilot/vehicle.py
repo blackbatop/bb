@@ -249,6 +249,14 @@ class StarPilotGMVehicleLayout(StarPilotPanel):
         "key": "GMPedalLongitudinal",
       },
       {
+        "title": tr_noop("Offsets on Dash Spoof"),
+        "type": "toggle",
+        "get_state": lambda: self._params.get_bool("GMDashSpoofOffsets"),
+        "set_state": lambda s: self._params.put_bool("GMDashSpoofOffsets", s),
+        "color": "#64748B",
+        "key": "GMDashSpoofOffsets",
+      },
+      {
         "title": tr_noop("Smooth Pedal on Hills"),
         "type": "toggle",
         "get_state": lambda: self._params.get_bool("LongPitch"),
@@ -287,6 +295,8 @@ class StarPilotGMVehicleLayout(StarPilotPanel):
       visible = True
 
       if key == "GMPedalLongitudinal":
+        visible = cs.hasPedal or cs.canUsePedal
+      elif key == "GMDashSpoofOffsets":
         visible = cs.hasPedal or cs.canUsePedal
       elif key == "VoltSNG":
         visible = cs.isVolt and not cs.hasSNG
