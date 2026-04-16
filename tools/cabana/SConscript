@@ -12,6 +12,7 @@ if arch == "Darwin":
   qt_env['QTDIR'] = f"{brew_prefix}/opt/qt@5"
   qt_dirs = [
     os.path.join(qt_env['QTDIR'], "include"),
+    os.path.join(qt_env['QTDIR'], "include", "QtSerialBus"),
   ]
   qt_dirs += [f"{qt_env['QTDIR']}/include/Qt{m}" for m in qt_modules]
   qt_env["LINKFLAGS"] += ["-F" + os.path.join(qt_env['QTDIR'], "lib")]
@@ -59,6 +60,7 @@ base_libs = [common, messaging, cereal, visionipc, 'm', 'ssl', 'crypto', 'pthrea
 if arch == "Darwin":
     base_frameworks.append('OpenCL')
     base_frameworks.append('QtCharts')
+    base_frameworks.append('QtSerialBus')
 else:
     base_libs.append('OpenCL')
     base_libs.append('Qt5Charts')
