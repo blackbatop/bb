@@ -7,7 +7,7 @@ from opendbc.car.structs import CarParams
 from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.common import CANPackerSafety
-from opendbc.safety.tests.hyundai_common import HyundaiAolLkasOnEngageBase, HyundaiButtonBase, HyundaiLongitudinalBase
+from opendbc.safety.tests.hyundai_common import HyundaiAolLkasOnEngageBase, HyundaiAolLkasOnEngageStockBase, HyundaiButtonBase, HyundaiLongitudinalBase
 
 # All combinations of radar/camera-SCC and gas/hybrid/EV cars
 ALL_GAS_EV_HYBRID_COMBOS = [
@@ -333,6 +333,17 @@ class TestHyundaiCanfdLKASteeringLongAolLkasOnEngageEV(HyundaiAolLkasOnEngageBas
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd,
                                  HyundaiSafetyFlags.CANFD_LKA_STEERING |
                                  HyundaiSafetyFlags.LONG |
+                                 HyundaiSafetyFlags.EV_GAS |
+                                 HyundaiStarPilotSafetyFlags.AOL_LKAS_ON_ENGAGE)
+    self.safety.init_tests()
+
+
+class TestHyundaiCanfdLKASteeringAolLkasOnEngageEV(HyundaiAolLkasOnEngageStockBase, TestHyundaiCanfdLKASteeringEV):
+  def setUp(self):
+    self.packer = CANPackerSafety("hyundai_canfd_generated")
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd,
+                                 HyundaiSafetyFlags.CANFD_LKA_STEERING |
                                  HyundaiSafetyFlags.EV_GAS |
                                  HyundaiStarPilotSafetyFlags.AOL_LKAS_ON_ENGAGE)
     self.safety.init_tests()

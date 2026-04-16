@@ -188,6 +188,28 @@ class HyundaiAolLkasOnEngageBase:
     self._rx(self._button_msg(Buttons.NONE))
     self.assertTrue(self.safety.get_controls_allowed())
 
+    self._rx(self._user_brake_msg(True))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._set_prev_torque(0)
+    self.assertTrue(self._tx(self._torque_cmd_msg(torque_cmd)))
+
+
+class HyundaiAolLkasOnEngageStockBase:
+  def test_aol_lkas_auto_enables_on_stock_engagement(self):
+    torque_cmd = self.MAX_RATE_UP
+
+    self.safety.set_alternative_experience(ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL)
     self.safety.set_controls_allowed(False)
+
+    self._set_prev_torque(0)
+    self.assertFalse(self._tx(self._torque_cmd_msg(torque_cmd)))
+
+    self._rx(self._pcm_status_msg(False))
+    self._rx(self._button_msg(Buttons.SET))
+    self._rx(self._pcm_status_msg(True))
+    self.assertTrue(self.safety.get_controls_allowed())
+
+    self._rx(self._user_brake_msg(True))
+    self.assertFalse(self.safety.get_controls_allowed())
     self._set_prev_torque(0)
     self.assertTrue(self._tx(self._torque_cmd_msg(torque_cmd)))

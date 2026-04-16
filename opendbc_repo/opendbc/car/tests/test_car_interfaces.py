@@ -13,6 +13,8 @@ from opendbc.car.car_helpers import interfaces
 from opendbc.car.chrysler.carstate import CarState as ChryslerCarState
 from opendbc.car.fingerprints import FW_VERSIONS
 from opendbc.car.fw_versions import FW_QUERY_CONFIGS
+from opendbc.car.hyundai.interface import CarInterface as HyundaiCarInterface
+from opendbc.car.hyundai.values import CAR as HYUNDAI_CAR, HyundaiStarPilotSafetyFlags
 from opendbc.car.gm.values import CAR as GM_CAR, CanBus as GMCanBus, GMSafetyFlags
 from opendbc.car.interfaces import CarInterfaceBase, CarStateBase, get_interface_attr
 from opendbc.car.mock.values import CAR as MOCK
@@ -61,6 +63,7 @@ class DummyCarInterface(CarInterfaceBase):
 
 def get_test_starpilot_toggles() -> SimpleNamespace:
   return SimpleNamespace(
+    always_on_lateral_lkas=False,
     car_model="",
     cluster_offset=1.0,
     disable_openpilot_long=False,
@@ -184,6 +187,31 @@ class TestCarInterfaces:
       starpilot_toggles=get_test_starpilot_toggles(),
     )
     assert not (acc_params.safetyConfigs[0].safetyParam & GMSafetyFlags.FLAG_GM_NO_ACC.value)
+
+  def test_hyundai_aol_lkas_on_engage_flag_is_set_for_stock_long(self):
+    toggles = SimpleNamespace(always_on_lateral_lkas=True)
+    fingerprint = {bus: {} for bus in range(8)}
+    fingerprint[0][0x391] = 8
+
+    car_params = HyundaiCarInterface.get_params(
+      HYUNDAI_CAR.HYUNDAI_SONATA_HYBRID,
+      fingerprint,
+      [],
+      alpha_long=False,
+      is_release=False,
+      docs=False,
+      starpilot_toggles=toggles,
+    )
+    assert not car_params.openpilotLongitudinalControl
+
+    fp_car_params = HyundaiCarInterface.get_starpilot_params(
+      HYUNDAI_CAR.HYUNDAI_SONATA_HYBRID,
+      fingerprint,
+      [],
+      car_params,
+      toggles,
+    )
+    assert fp_car_params.safetyConfigs[-1].safetyParam & HyundaiStarPilotSafetyFlags.AOL_LKAS_ON_ENGAGE.value
 
   # FIXME: Due to the lists used in carParams, Phase.target is very slow and will cause
   #  many generated examples to overrun when max_examples > ~20, don't use it

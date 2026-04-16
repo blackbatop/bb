@@ -91,6 +91,10 @@ void hyundai_common_cruise_state_check(const bool cruise_engaged) {
   if (!hyundai_longitudinal) {
     if (cruise_engaged && !cruise_engaged_prev && (hyundai_last_button_interaction < HYUNDAI_PREV_BUTTON_SAMPLES)) {
       controls_allowed = true;
+
+      if (hyundai_aol_lkas_on_engage && ((alternative_experience & ALT_EXP_ALWAYS_ON_LATERAL) != 0)) {
+        lkas_on = true;
+      }
     }
 
     if (!cruise_engaged) {
