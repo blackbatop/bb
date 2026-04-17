@@ -67,6 +67,9 @@ VOLT_STANDARD_CARS = (
 GENESIS_G90_CARS = (
   HYUNDAI_CAR.GENESIS_G90,
 )
+KIA_EV6_CARS = (
+  HYUNDAI_CAR.KIA_EV6,
+)
 
 BOLT_2017_LATERAL_TESTING_GROUND_ID = testing_ground.id_3
 BOLT_2017_STEER_RATIO_TEST_SCALE = 1.045
@@ -189,6 +192,32 @@ GENESIS_G90_TURN_IN_FRICTION_BOOST_LEFT = 0.03
 GENESIS_G90_TURN_IN_FRICTION_BOOST_RIGHT = 0.05
 GENESIS_G90_UNWIND_FRICTION_REDUCTION_LEFT = 0.06
 GENESIS_G90_UNWIND_FRICTION_REDUCTION_RIGHT = 0.08
+
+KIA_EV6_LATERAL_TESTING_GROUND_ID = testing_ground.id_6
+KIA_EV6_LATERAL_TESTING_GROUND_VARIANT = "C"
+KIA_EV6_FF_GAIN_LEFT = 0.07
+KIA_EV6_FF_GAIN_RIGHT = 0.10
+KIA_EV6_FF_ONSET = 0.08
+KIA_EV6_FF_ONSET_WIDTH = 0.04
+KIA_EV6_FF_CUTOFF = 0.60
+KIA_EV6_FF_CUTOFF_WIDTH = 0.14
+KIA_EV6_TRANSITION_SPEED = 11.0
+KIA_EV6_PHASE_SCALE = 0.09
+KIA_EV6_TURN_IN_BOOST_LEFT = 0.14
+KIA_EV6_TURN_IN_BOOST_RIGHT = 0.22
+KIA_EV6_UNWIND_TAPER_LEFT = 0.26
+KIA_EV6_UNWIND_TAPER_RIGHT = 0.34
+KIA_EV6_FRICTION_MULT = 1.01
+KIA_EV6_FRICTION_LAT_RISE = 0.18
+KIA_EV6_FRICTION_JERK_RISE = 0.22
+KIA_EV6_TURN_IN_THRESHOLD_REDUCTION_LEFT = 0.10
+KIA_EV6_TURN_IN_THRESHOLD_REDUCTION_RIGHT = 0.14
+KIA_EV6_UNWIND_THRESHOLD_INCREASE_LEFT = 0.14
+KIA_EV6_UNWIND_THRESHOLD_INCREASE_RIGHT = 0.18
+KIA_EV6_TURN_IN_FRICTION_BOOST_LEFT = 0.03
+KIA_EV6_TURN_IN_FRICTION_BOOST_RIGHT = 0.05
+KIA_EV6_UNWIND_FRICTION_REDUCTION_LEFT = 0.12
+KIA_EV6_UNWIND_FRICTION_REDUCTION_RIGHT = 0.15
 
 VOLT_PLEXY_LATERAL_TESTING_GROUND_ID = testing_ground.id_7
 VOLT_PLEXY_FF_GAIN_LEFT = 0.12
@@ -588,6 +617,78 @@ def get_genesis_g90_friction_scale(v_ego: float, desired_lateral_accel: float, d
   return min(max(friction_scale, 0.92), 1.12)
 
 
+def kia_ev6_lateral_testing_ground_active() -> bool:
+  return testing_ground.use(KIA_EV6_LATERAL_TESTING_GROUND_ID, KIA_EV6_LATERAL_TESTING_GROUND_VARIANT)
+
+
+def _kia_ev6_sigmoid(x: float) -> float:
+  return _sigmoid(x)
+
+
+def _kia_ev6_low_speed_factor(v_ego: float) -> float:
+  return 1.0 / (1.0 + (max(v_ego, 0.0) / KIA_EV6_TRANSITION_SPEED) ** 2)
+
+
+def _kia_ev6_transition_phase(desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  return math.tanh((desired_lateral_accel * desired_lateral_jerk) / KIA_EV6_PHASE_SCALE)
+
+
+def _kia_ev6_side_value(desired_lateral_accel: float, left_value: float, right_value: float) -> float:
+  return left_value if desired_lateral_accel >= 0.0 else right_value
+
+
+def _kia_ev6_transition_envelope(v_ego: float, desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  lat_factor = 1.0 - math.exp(-abs(desired_lateral_accel) / KIA_EV6_FRICTION_LAT_RISE)
+  jerk_factor = 1.0 - math.exp(-abs(desired_lateral_jerk) / KIA_EV6_FRICTION_JERK_RISE)
+  return _kia_ev6_low_speed_factor(v_ego) * lat_factor * jerk_factor
+
+
+def get_kia_ev6_ff_scale(desired_lateral_accel: float, desired_lateral_jerk: float, v_ego: float) -> float:
+  if desired_lateral_accel == 0.0:
+    return 1.0
+
+  gain = _kia_ev6_side_value(desired_lateral_accel, KIA_EV6_FF_GAIN_LEFT, KIA_EV6_FF_GAIN_RIGHT)
+  abs_lateral_accel = abs(desired_lateral_accel)
+  onset = _kia_ev6_sigmoid((abs_lateral_accel - KIA_EV6_FF_ONSET) / KIA_EV6_FF_ONSET_WIDTH)
+  cutoff = _kia_ev6_sigmoid((KIA_EV6_FF_CUTOFF - abs_lateral_accel) / KIA_EV6_FF_CUTOFF_WIDTH)
+  extra_scale = gain * onset * cutoff
+  phase = _kia_ev6_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  low_speed_factor = _kia_ev6_low_speed_factor(v_ego)
+  turn_in_boost = 1.0 + (_kia_ev6_side_value(desired_lateral_accel, KIA_EV6_TURN_IN_BOOST_LEFT, KIA_EV6_TURN_IN_BOOST_RIGHT) *
+                          turn_in_weight * (0.35 + 0.65 * low_speed_factor))
+  unwind_taper = 1.0 - (_kia_ev6_side_value(desired_lateral_accel, KIA_EV6_UNWIND_TAPER_LEFT, KIA_EV6_UNWIND_TAPER_RIGHT) *
+                         unwind_weight * (0.35 + 0.65 * low_speed_factor))
+  return 1.0 + (extra_scale * turn_in_boost * max(unwind_taper, 0.0))
+
+
+def get_kia_ev6_friction_threshold(v_ego: float, desired_lateral_accel: float = 0.0, desired_lateral_jerk: float = 0.0) -> float:
+  base_threshold = get_friction_threshold(v_ego)
+  transition_envelope = _kia_ev6_transition_envelope(v_ego, desired_lateral_accel, desired_lateral_jerk)
+  phase = _kia_ev6_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  threshold_scale = 1.0 - (_kia_ev6_side_value(desired_lateral_accel, KIA_EV6_TURN_IN_THRESHOLD_REDUCTION_LEFT, KIA_EV6_TURN_IN_THRESHOLD_REDUCTION_RIGHT) *
+                           transition_envelope * turn_in_weight)
+  threshold_scale += (_kia_ev6_side_value(desired_lateral_accel, KIA_EV6_UNWIND_THRESHOLD_INCREASE_LEFT, KIA_EV6_UNWIND_THRESHOLD_INCREASE_RIGHT) *
+                      transition_envelope * unwind_weight)
+  return base_threshold * min(max(threshold_scale, 0.82), 1.16)
+
+
+def get_kia_ev6_friction_scale(v_ego: float, desired_lateral_accel: float, desired_lateral_jerk: float) -> float:
+  transition_envelope = _kia_ev6_transition_envelope(v_ego, desired_lateral_accel, desired_lateral_jerk)
+  phase = _kia_ev6_transition_phase(desired_lateral_accel, desired_lateral_jerk)
+  turn_in_weight = max(phase, 0.0)
+  unwind_weight = max(-phase, 0.0)
+  friction_scale = KIA_EV6_FRICTION_MULT
+  friction_scale += (_kia_ev6_side_value(desired_lateral_accel, KIA_EV6_TURN_IN_FRICTION_BOOST_LEFT, KIA_EV6_TURN_IN_FRICTION_BOOST_RIGHT) *
+                     transition_envelope * turn_in_weight)
+  friction_scale -= (_kia_ev6_side_value(desired_lateral_accel, KIA_EV6_UNWIND_FRICTION_REDUCTION_LEFT, KIA_EV6_UNWIND_FRICTION_REDUCTION_RIGHT) *
+                     transition_envelope * unwind_weight)
+  return min(max(friction_scale, 0.90), 1.10)
+
+
 def volt_plexy_lateral_testing_ground_active() -> bool:
   return testing_ground.use(VOLT_PLEXY_LATERAL_TESTING_GROUND_ID)
 
@@ -687,6 +788,7 @@ class LatControlTorque(LatControl):
     self.is_bolt_2017 = CP.carFingerprint in BOLT_2017_CARS
     self.is_volt_standard = CP.carFingerprint in VOLT_STANDARD_CARS
     self.is_genesis_g90 = CP.carFingerprint in GENESIS_G90_CARS
+    self.is_kia_ev6 = CP.carFingerprint in KIA_EV6_CARS
     self.is_volt_cc = CP.carFingerprint == GM_CAR.CHEVROLET_VOLT_CC
     self.is_silverado = CP.carFingerprint == GM_CAR.CHEVROLET_SILVERADO
     self.use_bolt_ff_scaling = self.is_bolt_2022_2023 or self.is_bolt_2018_2021 or self.is_bolt_2017
@@ -773,6 +875,7 @@ class LatControlTorque(LatControl):
       bolt_2018_2021_tuned_path_active = self.is_bolt_2018_2021
       volt_standard_test_active = self.is_volt_standard and volt_standard_lateral_testing_ground_active()
       genesis_g90_test_active = self.is_genesis_g90 and genesis_g90_lateral_testing_ground_active()
+      kia_ev6_test_active = self.is_kia_ev6 and kia_ev6_lateral_testing_ground_active()
       volt_plexy_test_active = self.is_volt_cc and volt_plexy_lateral_testing_ground_active()
       friction_threshold = get_friction_threshold(CS.vEgo)
       friction_scale = 1.0
@@ -791,6 +894,10 @@ class LatControlTorque(LatControl):
         ff *= get_genesis_g90_ff_scale(setpoint, desired_lateral_jerk, CS.vEgo)
         friction_threshold = get_genesis_g90_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
         friction_scale = get_genesis_g90_friction_scale(CS.vEgo, setpoint, desired_lateral_jerk)
+      elif kia_ev6_test_active:
+        ff *= get_kia_ev6_ff_scale(setpoint, desired_lateral_jerk, CS.vEgo)
+        friction_threshold = get_kia_ev6_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
+        friction_scale = get_kia_ev6_friction_scale(CS.vEgo, setpoint, desired_lateral_jerk)
       elif volt_plexy_test_active:
         ff *= get_volt_plexy_ff_scale(setpoint, desired_lateral_jerk, CS.vEgo)
         friction_threshold = get_volt_plexy_friction_threshold(CS.vEgo, setpoint, desired_lateral_jerk)
