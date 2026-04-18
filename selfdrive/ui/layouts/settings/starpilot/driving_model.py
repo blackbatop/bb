@@ -889,11 +889,10 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
 
   def _show_selection_dialog(self, title: str, options: dict[str, str] | list[str], current_val: str, on_confirm: Callable, current_key: str = ""):
     if not options:
-      gui_app.set_modal_overlay(alert_dialog(tr("No options available.")))
+      gui_app.push_widget(alert_dialog(tr("No options available.")))
       return
 
     option_labels = list(options.values()) if isinstance(options, dict) else list(options)
-    dialog = MultiOptionDialog(title, option_labels, current_val)
 
     def _on_close(result):
       if result == DialogResult.CONFIRM and dialog.selection:
@@ -903,7 +902,8 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
         else:
           on_confirm(dialog.selection)
 
-    gui_app.set_modal_overlay(dialog, callback=_on_close)
+    dialog = MultiOptionDialog(title, option_labels, current_val, callback=_on_close)
+    gui_app.push_widget(dialog)
 
   def _is_download_active(self) -> bool:
     return bool(self._params_memory.get(MODEL_DOWNLOAD_PARAM, encoding="utf-8") or self._params_memory.get_bool(MODEL_DOWNLOAD_ALL_PARAM))
@@ -1080,10 +1080,10 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     selected_model = canonical_model_key(model_key)
     entry = self._catalog_entries.get(selected_model)
     if entry is None or not entry.installed:
-      gui_app.set_modal_overlay(alert_dialog(tr("Model is not available on this device.")))
+      gui_app.push_widget(alert_dialog(tr("Model is not available on this device.")))
       return False
     if self._params.get_bool("ModelRandomizer"):
-      gui_app.set_modal_overlay(alert_dialog(tr("Turn off Model Randomizer to choose a model manually.")))
+      gui_app.push_widget(alert_dialog(tr("Turn off Model Randomizer to choose a model manually.")))
       return False
     if selected_model == self._current_model_key:
       return True
@@ -1099,24 +1099,24 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     self._update_model_metadata()
     if ui_state.started:
       self._params.put_bool("OnroadCycleRequested", True)
-      gui_app.set_modal_overlay(alert_dialog(tr("Drive-cycle requested for immediate apply.")))
+      gui_app.push_widget(alert_dialog(tr("Drive-cycle requested for immediate apply.")))
     return True
 
   def start_download(self, model_key: str):
     self._update_model_metadata()
     if ui_state.started:
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot download models while driving.")))
+      gui_app.push_widget(alert_dialog(tr("Cannot download models while driving.")))
       return False
     if self._is_download_active():
-      gui_app.set_modal_overlay(alert_dialog(tr("A model download is already in progress.")))
+      gui_app.push_widget(alert_dialog(tr("A model download is already in progress.")))
       return False
 
     entry = self._catalog_entries.get(canonical_model_key(model_key))
     if entry is None:
-      gui_app.set_modal_overlay(alert_dialog(tr("Unknown model.")))
+      gui_app.push_widget(alert_dialog(tr("Unknown model.")))
       return False
     if entry.installed:
-      gui_app.set_modal_overlay(alert_dialog(tr("Model is already on this device.")))
+      gui_app.push_widget(alert_dialog(tr("Model is already on this device.")))
       return False
 
     self._params_memory.remove(CANCEL_DOWNLOAD_PARAM)
@@ -1128,10 +1128,10 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
   def download_all_missing(self):
     self._update_model_metadata()
     if ui_state.started:
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot download models while driving.")))
+      gui_app.push_widget(alert_dialog(tr("Cannot download models while driving.")))
       return False
     if self._is_download_active():
-      gui_app.set_modal_overlay(alert_dialog(tr("A model download is already in progress.")))
+      gui_app.push_widget(alert_dialog(tr("A model download is already in progress.")))
       return False
     if not self.available_entries():
       return False
@@ -1148,10 +1148,10 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
 
   def refresh_manifest(self):
     if ui_state.started:
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot refresh the model catalog while driving.")))
+      gui_app.push_widget(alert_dialog(tr("Cannot refresh the model catalog while driving.")))
       return False
     if self._is_download_active():
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot refresh the model catalog during an active download.")))
+      gui_app.push_widget(alert_dialog(tr("Cannot refresh the model catalog during an active download.")))
       return False
     self._fetch_manifest_async()
     return True
@@ -1161,16 +1161,16 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
     key = canonical_model_key(model_key)
     entry = self._catalog_entries.get(key)
     if entry is None:
-      gui_app.set_modal_overlay(alert_dialog(tr("Unknown model.")))
+      gui_app.push_widget(alert_dialog(tr("Unknown model.")))
       return False
     if ui_state.started:
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot delete model files while driving.")))
+      gui_app.push_widget(alert_dialog(tr("Cannot delete model files while driving.")))
       return False
     if self._is_download_active():
-      gui_app.set_modal_overlay(alert_dialog(tr("Cannot delete model files while a download is in progress.")))
+      gui_app.push_widget(alert_dialog(tr("Cannot delete model files while a download is in progress.")))
       return False
     if not self.is_model_removable(key):
-      gui_app.set_modal_overlay(alert_dialog(tr("This model is protected and cannot be removed.")))
+      gui_app.push_widget(alert_dialog(tr("This model is protected and cannot be removed.")))
       return False
 
     for file in self._model_dir.iterdir():
@@ -1203,7 +1203,7 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
       if res == DialogResult.CONFIRM:
         self._params.put_float("RecoveryPower", float(val))
 
-    gui_app.set_modal_overlay(
+    gui_app.push_widget(
       AetherSliderDialog(tr("Recovery Power"), 0.5, 2.0, 0.1, self._params.get_float("RecoveryPower"), on_close, unit="x", color="#597497")
     )
 
@@ -1212,14 +1212,12 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
       if res == DialogResult.CONFIRM:
         self._params.put_float("StopDistance", float(val))
 
-    gui_app.set_modal_overlay(
+    gui_app.push_widget(
       AetherSliderDialog(tr("Stop Distance"), 4.0, 10.0, 0.1, self._params.get_float("StopDistance"), on_close, unit="m", color="#597497")
     )
 
   def _on_blacklist_clicked(self):
     blacklisted = [m.strip() for m in (self._params.get("BlacklistedModels", encoding="utf-8") or "").split(",") if m.strip()]
-
-    dialog = MultiOptionDialog(tr("Manage Blacklist"), [tr("Add"), tr("Remove"), tr("Reset All")])
 
     def _on_close(result):
       if result != DialogResult.CONFIRM or not dialog.selection:
@@ -1238,19 +1236,20 @@ class StarPilotDrivingModelLayout(StarPilotPanel):
       elif dialog.selection == tr("Reset All"):
         self._params.remove("BlacklistedModels")
 
-    gui_app.set_modal_overlay(dialog, callback=_on_close)
+    dialog = MultiOptionDialog(tr("Manage Blacklist"), [tr("Add"), tr("Remove"), tr("Reset All")], callback=_on_close)
+    gui_app.push_widget(dialog)
 
   def _on_scores_clicked(self):
     scores_raw = self._params.get("ModelDrivesAndScores", encoding="utf-8") or ""
     if not scores_raw:
-      gui_app.set_modal_overlay(alert_dialog(tr("No model ratings found.")))
+      gui_app.push_widget(alert_dialog(tr("No model ratings found.")))
       return
     try:
       scores = json.loads(scores_raw)
       lines = [f"{key}: {value.get('Score', 0)}% ({value.get('Drives', 0)} drives)" for key, value in scores.items()]
-      gui_app.set_modal_overlay(ConfirmDialog("\n".join(lines), tr("Close"), rich=True))
+      gui_app.push_widget(ConfirmDialog("\n".join(lines), tr("Close"), rich=True))
     except Exception:
-      gui_app.set_modal_overlay(alert_dialog(tr("Unable to read model ratings.")))
+      gui_app.push_widget(alert_dialog(tr("Unable to read model ratings.")))
 
   def _on_model_randomizer_toggled(self, state: bool):
     self._params.put_bool("ModelRandomizer", state)
