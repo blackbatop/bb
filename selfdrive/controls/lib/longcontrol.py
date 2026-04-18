@@ -6,6 +6,7 @@ from openpilot.common.pid import PIDController
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.common.filter_simple import FirstOrderFilter
 from opendbc.car.gm.values import CarControllerParams, GMFlags
+from openpilot.starpilot.common.testing_grounds import testing_ground
 
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
 clip = np.clip
@@ -154,9 +155,9 @@ class LongControl:
     self.integrator_hold_frames = 0
 
   def _get_pedal_long_freeze(self, a_target, error, v_ego, accel_limits):
-    volt_long_handoff = self.is_volt
+    volt_test_tune_handoff = self.is_volt and testing_ground.use_2
 
-    if not self.is_gm_pedal_long and not volt_long_handoff:
+    if not self.is_gm_pedal_long and not volt_test_tune_handoff:
       self.last_a_target = a_target
       self.integrator_hold_frames = 0
       return False
@@ -183,8 +184,8 @@ class LongControl:
 
     return self.integrator_hold_frames > 0 or sat_pushing_lower or sat_pushing_upper
 
-  def _shape_volt_integrator(self, error, v_ego):
-    if not self.is_volt:
+  def _shape_volt_test_tune_integrator(self, error, v_ego):
+    if not (self.is_volt and testing_ground.use_2):
       return
 
     # Bleed stale I quickly when the target reverses against stored integrator.
@@ -223,7 +224,7 @@ class LongControl:
     else:  # LongCtrlState.pid
       error = a_target - CS.aEgo
       self.update_mpc_mode(self.experimental_mode)
-      self._shape_volt_integrator(error, CS.vEgo)
+      self._shape_volt_test_tune_integrator(error, CS.vEgo)
       feedforward = a_target * self.feedforward_gain
       freeze_integrator = self._get_pedal_long_freeze(a_target, error, CS.vEgo, accel_limits)
       raw_output_accel = self.pid.update(error, speed=CS.vEgo, feedforward=feedforward,

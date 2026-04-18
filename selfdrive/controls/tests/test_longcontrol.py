@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from cereal import car
 
+import openpilot.selfdrive.controls.lib.longcontrol as longcontrol
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl, LongCtrlState, long_control_state_trans
 
 
@@ -124,7 +125,7 @@ def test_starting_accel_obeys_a_target_cap_when_custom_profile_enabled():
   assert output_accel == 0.1
 
 
-def test_volt_pedal_handoff_freezes_integrator():
+def test_volt_testing_ground_handoff_freezes_integrator(monkeypatch):
   CP = car.CarParams.new_message()
   CP.brand = "gm"
   CP.enableGasInterceptorDEPRECATED = True
@@ -134,6 +135,8 @@ def test_volt_pedal_handoff_freezes_integrator():
   CP.longitudinalTuning.kiBP = [0.0]
   CP.longitudinalTuning.kiV = [0.03]
 
+  monkeypatch.setattr(longcontrol.testing_ground, "use_2", True, raising=False)
+
   lc = LongControl(CP)
   freeze = lc._get_pedal_long_freeze(a_target=0.7, error=0.7, v_ego=8.0, accel_limits=(-3.0, 2.0))
 
@@ -141,7 +144,7 @@ def test_volt_pedal_handoff_freezes_integrator():
   assert lc.integrator_hold_frames > 0
 
 
-def test_non_interceptor_volt_handoff_freezes_integrator():
+def test_non_interceptor_volt_testing_ground_handoff_freezes_integrator(monkeypatch):
   CP = car.CarParams.new_message()
   CP.brand = "gm"
   CP.enableGasInterceptorDEPRECATED = False
@@ -150,6 +153,8 @@ def test_non_interceptor_volt_handoff_freezes_integrator():
   CP.longitudinalTuning.kpV = [0.1]
   CP.longitudinalTuning.kiBP = [0.0]
   CP.longitudinalTuning.kiV = [0.03]
+
+  monkeypatch.setattr(longcontrol.testing_ground, "use_2", True, raising=False)
 
   lc = LongControl(CP)
   freeze = lc._get_pedal_long_freeze(a_target=0.7, error=0.7, v_ego=8.0, accel_limits=(-3.0, 2.0))

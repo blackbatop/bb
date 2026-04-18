@@ -5,7 +5,7 @@ import pytest
 from openpilot.starpilot.common import testing_grounds as tg
 
 
-@pytest.mark.parametrize("hidden_slot_id", [tg.TESTING_GROUND_2, tg.TESTING_GROUND_5])
+@pytest.mark.parametrize("hidden_slot_id", [tg.TESTING_GROUND_5])
 def test_hidden_testing_ground_selection_is_migrated(tmp_path, monkeypatch, hidden_slot_id):
   state_path = tmp_path / "slots.json"
   state_path.write_text(json.dumps({
@@ -28,11 +28,3 @@ def test_hidden_testing_ground_selection_is_migrated(tmp_path, monkeypatch, hidd
   payload = json.loads(state_path.read_text(encoding="utf-8"))
   assert payload["activeSlot"] == tg.TESTING_GROUND_1
   assert payload["activeVariant"] == tg.DEFAULT_TESTING_GROUND_VARIANT
-
-
-def test_retired_volt_b_selection_is_explicitly_migrated_to_default_a():
-  slot_id, variant, migrated = tg.migrate_testing_ground_selection(tg.TESTING_GROUND_2, tg.TESTING_GROUND_TEST_VARIANT, tg.TESTING_GROUND_1)
-
-  assert migrated
-  assert slot_id == tg.TESTING_GROUND_1
-  assert variant == tg.DEFAULT_TESTING_GROUND_VARIANT

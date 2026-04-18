@@ -40,9 +40,10 @@ TESTING_GROUNDS_SLOT_DEFINITIONS = (
   },
   {
     "id": TESTING_GROUND_2,
-    "name": "Unused",
-    "description": "",
-    "aLabel": "A",
+    "name": "Volt Long Tune",
+    "description": "Volt longitudinal tuning sandbox.",
+    "aLabel": "A - Installed tune",
+    "bLabel": "B - Firestar Tune",
   },
   {
     "id": TESTING_GROUND_3,
@@ -149,18 +150,6 @@ def _normalize_selection(slot_id, variant):
   return normalized_slot_id, _normalize_variant(variant, normalized_slot_id)
 
 
-def migrate_testing_ground_selection(slot_id, variant, default_slot_id=None):
-  normalized_slot_id = str(slot_id or "").strip()
-  normalized_variant = str(variant or "").strip().upper()
-  fallback_slot_id = str(default_slot_id or _DEFAULT_ACTIVE_SLOT).strip() or _DEFAULT_ACTIVE_SLOT
-
-  # Retire the Volt B sandbox cleanly when the tune graduates to default behavior.
-  if normalized_slot_id == TESTING_GROUND_2 and normalized_variant == TESTING_GROUND_TEST_VARIANT:
-    return fallback_slot_id, DEFAULT_TESTING_GROUND_VARIANT, True
-
-  return normalized_slot_id, normalized_variant, False
-
-
 def _write_testing_ground_selection(payload, slot_id, variant):
   normalized_payload = dict(payload) if isinstance(payload, dict) else {}
   normalized_payload["schemaVersion"] = TESTING_GROUNDS_SCHEMA_VERSION
@@ -209,12 +198,10 @@ def get_testing_ground_selection(refresh_interval_s=0.5):
 
     raw_slot_id = str(payload.get("activeSlot") or "").strip()
     raw_variant = payload.get("activeVariant")
-    migrated_slot_id, migrated_variant, selection_migrated = migrate_testing_ground_selection(raw_slot_id, raw_variant)
-    normalized_slot_id, normalized_variant = _normalize_selection(migrated_slot_id, migrated_variant)
+    normalized_slot_id, normalized_variant = _normalize_selection(raw_slot_id, raw_variant)
     raw_variant_text = str(raw_variant or "").strip().upper()
     if (
       payload.get("schemaVersion") != TESTING_GROUNDS_SCHEMA_VERSION or
-      selection_migrated or
       raw_slot_id != normalized_slot_id or
       raw_variant_text != normalized_variant
     ):

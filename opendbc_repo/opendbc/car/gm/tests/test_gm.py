@@ -4,6 +4,7 @@ from parameterized import parameterized
 
 from opendbc.car.car_helpers import interfaces
 from opendbc.car.gm.carcontroller import should_spoof_dash_speed
+import opendbc.car.gm.interface as gm_interface
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.gm.fingerprints import FINGERPRINTS
 from opendbc.car.gm.values import CAMERA_ACC_CAR, CAR, CC_ONLY_CAR, GM_RX_OFFSET
@@ -60,12 +61,14 @@ class TestGMInterface:
     ("interceptor", True),
     ("ascm_int", False),
   ])
-  def test_volt_default_long_tune_sets_nonzero_p_and_starting_state(self, _name, pedal_present):
+  def test_volt_testing_ground_tune_sets_nonzero_p_and_starting_state(self, _name, pedal_present, monkeypatch):
     CarInterface = interfaces[CAR.CHEVROLET_VOLT_ASCM]
     fingerprint = _empty_fingerprint()
     if pedal_present:
       fingerprint[0][0x201] = 8  # pedal detected
     fingerprint[0][0x2FF] = 8  # SASCM detected
+
+    monkeypatch.setattr(gm_interface.testing_ground, "use_2", True, raising=False)
 
     car_params = CarInterface.get_params(CAR.CHEVROLET_VOLT_ASCM, fingerprint, [], alpha_long=False, is_release=False, docs=False,
                                          starpilot_toggles=_test_starpilot_toggles())
