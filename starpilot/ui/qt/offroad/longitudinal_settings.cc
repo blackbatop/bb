@@ -842,8 +842,10 @@ void StarPilotLongitudinalPanel::updateMetric(bool metric, bool bootRun) {
 
   static std::map<float, QString> imperialDistanceLabels;
   static std::map<float, QString> imperialSpeedLabels;
+  static std::map<float, QString> imperialOffsetLabels;
   static std::map<float, QString> metricDistanceLabels;
   static std::map<float, QString> metricSpeedLabels;
+  static std::map<float, QString> metricOffsetLabels;
 
   static bool labelsInitialized = false;
   if (!labelsInitialized) {
@@ -854,6 +856,9 @@ void StarPilotLongitudinalPanel::updateMetric(bool metric, bool bootRun) {
     for (int i = 0; i <= 99; ++i) {
       imperialSpeedLabels[i] = i == 0 ? tr("Off") : QString::number(i) + tr(" mph");
     }
+    for (int i = -99; i <= 99; ++i) {
+      imperialOffsetLabels[i] = i == 0 ? tr("Off") : QString::number(i) + tr(" mph");
+    }
 
     for (int i = 0; i <= 3; ++i) {
       metricDistanceLabels[i] = i == 0 ? tr("Off") : i == 1 ? QString::number(i) + tr(" meter") : QString::number(i) + tr(" meters");
@@ -861,6 +866,9 @@ void StarPilotLongitudinalPanel::updateMetric(bool metric, bool bootRun) {
 
     for (int i = 0; i <= 150; ++i) {
       metricSpeedLabels[i] = i == 0 ? tr("Off") : QString::number(i) + tr(" km/h");
+    }
+    for (int i = -150; i <= 150; ++i) {
+      metricOffsetLabels[i] = i == 0 ? tr("Off") : QString::number(i) + tr(" km/h");
     }
 
     labelsInitialized = true;
@@ -911,13 +919,13 @@ void StarPilotLongitudinalPanel::updateMetric(bool metric, bool bootRun) {
     ceSpeedToggle->updateControl(0, 150, metricSpeedLabels);
     customCruiseToggle->updateControl(1, 150, metricSpeedLabels);
     customCruiseLongToggle->updateControl(1, 150, metricSpeedLabels);
-    offset1Toggle->updateControl(-150, 150, metricSpeedLabels);
-    offset2Toggle->updateControl(-150, 150, metricSpeedLabels);
-    offset3Toggle->updateControl(-150, 150, metricSpeedLabels);
-    offset4Toggle->updateControl(-150, 150, metricSpeedLabels);
-    offset5Toggle->updateControl(-150, 150, metricSpeedLabels);
-    offset6Toggle->updateControl(-150, 150, metricSpeedLabels);
-    offset7Toggle->updateControl(-150, 150, metricSpeedLabels);
+    offset1Toggle->updateControl(-150, 150, metricOffsetLabels);
+    offset2Toggle->updateControl(-150, 150, metricOffsetLabels);
+    offset3Toggle->updateControl(-150, 150, metricOffsetLabels);
+    offset4Toggle->updateControl(-150, 150, metricOffsetLabels);
+    offset5Toggle->updateControl(-150, 150, metricOffsetLabels);
+    offset6Toggle->updateControl(-150, 150, metricOffsetLabels);
+    offset7Toggle->updateControl(-150, 150, metricOffsetLabels);
     setSpeedOffsetToggle->updateControl(-150, 150, metricSpeedLabels);
   } else {
     offset1Toggle->setTitle(tr("Speed Offset (0–24 mph)"));
@@ -946,13 +954,13 @@ void StarPilotLongitudinalPanel::updateMetric(bool metric, bool bootRun) {
     ceSpeedToggle->updateControl(0, 99, imperialSpeedLabels);
     customCruiseToggle->updateControl(1, 99, imperialSpeedLabels);
     customCruiseLongToggle->updateControl(1, 99, imperialSpeedLabels);
-    offset1Toggle->updateControl(-99, 99, imperialSpeedLabels);
-    offset2Toggle->updateControl(-99, 99, imperialSpeedLabels);
-    offset3Toggle->updateControl(-99, 99, imperialSpeedLabels);
-    offset4Toggle->updateControl(-99, 99, imperialSpeedLabels);
-    offset5Toggle->updateControl(-99, 99, imperialSpeedLabels);
-    offset6Toggle->updateControl(-99, 99, imperialSpeedLabels);
-    offset7Toggle->updateControl(-99, 99, imperialSpeedLabels);
+    offset1Toggle->updateControl(-99, 99, imperialOffsetLabels);
+    offset2Toggle->updateControl(-99, 99, imperialOffsetLabels);
+    offset3Toggle->updateControl(-99, 99, imperialOffsetLabels);
+    offset4Toggle->updateControl(-99, 99, imperialOffsetLabels);
+    offset5Toggle->updateControl(-99, 99, imperialOffsetLabels);
+    offset6Toggle->updateControl(-99, 99, imperialOffsetLabels);
+    offset7Toggle->updateControl(-99, 99, imperialOffsetLabels);
     setSpeedOffsetToggle->updateControl(0, 99, imperialSpeedLabels);
   }
 }
