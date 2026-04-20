@@ -297,6 +297,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"HolidayThemes", {PERSISTENT, BOOL, "1", "0", 0}},
     {"HumanAcceleration", {PERSISTENT, BOOL, "0", "0", 2}},
     {"HumanFollowing", {PERSISTENT, BOOL, "0", "0", 2}},
+    {"CoastUpToLeads", {PERSISTENT, BOOL, "1", "1", 2}},
     {"HumanLaneChanges", {PERSISTENT, BOOL, "0", "0", 2}},
     {"IconPack", {PERSISTENT, STRING, "frog-animated", "stock", 0}},
     {"IconToDownload", {CLEAR_ON_MANAGER_START, STRING, "", ""}},

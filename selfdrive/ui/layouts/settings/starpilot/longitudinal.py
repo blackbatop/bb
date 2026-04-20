@@ -597,6 +597,15 @@ class StarPilotLongitudinalTuneLayout(StarPilotPanel):
         "visible": self._longitudinal_enabled,
       },
       {
+        "title": tr_noop("Coast Up To Leads"),
+        "desc": tr_noop("Allow openpilot to briefly coast toward far leads before applying normal throttle again."),
+        "type": "toggle",
+        "get_state": lambda: self._params.get_bool("CoastUpToLeads"),
+        "set_state": lambda s: self._params.put_bool("CoastUpToLeads", s),
+        "color": "#597497",
+        "visible": self._longitudinal_enabled,
+      },
+      {
         "title": tr_noop("Human-Like Lane Changes"),
         "desc": tr_noop("Use radar-informed behavior during lane changes when radar support is available."),
         "type": "toggle",

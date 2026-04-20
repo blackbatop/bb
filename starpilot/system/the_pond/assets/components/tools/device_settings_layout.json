@@ -968,6 +968,14 @@
         "parent_key": "LongitudinalTune"
       },
       {
+        "key": "CoastUpToLeads",
+        "label": "Coast Up To Leads",
+        "description": "Allow openpilot to briefly coast toward far leads before resuming normal throttle. Disable this if your vehicle shows gas/brake alternation while approaching distant traffic.",
+        "data_type": "bool",
+        "ui_type": "toggle",
+        "parent_key": "LongitudinalTune"
+      },
+      {
         "key": "HumanLaneChanges",
         "label": "Human-Like Lane Changes",
         "description": "Lane-change behavior that mimics human drivers by anticipating and tracking adjacent vehicles during lane changes.",
