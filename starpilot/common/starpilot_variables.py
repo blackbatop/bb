@@ -142,9 +142,11 @@ DEVELOPER_SIDEBAR_METRICS = {
   "LATERAL_STEERING_ANGLE": 10,
   "LATERAL_TORQUE_USED": 11,
   "LONGITUDINAL_ACTUATOR_ACCELERATION": 12,
-  "LONGITUDINAL_MPC_JERK_ACCELERATION": 13,
-  "LONGITUDINAL_MPC_JERK_DANGER_ZONE": 14,
-  "LONGITUDINAL_MPC_JERK_SPEED_CONTROL": 15,
+  "LONGITUDINAL_MPC_DANGER_FACTOR": 13,
+  "LONGITUDINAL_MPC_JERK_ACCELERATION": 14,
+  "LONGITUDINAL_MPC_JERK_DANGER_ZONE": 15,
+  "LONGITUDINAL_MPC_JERK_SPEED_CONTROL": 16,
+  "MODEL_NAME": 17,
 }
 
 DEVICE_SHUTDOWN_TIMES = {
@@ -822,6 +824,68 @@ class StarPilotVariables:
     toggle.personality_profile_via_lkas = toggle.openpilot_longitudinal and lkas_button_control == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
     toggle.switchback_mode_via_lkas = lkas_button_control == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
     toggle.traffic_mode_via_lkas = toggle.openpilot_longitudinal and lkas_button_control == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+
+    has_canfd_media_buttons = toggle.car_make == "hyundai" and bool(CP.flags & HyundaiFlags.CANFD)
+    mode_button_control = self.get_value("ModeButtonControl", cast=float, condition=has_canfd_media_buttons)
+    toggle.experimental_mode_via_mode = toggle.openpilot_longitudinal and mode_button_control == BUTTON_FUNCTIONS["EXPERIMENTAL_MODE"]
+    toggle.experimental_mode_via_press |= toggle.experimental_mode_via_mode
+    toggle.force_coast_via_mode = toggle.openpilot_longitudinal and mode_button_control == BUTTON_FUNCTIONS["FORCE_COAST"]
+    toggle.pause_lateral_via_mode = mode_button_control == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
+    toggle.pause_longitudinal_via_mode = toggle.openpilot_longitudinal and mode_button_control == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
+    toggle.personality_profile_via_mode = toggle.openpilot_longitudinal and mode_button_control == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_mode = mode_button_control == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
+    toggle.traffic_mode_via_mode = toggle.openpilot_longitudinal and mode_button_control == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+
+    mode_button_control_long = self.get_value("LongModeButtonControl", cast=float, condition=has_canfd_media_buttons)
+    toggle.experimental_mode_via_mode_long = toggle.openpilot_longitudinal and mode_button_control_long == BUTTON_FUNCTIONS["EXPERIMENTAL_MODE"]
+    toggle.experimental_mode_via_press |= toggle.experimental_mode_via_mode_long
+    toggle.force_coast_via_mode_long = toggle.openpilot_longitudinal and mode_button_control_long == BUTTON_FUNCTIONS["FORCE_COAST"]
+    toggle.pause_lateral_via_mode_long = mode_button_control_long == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
+    toggle.pause_longitudinal_via_mode_long = toggle.openpilot_longitudinal and mode_button_control_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
+    toggle.personality_profile_via_mode_long = toggle.openpilot_longitudinal and mode_button_control_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_mode_long = mode_button_control_long == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
+    toggle.traffic_mode_via_mode_long = toggle.openpilot_longitudinal and mode_button_control_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+
+    mode_button_control_very_long = self.get_value("VeryLongModeButtonControl", cast=float, condition=has_canfd_media_buttons)
+    toggle.experimental_mode_via_mode_very_long = toggle.openpilot_longitudinal and mode_button_control_very_long == BUTTON_FUNCTIONS["EXPERIMENTAL_MODE"]
+    toggle.experimental_mode_via_press |= toggle.experimental_mode_via_mode_very_long
+    toggle.force_coast_via_mode_very_long = toggle.openpilot_longitudinal and mode_button_control_very_long == BUTTON_FUNCTIONS["FORCE_COAST"]
+    toggle.pause_lateral_via_mode_very_long = mode_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
+    toggle.pause_longitudinal_via_mode_very_long = toggle.openpilot_longitudinal and mode_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
+    toggle.personality_profile_via_mode_very_long = toggle.openpilot_longitudinal and mode_button_control_very_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_mode_very_long = mode_button_control_very_long == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
+    toggle.traffic_mode_via_mode_very_long = toggle.openpilot_longitudinal and mode_button_control_very_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+
+    star_button_control = self.get_value("StarButtonControl", cast=float, condition=has_canfd_media_buttons)
+    toggle.experimental_mode_via_star = toggle.openpilot_longitudinal and star_button_control == BUTTON_FUNCTIONS["EXPERIMENTAL_MODE"]
+    toggle.experimental_mode_via_press |= toggle.experimental_mode_via_star
+    toggle.force_coast_via_star = toggle.openpilot_longitudinal and star_button_control == BUTTON_FUNCTIONS["FORCE_COAST"]
+    toggle.pause_lateral_via_star = star_button_control == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
+    toggle.pause_longitudinal_via_star = toggle.openpilot_longitudinal and star_button_control == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
+    toggle.personality_profile_via_star = toggle.openpilot_longitudinal and star_button_control == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_star = star_button_control == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
+    toggle.traffic_mode_via_star = toggle.openpilot_longitudinal and star_button_control == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+
+    star_button_control_long = self.get_value("LongStarButtonControl", cast=float, condition=has_canfd_media_buttons)
+    toggle.experimental_mode_via_star_long = toggle.openpilot_longitudinal and star_button_control_long == BUTTON_FUNCTIONS["EXPERIMENTAL_MODE"]
+    toggle.experimental_mode_via_press |= toggle.experimental_mode_via_star_long
+    toggle.force_coast_via_star_long = toggle.openpilot_longitudinal and star_button_control_long == BUTTON_FUNCTIONS["FORCE_COAST"]
+    toggle.pause_lateral_via_star_long = star_button_control_long == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
+    toggle.pause_longitudinal_via_star_long = toggle.openpilot_longitudinal and star_button_control_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
+    toggle.personality_profile_via_star_long = toggle.openpilot_longitudinal and star_button_control_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_star_long = star_button_control_long == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
+    toggle.traffic_mode_via_star_long = toggle.openpilot_longitudinal and star_button_control_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+
+    star_button_control_very_long = self.get_value("VeryLongStarButtonControl", cast=float, condition=has_canfd_media_buttons)
+    toggle.experimental_mode_via_star_very_long = toggle.openpilot_longitudinal and star_button_control_very_long == BUTTON_FUNCTIONS["EXPERIMENTAL_MODE"]
+    toggle.experimental_mode_via_press |= toggle.experimental_mode_via_star_very_long
+    toggle.force_coast_via_star_very_long = toggle.openpilot_longitudinal and star_button_control_very_long == BUTTON_FUNCTIONS["FORCE_COAST"]
+    toggle.pause_lateral_via_star_very_long = star_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LATERAL"]
+    toggle.pause_longitudinal_via_star_very_long = toggle.openpilot_longitudinal and star_button_control_very_long == BUTTON_FUNCTIONS["PAUSE_LONGITUDINAL"]
+    toggle.personality_profile_via_star_very_long = toggle.openpilot_longitudinal and star_button_control_very_long == BUTTON_FUNCTIONS["PERSONALITY_PROFILE"]
+    toggle.switchback_mode_via_star_very_long = star_button_control_very_long == BUTTON_FUNCTIONS["SWITCHBACK_MODE"]
+    toggle.traffic_mode_via_star_very_long = toggle.openpilot_longitudinal and star_button_control_very_long == BUTTON_FUNCTIONS["TRAFFIC_MODE"]
+    toggle.has_canfd_media_buttons = has_canfd_media_buttons
 
     toggle.lock_doors_timer = self.get_value("LockDoorsTimer", cast=float, condition=(toggle.car_make == "toyota"))
 

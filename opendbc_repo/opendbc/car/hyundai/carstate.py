@@ -42,6 +42,8 @@ class CarState(CarStateBase):
     self.cruise_buttons: deque = deque([Buttons.NONE] * PREV_BUTTON_SAMPLES, maxlen=PREV_BUTTON_SAMPLES)
     self.main_buttons: deque = deque([Buttons.NONE] * PREV_BUTTON_SAMPLES, maxlen=PREV_BUTTON_SAMPLES)
     self.lda_button = 0
+    self.mode_button = 0
+    self.custom_button = 0
 
     self.gear_msg_canfd = "ACCELERATOR" if CP.flags & HyundaiFlags.EV else \
                           "GEAR_ALT" if CP.flags & HyundaiFlags.CANFD_ALT_GEARS else \
@@ -287,7 +289,7 @@ class CarState(CarStateBase):
     # cruise state
     # CAN FD cars enable on main button press, set available if no TCS faults preventing engagement
     ret.cruiseState.available = cp.vl["TCS"]["ACCEnable"] == 0
-    if self.CP.openpilotLongitudinalControl:
+    if self.CP.openpilotLongitudinalControl and not self.CP.pcmCruise:
       # These are not used for engage/disengage since openpilot keeps track of state using the buttons
       ret.cruiseState.enabled = cp.vl["TCS"]["ACC_REQ"] == 1
       ret.cruiseState.standstill = False
@@ -328,19 +330,37 @@ class CarState(CarStateBase):
     fp_ret = custom.StarPilotCarState.new_message()
     fp_ret.dashboardSpeedLimit = calculate_canfd_speed_limit(self.CP, self.FPCP, cp, cp_cam, speed_factor)
 
+    if self.CP.flags & HyundaiFlags.EV:
+      drive_mode = cp.vl["DRIVE_MODE_EV"]["DRIVE_MODE"]
+      fp_ret.ecoGear = (drive_mode == 4)
+      fp_ret.sportGear = (drive_mode == 5)
+
+    self.mode_button = cp.vl["STEERING_WHEEL_MEDIA_BUTTONS"]["MODE_BUTTON"]
+    self.custom_button = cp.vl["STEERING_WHEEL_MEDIA_BUTTONS"]["CUSTOM_BUTTON"]
+    fp_ret.modePressed = bool(self.mode_button)
+    fp_ret.customPressed = bool(self.custom_button)
+
     return ret, fp_ret
 
   def get_can_parsers_canfd(self, CP):
     msgs = []
+    cam_msgs = []
     if not (CP.flags & HyundaiFlags.CANFD_ALT_BUTTONS):
       # TODO: this can be removed once we add dynamic support to vl_all
       msgs += [
         # this message is 50Hz but the ECU frequently stops transmitting for ~0.5s
         ("CRUISE_BUTTONS", 1)
       ]
+    if CP.flags & HyundaiFlags.CANFD_LKA_STEERING:
+      msgs.append(("FR_CMR_02_100ms", 10))
+    else:
+      cam_msgs.append(("FR_CMR_02_100ms", 0))  # optional: not all non-LKA CANFD cars have this on CAM bus
+    if CP.flags & HyundaiFlags.EV:
+      msgs.append(("DRIVE_MODE_EV", 10))
+    msgs.append(("STEERING_WHEEL_MEDIA_BUTTONS", 50))
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], msgs, CanBus(CP).ECAN),
-      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [], CanBus(CP).CAM),
+      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cam_msgs, CanBus(CP).CAM),
     }
 
   def get_can_parsers(self, CP):

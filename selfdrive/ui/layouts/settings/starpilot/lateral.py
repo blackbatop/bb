@@ -119,7 +119,7 @@ class StarPilotAlwaysOnLateralLayout(StarPilotPanel):
     super().__init__()
     self.CATEGORIES = [
       {"title": tr_noop("Always On Lateral"), "type": "toggle", "get_state": lambda: self._params.get_bool("AlwaysOnLateral"), "set_state": lambda x: self._on_reboot_toggle("AlwaysOnLateral", x), "icon": "toggle_icons/icon_always_on_lateral.png", "color": "#597497"},
-      {"title": tr_noop("Enable With LKAS"), "type": "toggle", "get_state": lambda: self._params.get_bool("AlwaysOnLateralLKAS"), "set_state": lambda x: self._params.put_bool("AlwaysOnLateralLKAS", x), "icon": "toggle_icons/icon_always_on_lateral.png", "color": "#597497", "visible": lambda: self._params.get_bool("AlwaysOnLateral")},
+      {"title": tr_noop("Enable With LKAS"), "type": "toggle", "get_state": lambda: self._params.get_bool("AlwaysOnLateralLKAS"), "set_state": lambda x: self._params.put_bool("AlwaysOnLateralLKAS", x), "icon": "toggle_icons/icon_always_on_lateral.png", "color": "#597497", "visible": lambda: self._params.get_bool("AlwaysOnLateral") and starpilot_state.car_state.lkasAllowedForAOL},
       {"title": tr_noop("Pause Below"), "type": "value", "get_value": lambda: f"{self._params.get_int('PauseAOLOnBrake')} mph", "on_click": lambda: self._show_speed_selector("PauseAOLOnBrake"), "icon": "toggle_icons/icon_always_on_lateral.png", "color": "#597497", "visible": lambda: self._params.get_bool("AlwaysOnLateral")},
     ]
     self._rebuild_grid()
