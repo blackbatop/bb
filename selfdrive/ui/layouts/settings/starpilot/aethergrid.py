@@ -4,7 +4,7 @@ import math
 import time
 import pyray as rl
 from collections.abc import Callable
-from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
+from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos, MouseEvent
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget, DialogResult
@@ -1352,3 +1352,117 @@ class TileGrid(Widget):
         tile = tiles_to_render[tile_idx]
         tile.render(rl.Rectangle(row_x + c * (row_tile_w + self._gap), rect.y + r * (tile_h + self._gap), row_tile_w, tile_h))
         tile_idx += 1
+
+class AetherContinuousSlider(Widget):
+  def __init__(self, min_val: float, max_val: float, step: float, current_val: float, on_change, title: str = "", unit: str = "", labels: dict | None = None, color: rl.Color | None = None):
+    super().__init__()
+    self.min_val = min_val
+    self.max_val = max_val
+    self.base_step = step
+    self.current_val = current_val
+    self.on_change = on_change
+    self.title = title
+    self.unit = unit
+    self.labels = labels or {}
+    self.color = color or rl.Color(54, 77, 239, 255)
+    
+    self._is_dragging = False
+    self._last_mouse_x = 0.0
+    self._smooth_value = current_val
+    self._font = gui_app.font(FontWeight.BOLD)
+
+  def _handle_mouse_press(self, mouse_pos: MousePos):
+    if rl.check_collision_point_rec(mouse_pos, self._rect):
+      self._is_dragging = True
+      self._last_mouse_x = mouse_pos.x
+      self._update_val_from_absolute(mouse_pos.x, self.base_step)
+
+  def _handle_mouse_release(self, mouse_pos: MousePos):
+    if self._is_dragging:
+      self._is_dragging = False
+
+  def _handle_mouse_event(self, mouse_event: MouseEvent):
+    if self._is_dragging:
+      dt = rl.get_frame_time()
+      dx = mouse_event.pos.x - self._last_mouse_x
+      self._last_mouse_x = mouse_event.pos.x
+      
+      velocity = abs(dx / max(dt, 0.001))
+      
+      if velocity > 1500:
+        step = self.base_step * 10
+      elif velocity > 500:
+        step = self.base_step * 5
+      else:
+        step = self.base_step
+        
+      self._update_val_from_absolute(mouse_event.pos.x, step)
+
+  def _update_val_from_absolute(self, mouse_x: float, step: float):
+    track_w = self._rect.width
+    if track_w <= 0: return
+    rel_x = max(0.0, min(1.0, (mouse_x - self._rect.x) / track_w))
+    val = self.min_val + rel_x * (self.max_val - self.min_val)
+    self._set_snapped_val(val, step)
+
+  def _set_snapped_val(self, val: float, step: float):
+    snapped = round((val - self.min_val) / step) * step + self.min_val
+    snapped = max(self.min_val, min(self.max_val, snapped))
+    if snapped != self.current_val:
+      self.current_val = snapped
+      self.on_change(self.current_val)
+
+  def _render(self, rect: rl.Rectangle):
+    self.set_rect(rect)
+    dt = rl.get_frame_time()
+    
+    self._smooth_value += (self.current_val - self._smooth_value) * (1 - math.exp(-dt / 0.060))
+    
+    rl.draw_rectangle_rounded(rect, 0.3, 16, rl.Color(35, 35, 40, 255))
+    
+    frac = max(0.0, min(1.0, (self._smooth_value - self.min_val) / (self.max_val - self.min_val)))
+    fill_w = frac * rect.width
+    if fill_w > 0:
+      fill_rect = rl.Rectangle(rect.x, rect.y, fill_w, rect.height)
+      rl.draw_rectangle_rounded(fill_rect, 0.3, 16, self.color)
+      
+      if fill_w > 16:
+        rl.draw_rectangle_rounded(rl.Rectangle(fill_rect.x, fill_rect.y, fill_rect.width - 2, fill_rect.height - 2), 0.3, 16, rl.Color(255, 255, 255, 30))
+      
+    title_y = rect.y + (rect.height - 24) / 2
+    rl.draw_text_ex(self._font, self.title, rl.Vector2(round(rect.x + 24), round(title_y)), 24, 0, rl.WHITE)
+
+    val_str = self.labels.get(self.current_val, f"{int(self.current_val)}{self.unit}")
+    ts = measure_text_cached(self._font, val_str, 24)
+    
+    text_color = rl.WHITE if frac < 0.85 else rl.Color(0, 0, 0, 180)
+    text_x = rect.x + rect.width - ts.x - 24
+    text_y = rect.y + (rect.height - ts.y) / 2
+    rl.draw_text_ex(self._font, val_str, rl.Vector2(round(text_x), round(text_y)), 24, 0, text_color)
+
+
+def draw_toggle_pill(rect: rl.Rectangle, is_on: bool, is_enabled: bool, title: str, status_str: str, hovered: bool, pressed: bool):
+  if not is_enabled:
+    bg_color = rl.Color(35, 35, 40, 150)
+  elif is_on:
+    bg_color = AetherListColors.PRIMARY
+  else:
+    bg_color = rl.Color(35, 35, 40, 255)
+    
+  rl.draw_rectangle_rounded(rect, 0.3, 16, bg_color)
+  
+  if (hovered or pressed) and is_enabled:
+    overlay = rl.Color(255, 255, 255, 14 if pressed else 8)
+    rl.draw_rectangle_rounded(rect, 0.3, 16, overlay)
+      
+  if is_on and is_enabled:
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width - 2, rect.height - 2), 0.3, 16, rl.Color(255, 255, 255, 30))
+      
+  font = gui_app.font(FontWeight.BOLD)
+  title_y = rect.y + (rect.height - 24) / 2
+  text_color = rl.WHITE if is_enabled else AetherListColors.MUTED
+  rl.draw_text_ex(font, title, rl.Vector2(round(rect.x + 24), round(title_y)), 24, 0, text_color)
+  
+  ts = measure_text_cached(font, status_str, 24)
+  status_x = rect.x + rect.width - ts.x - 24
+  rl.draw_text_ex(font, status_str, rl.Vector2(round(status_x), round(title_y)), 24, 0, text_color)
