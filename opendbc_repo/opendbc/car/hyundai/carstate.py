@@ -328,6 +328,11 @@ class CarState(CarStateBase):
     fp_ret = custom.StarPilotCarState.new_message()
     fp_ret.dashboardSpeedLimit = calculate_canfd_speed_limit(self.CP, self.FPCP, cp, cp_cam, speed_factor)
 
+    if self.CP.flags & HyundaiFlags.EV:
+      drive_mode = cp.vl["DRIVE_MODE_EV"]["DRIVE_MODE"]
+      fp_ret.ecoGear = (drive_mode == 4)
+      fp_ret.sportGear = (drive_mode == 5)
+
     return ret, fp_ret
 
   def get_can_parsers_canfd(self, CP):
@@ -343,6 +348,8 @@ class CarState(CarStateBase):
       msgs.append(("FR_CMR_02_100ms", 10))
     else:
       cam_msgs.append(("FR_CMR_02_100ms", 0))  # optional: not all non-LKA CANFD cars have this on CAM bus
+    if CP.flags & HyundaiFlags.EV:
+      msgs.append(("DRIVE_MODE_EV", 10))
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], msgs, CanBus(CP).ECAN),
       Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cam_msgs, CanBus(CP).CAM),
