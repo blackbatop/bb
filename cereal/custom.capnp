@@ -82,6 +82,8 @@ struct StarPilotCarState @0xf35cc4560bbf6ec2 {
   sportGear @13 :Bool;
   trafficModeEnabled @14 :Bool;
   gasStack @15 :Bool;  # Compatibility with older StarPilot payloads
+  modePressed @16 :Bool;
+  customPressed @17 :Bool;
 }
 
 struct StarPilotDeviceState @0xda96579883444c35 {

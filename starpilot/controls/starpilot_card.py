@@ -25,6 +25,10 @@ class StarPilotCard:
     self.decel_pressed = False
     self.distancePressed_previously = False
     self.force_coast = False
+    self.modePressed_previously = False
+    self.mode_counter = 0
+    self.customPressed_previously = False
+    self.custom_counter = 0
     self.pause_lateral = False
     self.pause_longitudinal = False
     self.switchback_mode_enabled = self.params_memory.get_bool("SwitchbackModeEnabled")
@@ -119,6 +123,35 @@ class StarPilotCard:
 
     if any(be.pressed and be.type == ButtonType.lkas for be in carState.buttonEvents):
       self.handle_button_event("lkas", sm, starpilot_toggles)
+
+    if getattr(starpilot_toggles, "has_canfd_media_buttons", False):
+      if starpilotCarState.modePressed:
+        self.mode_counter += 1
+      elif not self.modePressed_previously:
+        self.mode_counter = 0
+      self.modePressed_previously = starpilotCarState.modePressed
+
+      if not starpilotCarState.modePressed and 1 <= self.mode_counter < self.long_press_threshold:
+        self.handle_button_event("mode", sm, starpilot_toggles)
+      elif self.mode_counter == self.long_press_threshold:
+        self.handle_button_event("mode_long", sm, starpilot_toggles)
+      elif self.mode_counter == self.very_long_press_threshold:
+        self.handle_button_event("mode_long", sm, starpilot_toggles)
+        self.handle_button_event("mode_very_long", sm, starpilot_toggles)
+
+      if starpilotCarState.customPressed:
+        self.custom_counter += 1
+      elif not self.customPressed_previously:
+        self.custom_counter = 0
+      self.customPressed_previously = starpilotCarState.customPressed
+
+      if not starpilotCarState.customPressed and 1 <= self.custom_counter < self.long_press_threshold:
+        self.handle_button_event("star", sm, starpilot_toggles)
+      elif self.custom_counter == self.long_press_threshold:
+        self.handle_button_event("star_long", sm, starpilot_toggles)
+      elif self.custom_counter == self.very_long_press_threshold:
+        self.handle_button_event("star_long", sm, starpilot_toggles)
+        self.handle_button_event("star_very_long", sm, starpilot_toggles)
 
     self.force_coast &= not (carState.brakePressed or carState.gasPressed)
 

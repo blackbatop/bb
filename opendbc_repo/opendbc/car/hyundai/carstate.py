@@ -42,6 +42,8 @@ class CarState(CarStateBase):
     self.cruise_buttons: deque = deque([Buttons.NONE] * PREV_BUTTON_SAMPLES, maxlen=PREV_BUTTON_SAMPLES)
     self.main_buttons: deque = deque([Buttons.NONE] * PREV_BUTTON_SAMPLES, maxlen=PREV_BUTTON_SAMPLES)
     self.lda_button = 0
+    self.mode_button = 0
+    self.custom_button = 0
 
     self.gear_msg_canfd = "ACCELERATOR" if CP.flags & HyundaiFlags.EV else \
                           "GEAR_ALT" if CP.flags & HyundaiFlags.CANFD_ALT_GEARS else \
@@ -333,6 +335,11 @@ class CarState(CarStateBase):
       fp_ret.ecoGear = (drive_mode == 4)
       fp_ret.sportGear = (drive_mode == 5)
 
+    self.mode_button = cp.vl["STEERING_WHEEL_MEDIA_BUTTONS"]["MODE_BUTTON"]
+    self.custom_button = cp.vl["STEERING_WHEEL_MEDIA_BUTTONS"]["CUSTOM_BUTTON"]
+    fp_ret.modePressed = bool(self.mode_button)
+    fp_ret.customPressed = bool(self.custom_button)
+
     return ret, fp_ret
 
   def get_can_parsers_canfd(self, CP):
@@ -350,6 +357,7 @@ class CarState(CarStateBase):
       cam_msgs.append(("FR_CMR_02_100ms", 0))  # optional: not all non-LKA CANFD cars have this on CAM bus
     if CP.flags & HyundaiFlags.EV:
       msgs.append(("DRIVE_MODE_EV", 10))
+    msgs.append(("STEERING_WHEEL_MEDIA_BUTTONS", 50))
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], msgs, CanBus(CP).ECAN),
       Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cam_msgs, CanBus(CP).CAM),

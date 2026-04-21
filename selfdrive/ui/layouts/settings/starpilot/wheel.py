@@ -62,6 +62,54 @@ class StarPilotWheelLayout(StarPilotPanel):
         "key": "LKASButtonControl",
         "color": "#64748B",
       },
+      {
+        "title": tr_noop("Mode Button"),
+        "type": "value",
+        "get_value": lambda: self._get_action_name("ModeButtonControl"),
+        "on_click": lambda: self._show_action_picker("ModeButtonControl"),
+        "key": "ModeButtonControl",
+        "color": "#64748B",
+      },
+      {
+        "title": tr_noop("Mode (Long Press)"),
+        "type": "value",
+        "get_value": lambda: self._get_action_name("LongModeButtonControl"),
+        "on_click": lambda: self._show_action_picker("LongModeButtonControl"),
+        "key": "LongModeButtonControl",
+        "color": "#64748B",
+      },
+      {
+        "title": tr_noop("Mode (Very Long)"),
+        "type": "value",
+        "get_value": lambda: self._get_action_name("VeryLongModeButtonControl"),
+        "on_click": lambda: self._show_action_picker("VeryLongModeButtonControl"),
+        "key": "VeryLongModeButtonControl",
+        "color": "#64748B",
+      },
+      {
+        "title": tr_noop("Star Button"),
+        "type": "value",
+        "get_value": lambda: self._get_action_name("StarButtonControl"),
+        "on_click": lambda: self._show_action_picker("StarButtonControl"),
+        "key": "StarButtonControl",
+        "color": "#64748B",
+      },
+      {
+        "title": tr_noop("Star (Long Press)"),
+        "type": "value",
+        "get_value": lambda: self._get_action_name("LongStarButtonControl"),
+        "on_click": lambda: self._show_action_picker("LongStarButtonControl"),
+        "key": "LongStarButtonControl",
+        "color": "#64748B",
+      },
+      {
+        "title": tr_noop("Star (Very Long)"),
+        "type": "value",
+        "get_value": lambda: self._get_action_name("VeryLongStarButtonControl"),
+        "on_click": lambda: self._show_action_picker("VeryLongStarButtonControl"),
+        "key": "VeryLongStarButtonControl",
+        "color": "#64748B",
+      },
     ]
     self._rebuild_grid()
 
@@ -131,6 +179,9 @@ class StarPilotWheelLayout(StarPilotPanel):
       visible = True
       if key == "LKASButtonControl":
         visible &= not cs.isSubaru
+      if key in ("ModeButtonControl", "LongModeButtonControl", "VeryLongModeButtonControl",
+                 "StarButtonControl", "LongStarButtonControl", "VeryLongStarButtonControl"):
+        visible &= cs.isHKGCanFd
       if not visible:
         continue
       tile_type = cat.get("type", "hub")
