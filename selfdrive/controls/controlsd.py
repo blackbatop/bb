@@ -136,7 +136,10 @@ class Controls:
                                       CS.steerFaultTemporary, CS.steerFaultPermanent,
                                       standstill, self.CP.steerAtStandstill,
                                       self.sm['starpilotPlan'].lateralCheck)
-    CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and not self.sm['starpilotCarState'].pauseLongitudinal and self.CP.openpilotLongitudinalControl
+    # EcuDisableFailed is set when car started in READY mode (ECU disable was rejected)
+    # Disable longitudinal so stock ACC works instead
+    ecu_disable_failed = self.params.get_bool("EcuDisableFailed")
+    CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and not self.sm['starpilotCarState'].pauseLongitudinal and self.CP.openpilotLongitudinalControl and not ecu_disable_failed
 
     actuators = CC.actuators
     actuators.longControlState = self.LoC.long_control_state
