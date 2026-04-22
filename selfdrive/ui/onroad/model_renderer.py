@@ -19,9 +19,11 @@ MIN_DRAW_DISTANCE = 10.0
 MAX_DRAW_DISTANCE = 100.0
 RAINBOW_GRADIENT_COLOR_COUNT = 19
 RAINBOW_SCROLL_SPEED_DEG_PER_SEC = 60.0
-ACCEL_PATH_MIN_LIGHTNESS = 0.78
-ACCEL_PATH_MIN_SATURATION = 0.50
 STOCK_LANE_LINES_COLOR = rl.Color(255, 255, 255, 255)
+DEFAULT_LANE_LINES_WIDTH = 4.0
+DEFAULT_PATH_EDGE_WIDTH = 20.0
+DEFAULT_PATH_WIDTH = 6.1
+DEFAULT_ROAD_EDGES_WIDTH = 2.0
 
 THROTTLE_COLORS = [
   rl.Color(13, 248, 122, 102),   # HSLF(148/360, 0.94, 0.51, 0.4)
@@ -34,7 +36,6 @@ NO_THROTTLE_COLORS = [
   rl.Color(242, 242, 242, 89),  # HSLF(112/360, 0.0, 0.95, 0.35)
   rl.Color(242, 242, 242, 0),   # HSLF(112/360, 0.0, 0.95, 0.0)
 ]
-
 
 @dataclass
 class ModelPoints:
@@ -189,16 +190,15 @@ class ModelRenderer(Widget):
   def _update_model(self, lead, path_x_array):
     """Update model visualization data based on model message"""
     model_ui_enabled = self._params.get_bool('ModelUI', default=True)
-    if model_ui_enabled:
-      path_width = self._path_width_to_half_m(self._params.get_float('PathWidth', return_default=True, default=6.1))
-      lane_line_width_m = self._small_distance_to_half_m(self._params.get_float('LaneLinesWidth', return_default=True, default=4.0))
-      road_edge_width_m = self._small_distance_to_half_m(self._params.get_float('RoadEdgesWidth', return_default=True, default=2.0))
-      path_edge_width_pct = np.clip(self._params.get_float('PathEdgeWidth', return_default=True, default=20.0) / 100.0, 0.0, 1.0)
-    else:
-      path_width = 0.9
-      lane_line_width_m = 0.025
-      road_edge_width_m = 0.025
-      path_edge_width_pct = 0.0
+    custom_path_width = model_ui_enabled and self._param_float_changed('PathWidth', DEFAULT_PATH_WIDTH)
+    custom_lane_line_width = model_ui_enabled and self._param_float_changed('LaneLinesWidth', DEFAULT_LANE_LINES_WIDTH)
+    custom_road_edge_width = model_ui_enabled and self._param_float_changed('RoadEdgesWidth', DEFAULT_ROAD_EDGES_WIDTH)
+    custom_path_edge_width = model_ui_enabled and self._param_float_changed('PathEdgeWidth', DEFAULT_PATH_EDGE_WIDTH)
+
+    path_width = self._path_width_to_half_m(self._params.get_float('PathWidth', default=DEFAULT_PATH_WIDTH)) if custom_path_width else 0.9
+    lane_line_width_m = self._small_distance_to_half_m(self._params.get_float('LaneLinesWidth', default=DEFAULT_LANE_LINES_WIDTH)) if custom_lane_line_width else 0.025
+    road_edge_width_m = self._small_distance_to_half_m(self._params.get_float('RoadEdgesWidth', default=DEFAULT_ROAD_EDGES_WIDTH)) if custom_road_edge_width else 0.025
+    path_edge_width_pct = np.clip(self._params.get_float('PathEdgeWidth', default=DEFAULT_PATH_EDGE_WIDTH) / 100.0, 0.0, 1.0) if custom_path_edge_width else 0.0
 
     # Dynamic path width
     if model_ui_enabled and self._params.get_bool('DynamicPathWidth', default=False):
@@ -246,17 +246,15 @@ class ModelRenderer(Widget):
   def _update_experimental_gradient(self):
     """Pre-calculate experimental mode gradient colors"""
     use_rainbow = self._params.get_bool('RainbowPath', default=False)
-    use_acceleration = not use_rainbow and (self._experimental_mode or self._params.get_bool('AccelerationPath', default=True))
-
-    if not use_acceleration and not use_rainbow:
-      return
-
-    max_len = min(len(self._path.projected_points) // 2, len(self._acceleration_x))
     if use_rainbow:
       gradient_bottom, gradient_top = self._get_visible_gradient_bounds()
       self._exp_gradient = self._build_rainbow_gradient(gradient_bottom, gradient_top)
       return
 
+    if not self._experimental_mode or not self._params.get_bool('AccelerationPath', default=True):
+      return
+
+    max_len = min(len(self._path.projected_points) // 2, len(self._acceleration_x))
     segment_colors = []
     gradient_stops = []
 
@@ -273,9 +271,9 @@ class ModelRenderer(Widget):
 
       # speed up: 120, slow down: 0
       path_hue = np.clip(60 + self._acceleration_x[i] * 35, 0, 120)
-      accel_magnitude = np.clip(abs(self._acceleration_x[i]) * 1.5, 0.0, 1.0)
-      saturation = np.interp(accel_magnitude, [0.0, 1.0], [ACCEL_PATH_MIN_SATURATION, 1.0])
-      lightness = np.interp(accel_magnitude, [0.0, 1.0], [ACCEL_PATH_MIN_LIGHTNESS, 0.62])
+
+      saturation = min(abs(self._acceleration_x[i] * 1.5), 1)
+      lightness = np.interp(saturation, [0.0, 1.0], [0.95, 0.62])
       alpha = np.interp(lin_grad_point, [0.75 / 2.0, 0.75], [0.4, 0.0])
 
       # Use HSL to RGB conversion
@@ -387,14 +385,28 @@ class ModelRenderer(Widget):
 
     use_rainbow = self._params.get_bool('RainbowPath', default=False)
     use_accel_path = not use_rainbow and self._params.get_bool('AccelerationPath', default=True)
-    path_override = get_param_color(self._params, 'PathColor', 255)
-    custom_theme_selected = (self._params.get('ColorScheme', encoding='utf-8', default='stock') or 'stock').lower() != 'stock'
-    if use_rainbow or self._experimental_mode or use_accel_path:
+    if use_rainbow:
       if len(self._exp_gradient.colors) > 1:
         draw_polygon(self._rect, self._path.projected_points, gradient=self._exp_gradient)
       else:
-        draw_polygon(self._rect, self._path.projected_points, rl.Color(255, 255, 255, 30))
-    elif path_override is not None or custom_theme_selected:
+        draw_polygon(self._rect, self._path.projected_points, rl.Color(48, 255, 156, 90))
+    elif use_accel_path:
+      if self._experimental_mode:
+        if len(self._exp_gradient.colors) > 1:
+          draw_polygon(self._rect, self._path.projected_points, gradient=self._exp_gradient)
+        else:
+          draw_polygon(self._rect, self._path.projected_points, rl.Color(255, 255, 255, 30))
+      else:
+        blend_factor = round(self._blend_filter.x * 100) / 100
+        blended_colors = self._blend_colors(NO_THROTTLE_COLORS, THROTTLE_COLORS, blend_factor)
+        gradient = Gradient(
+          start=(0.0, 1.0),
+          end=(0.0, 0.0),
+          colors=blended_colors,
+          stops=[0.0, 0.5, 1.0],
+        )
+        draw_polygon(self._rect, self._path.projected_points, gradient=gradient)
+    else:
       path_color = get_visual_color(self._params, "PathColor", "Path", rl.Color(48, 255, 156, 255))
       gradient = Gradient(
         start=(0.0, 1.0),
@@ -404,17 +416,6 @@ class ModelRenderer(Widget):
           with_alpha(path_color, int(path_color.a * 0.55)),
           with_alpha(path_color, int(path_color.a * 0.10)),
         ],
-        stops=[0.0, 0.5, 1.0],
-      )
-      draw_polygon(self._rect, self._path.projected_points, gradient=gradient)
-    else:
-      # Blend throttle/no throttle colors based on transition
-      blend_factor = round(self._blend_filter.x * 100) / 100
-      blended_colors = self._blend_colors(NO_THROTTLE_COLORS, THROTTLE_COLORS, blend_factor)
-      gradient = Gradient(
-        start=(0.0, 1.0),  # Bottom of path
-        end=(0.0, 0.0),  # Top of path
-        colors=blended_colors,
         stops=[0.0, 0.5, 1.0],
       )
       draw_polygon(self._rect, self._path.projected_points, gradient=gradient)
@@ -682,6 +683,15 @@ class ModelRenderer(Widget):
     if self._params.get_bool("IsMetric"):
       return value / 2.0
     return value * CV.FOOT_TO_METER / 2.0
+
+  def _param_float_changed(self, key: str, default: float) -> bool:
+    value = self._params.get(key, encoding="utf-8")
+    if value in (None, ""):
+      return False
+    try:
+      return not np.isclose(float(value), default)
+    except (TypeError, ValueError):
+      return False
 
   @staticmethod
   def _blend_colors(begin_colors, end_colors, t):
