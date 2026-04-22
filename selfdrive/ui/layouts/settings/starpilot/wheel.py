@@ -179,9 +179,10 @@ class StarPilotWheelLayout(StarPilotPanel):
       visible = True
       if key == "LKASButtonControl":
         visible &= not cs.isSubaru
+        visible &= not (cs.lkasAllowedForAOL and self._params.get_bool("AlwaysOnLateral") and self._params.get_bool("AlwaysOnLateralLKAS"))
       if key in ("ModeButtonControl", "LongModeButtonControl", "VeryLongModeButtonControl",
                  "StarButtonControl", "LongStarButtonControl", "VeryLongStarButtonControl"):
-        visible &= cs.isHKGCanFd
+        visible &= cs.hasModeStarButtons
       if not visible:
         continue
       tile_type = cat.get("type", "hub")

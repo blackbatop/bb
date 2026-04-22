@@ -39,6 +39,7 @@ class StarPilotCarState:
     # ========== Device/Car State ==========
     isFrogsGoMoo: bool = False
     hasPCMCruise: bool = False
+    hasModeStarButtons: bool = False
     lkasAllowedForAOL: bool = False
     openpilotLongitudinalControlDisabled: bool = False
     hasAlphaLongitudinal: bool = False
@@ -82,6 +83,7 @@ class StarPilotState:
         if not fallback_model:
             fallback_model = "CHEVROLET_BOLT_ACC_2022_2023"
 
+        self.car_state.hasModeStarButtons = starpilot_toggles.get("has_canfd_media_buttons", False)
         self.car_state.hasPedal = starpilot_toggles.get("has_pedal", True)
         self.car_state.hasSASCM = starpilot_toggles.get("has_sascm", False)
         self.car_state.hasSDSU = starpilot_toggles.get("has_sdsu", False)
@@ -157,6 +159,7 @@ class StarPilotState:
             self.car_state.isTSK = bool(self._safe_get(CP, "secOcRequired", False))
             self.car_state.isVolt = car_fingerprint.startswith("CHEVROLET_VOLT")
             
+            self.car_state.hasModeStarButtons = starpilot_toggles.get("has_canfd_media_buttons", False)
             self.car_state.lkasAllowedForAOL = starpilot_toggles.get("lkas_allowed_for_aol", False)
             self.car_state.longitudinalActuatorDelay = float(self._safe_get(CP, "longitudinalActuatorDelay", self.car_state.longitudinalActuatorDelay))
             self.car_state.startAccel = float(self._safe_get(CP, "startAccel", self.car_state.startAccel))
