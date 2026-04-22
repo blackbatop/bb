@@ -156,6 +156,7 @@ class StarPilotCard:
     self.force_coast &= not (carState.brakePressed or carState.gasPressed)
 
     starpilotCarState.accelPressed = self.accel_pressed
+    starpilotCarState.alwaysOnLateralAllowed = self.always_on_lateral_allowed
     starpilotCarState.alwaysOnLateralEnabled = self.always_on_lateral_enabled
     starpilotCarState.decelPressed = self.decel_pressed
     starpilotCarState.distanceLongPressed = self.very_long_press_threshold > self.gap_counter >= self.long_press_threshold
