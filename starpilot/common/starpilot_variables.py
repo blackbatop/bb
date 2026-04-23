@@ -809,6 +809,22 @@ class StarPilotVariables:
     toggle.nudgeless = self.get_value("NudgelessLaneChange", condition=toggle.lane_changes)
     toggle.one_lane_change = self.get_value("OneLaneChange", condition=toggle.lane_changes)
 
+    # Lane change pace: 1 = smoothest (~8 s target), 10 = stock (no clamp applied)
+    # Factors are derived from a sinusoidal lane-change profile: a = pi^2 * W / T^2, j = pi^3 * W / T^3.
+    # 1.3x headroom keeps the controller off the ceiling mid-maneuver.
+    pace = self.get_value("LaneChangeSmoothing", cast=int, condition=toggle.lane_changes)
+    if pace == 0:
+      pace = 10
+    pace = max(1, min(10, pace))
+    lane_w = 3.5
+    t_target = 3.0 + (10 - pace) * 5.0 / 9.0
+    a_req = (math.pi ** 2) * lane_w / (t_target ** 2)
+    j_req = (math.pi ** 3) * lane_w / (t_target ** 3)
+    toggle.lane_change_pace = pace
+    toggle.lane_change_lat_accel_factor = min(1.0, a_req * 1.3 / 3.0)
+    toggle.lane_change_jerk_factor = min(1.0, j_req * 1.3 / 5.0)
+    toggle.lane_change_time_max = 10.0 + (10 - pace) * 2.0 / 9.0
+
     lateral_tuning = self.get_value("LateralTune")
     toggle.force_torque_controller = self.get_value("ForceTorqueController", condition=lateral_tuning and not is_torque_car and not is_angle_car)
     toggle.nnff = self.get_value("NNFF", condition=lateral_tuning and has_nnff and not is_angle_car)
