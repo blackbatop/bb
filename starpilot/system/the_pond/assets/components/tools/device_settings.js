@@ -705,8 +705,12 @@ function toggleManage(key) {
 
 function matchesFilter(p) {
   if (!state.filter) return true
+  if (isGroupParam(p)) return false
   const q = state.filter.toLowerCase()
-  return p.label.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)
+  const label = String(p.label || "").toLowerCase()
+  const key = String(p.key || "").toLowerCase()
+  const description = String(p.description || "").toLowerCase()
+  return label.includes(q) || key.includes(q) || description.includes(q)
 }
 
 function clearSearchFilter() {
