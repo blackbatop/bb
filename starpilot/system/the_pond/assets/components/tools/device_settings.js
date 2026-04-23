@@ -792,7 +792,7 @@ function renderSettingRow(p) {
                     min="${bounds.min}"
                     max="${bounds.max}"
                     step="${bounds.step}"
-                    ?disabled="${updating}"
+                    disabled="${() => updating}"
                     value="${() => formatNumericForInput(resolveCurrentNumericValue(p, numericBounds(p)), precision)}"
                     @keydown="${(e) => {
                       if (e.key !== "Enter") return
@@ -801,7 +801,7 @@ function renderSettingRow(p) {
                     }}" />
                   <button
                     class="ds-apply-btn"
-                    ?disabled="${updating}"
+                    disabled="${() => updating}"
                     @click="${() => applyManualNumericParam(p)}">Apply</button>
                 </div>
                 <button
@@ -823,7 +823,7 @@ function renderSettingRow(p) {
         class="ds-select"
         id="ds-${p.key}"
         data-endpoint="${p.options_endpoint || ""}"
-        ?disabled="${isLocked}"
+        disabled="${() => isLocked}"
         @change="${() => updateParam(p.key, "dropdown")}">
         <option value="">Loading...</option>
       </select>
@@ -835,12 +835,12 @@ function renderSettingRow(p) {
           type="color"
           class="ds-color"
           id="ds-${p.key}"
-          ?disabled="${isLocked}"
+          disabled="${() => isLocked}"
           value="${() => resolveColorInputValue(p)}"
           @change="${() => updateParam(p.key, "color")}" />
         <button
           class="ds-reset-btn"
-          ?disabled="${() => isLocked || isStockColorValue(state.values[p.key])}"
+          disabled="${() => isLocked || isStockColorValue(state.values[p.key])}"
           @click="${() => resetColorParam(p)}">Stock</button>
       </div>
     `
