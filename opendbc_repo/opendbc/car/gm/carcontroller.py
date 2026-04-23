@@ -53,6 +53,15 @@ def should_spoof_dash_speed(CP, starpilot_toggles):
   return True
 
 
+def should_send_acc_dashboard_status(CP, dash_speed_spoof_active):
+  status_car = CP.carFingerprint not in CC_ONLY_CAR or CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL
+  volt_camera_no_camera = (
+    CP.carFingerprint == CAR.CHEVROLET_VOLT_CAMERA and
+    bool(getattr(CP, "flags", 0) & GMFlags.NO_CAMERA.value)
+  )
+  return status_car and (dash_speed_spoof_active or volt_camera_no_camera)
+
+
 ECM_CRUISE_SPOOF_CARS = {
   CAR.CHEVROLET_BOLT_CC_2017,
   CAR.CHEVROLET_BOLT_CC_2018_2021,
@@ -556,8 +565,7 @@ class CarController(CarControllerBase):
           can_sends.append(gmcan.create_friction_brake_command(self.packer_ch, friction_brake_bus, self.apply_brake,
                                                              idx, CC.enabled, near_stop, at_full_stop, self.CP))
 
-        is_bolt_acc_pedal = self.CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL
-        if dash_speed_spoof_active and (self.CP.carFingerprint not in CC_ONLY_CAR or is_bolt_acc_pedal):
+        if should_send_acc_dashboard_status(self.CP, dash_speed_spoof_active):
           send_fcw = hud_alert == VisualAlert.fcw
           can_sends.append(gmcan.create_acc_dashboard_command(self.packer_pt, CanBus.POWERTRAIN, CC.enabled,
                                                               hud_v_cruise * CV.MS_TO_KPH, hud_control, send_fcw))
