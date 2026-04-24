@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import cereal.messaging as messaging
-
 from opendbc.safety import ALTERNATIVE_EXPERIENCE
 from openpilot.common.params import Params
 from openpilot.selfdrive.car.cruise import CRUISE_LONG_PRESS, ButtonType
@@ -20,7 +18,6 @@ class StarPilotCard:
 
     self.params = Params(return_defaults=True)
     self.params_memory = Params(memory=True)
-    self.pm = messaging.PubMaster(["userBookmark"])
 
     self.accel_pressed = False
     self.always_on_lateral_allowed = False
@@ -66,8 +63,8 @@ class StarPilotCard:
       self.traffic_mode_enabled = not self.traffic_mode_enabled
 
   def handle_bookmark(self):
-    msg = messaging.new_message("userBookmark", valid=True)
-    self.pm.send("userBookmark", msg)
+    counter = self.params_memory.get_int("WheelButtonBookmarkCounter")
+    self.params_memory.put_int("WheelButtonBookmarkCounter", counter + 1)
 
   def handle_experimental_mode(self, sm, starpilot_toggles):
     if getattr(starpilot_toggles, "safe_mode", False):

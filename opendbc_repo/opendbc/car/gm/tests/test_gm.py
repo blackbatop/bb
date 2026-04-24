@@ -94,6 +94,20 @@ class TestGMInterface:
     assert car_params.flags & GMFlags.NO_CAMERA.value
     assert car_params.safetyConfigs[0].safetyParam & GMSafetyFlags.FLAG_GM_NO_CAMERA.value
 
+  def test_volt_gateway_without_accel_pos_uses_brake_pedal_message(self):
+    CarInterface = interfaces[CAR.CHEVROLET_VOLT]
+    fingerprint = _empty_fingerprint()
+    fingerprint[0][0xF1] = 6
+
+    car_params = CarInterface.get_params(CAR.CHEVROLET_VOLT, fingerprint, [], alpha_long=False, is_release=False, docs=False,
+                                         starpilot_toggles=_test_starpilot_toggles())
+
+    assert car_params.flags & GMFlags.NO_ACCELERATOR_POS_MSG.value
+
+    pt_parser = CarInterface.CarState.get_can_parsers(car_params)[Bus.pt]
+    assert "ECMAcceleratorPos" not in pt_parser.vl
+    assert "EBCMBrakePedalPosition" in pt_parser.vl
+
 
 class TestGMCarController:
   def test_dash_speed_spoof_respects_live_stock_acc_toggles(self):

@@ -390,6 +390,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"OneLaneChange", {PERSISTENT, BOOL, "1", "0", 2}},
     {"OnroadDistanceButton", {PERSISTENT, BOOL, "0", "0", 0}},
     {"OnroadDistanceButtonPressed", {CLEAR_ON_MANAGER_START, BOOL, "0", "0"}},
+    {"WheelButtonBookmarkCounter", {CLEAR_ON_MANAGER_START, INT, "0", "0"}},
     {"openpilotMinutes", {PERSISTENT, INT, "0", "0", 0}},
     {"OverpassRequests", {PERSISTENT, JSON, "{}", "{}"}},
     {"PathColor", {PERSISTENT, STRING, "", "", 2}},
