@@ -26,7 +26,21 @@ def make_lead(*, status: bool, d_rel: float = 200.0, v_lead: float = 0.0, a_lead
   return lead
 
 
-def make_model(v_ego: float, desired_accel: float, gas_press_prob: float = 1.0):
+def fill_model_lead(lead_msg, lead, prob: float):
+  lead_msg.prob = float(prob)
+  lead_msg.probTime = 0.0
+  lead_msg.t = [float(t) for t in ModelConstants.LEAD_T_IDXS]
+  lead_msg.x = [float(lead.dRel + lead.vLead * t) for t in ModelConstants.LEAD_T_IDXS]
+  lead_msg.xStd = [0.5] * len(ModelConstants.LEAD_T_IDXS)
+  lead_msg.y = [0.0] * len(ModelConstants.LEAD_T_IDXS)
+  lead_msg.yStd = [0.5] * len(ModelConstants.LEAD_T_IDXS)
+  lead_msg.v = [float(lead.vLead)] * len(ModelConstants.LEAD_T_IDXS)
+  lead_msg.vStd = [0.5] * len(ModelConstants.LEAD_T_IDXS)
+  lead_msg.a = [float(lead.aLeadK)] * len(ModelConstants.LEAD_T_IDXS)
+  lead_msg.aStd = [0.5] * len(ModelConstants.LEAD_T_IDXS)
+
+
+def make_model(v_ego: float, desired_accel: float, gas_press_prob: float = 1.0, lead_one=None, lead_two=None):
   model = log.ModelDataV2.new_message()
   t_idxs = ModelConstants.T_IDXS
 
@@ -44,6 +58,13 @@ def make_model(v_ego: float, desired_accel: float, gas_press_prob: float = 1.0):
   model.acceleration.y = [0.0] * len(t_idxs)
   model.acceleration.z = [0.0] * len(t_idxs)
   model.acceleration.t = [float(t) for t in t_idxs]
+
+  model.init('leadsV3', 3)
+  fill_model_lead(model.leadsV3[0], lead_one if lead_one is not None else make_lead(status=False),
+                  1.0 if lead_one is not None and lead_one.status else 0.0)
+  fill_model_lead(model.leadsV3[1], lead_two if lead_two is not None else make_lead(status=False),
+                  1.0 if lead_two is not None and lead_two.status else 0.0)
+  fill_model_lead(model.leadsV3[2], make_lead(status=False), 0.0)
 
   model.meta.disengagePredictions.gasPressProbs = [float(gas_press_prob)] * 6
   model.action.desiredAcceleration = desired_accel
@@ -69,7 +90,7 @@ def make_sm(v_ego: float, desired_accel: float, min_accel: float, *, experimenta
       forceDecel=False,
     ),
     "liveParameters": SimpleNamespace(angleOffsetDeg=0.0),
-    "modelV2": make_model(v_ego, desired_accel, gas_press_prob=gas_press_prob),
+    "modelV2": make_model(v_ego, desired_accel, gas_press_prob=gas_press_prob, lead_one=lead_one, lead_two=lead_two),
     "radarState": SimpleNamespace(
       leadOne=lead_one if lead_one is not None else make_lead(status=False),
       leadTwo=lead_two if lead_two is not None else make_lead(status=False),
