@@ -6,7 +6,7 @@ import pytest
 from opendbc.can import CANPacker
 from opendbc.car import Bus, ButtonType, gen_empty_fingerprint
 from opendbc.car.structs import CarParams
-from opendbc.car.fw_versions import build_fw_dict
+from opendbc.car.fw_versions import build_fw_dict, match_fw_to_car
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.interface import CarInterface
 from opendbc.car.hyundai import hyundaicanfd
@@ -92,6 +92,67 @@ class TestHyundaiFingerprint:
     fingerprint[cam_can][0xCB] = 24
     CP = CarInterface.get_params(CAR.KIA_SPORTAGE_HEV_2026, fingerprint, [], False, False, False, None)
     assert CP.flags & HyundaiFlags.SEND_LFA
+
+  def test_kia_forte_no_scc_fw_match(self):
+    car_fw = [
+      CarParams.CarFw(
+        ecu=Ecu.eps,
+        fwVersion=b'\xf1\x00BD  MDPS C 1.00 1.07 56310/M6300 4BDDC107',
+        address=0x7d4,
+        subAddress=0,
+        brand="hyundai",
+      ),
+      CarParams.CarFw(
+        ecu=Ecu.fwdCamera,
+        fwVersion=b'\xf1\x00BD  LKAS AT USA LHD 1.00 1.02 95740-M6000 J31',
+        address=0x7c4,
+        subAddress=0,
+        brand="hyundai",
+      ),
+    ]
+
+    exact, matches = match_fw_to_car(car_fw, "3KPF34AD2LE154148", allow_exact=True, allow_fuzzy=False, log=False)
+    assert exact
+    assert matches == {CAR.KIA_FORTE}
+
+  def test_kia_forte_no_scc_fca_does_not_require_scc12(self):
+    toggles = get_test_toggles()
+    fingerprint = gen_empty_fingerprint()
+    fingerprint[0][0x38D] = 8
+
+    CP = CarInterface.get_params(CAR.KIA_FORTE, fingerprint, [], True, False, False, toggles)
+    FPCP = CarInterface.get_starpilot_params(CAR.KIA_FORTE, fingerprint, [], CP, toggles)
+
+    car_state = CarState(CP, FPCP)
+    can_parsers = car_state.get_can_parsers(CP)
+    packer = CANPacker(DBC[CP.carFingerprint][Bus.pt])
+    fca11_addr = packer.dbc.name_to_msg["FCA11"].address
+
+    assert can_parsers[Bus.pt].message_states[fca11_addr].ignore_alive
+
+    car_state.update(can_parsers, toggles)
+    pt_states = {state.name for state in can_parsers[Bus.pt].message_states.values()}
+    assert "FCA11" in pt_states
+    assert "SCC12" not in pt_states
+
+    for frame in range(1, 6):
+      t = frame * 100_000_000
+      for parser in can_parsers.values():
+        required_msgs = []
+        for state in parser.message_states.values():
+          if state.ignore_alive:
+            continue
+          values = {}
+          if state.name == "LVR12":
+            values["CF_Lvr_CruiseSet"] = 30
+          required_msgs.append(packer.make_can_msg(state.name, parser.bus, values))
+        parser.update([(t, required_msgs)])
+
+    assert all(parser.can_valid for parser in can_parsers.values())
+
+    ret, _ = car_state.update(can_parsers, toggles)
+    assert ret.cruiseState.enabled
+    assert ret.cruiseState.speed > 0
 
   def test_alternate_limits(self):
     # Alternate lateral control limits, for high torque cars, verify Panda safety mode flag is set

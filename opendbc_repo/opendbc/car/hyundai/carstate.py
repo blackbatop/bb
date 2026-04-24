@@ -147,15 +147,17 @@ class CarState(CarStateBase):
       ret.cruiseState.standstill = False
       ret.cruiseState.nonAdaptive = False
     elif no_scc:
-      cruise_enabled = cp.vl["TCS13"]["ACC_REQ"] == 1
       cruise_set_speed = cp.vl["LVR12"]["CF_Lvr_CruiseSet"]
+      cruise_has_set_speed = 0 < cruise_set_speed < 255
+      # Some regular-cruise Forte trims never assert ACC_REQ even when stock cruise is engaged.
+      cruise_enabled = cp.vl["TCS13"]["ACC_REQ"] == 1 or cruise_has_set_speed
 
       # Regular-cruise Forte trims don't publish SCC11/SCC12; use the stock cruise request and set speed.
       ret.cruiseState.available = cruise_enabled or cp.vl["TCS13"]["ACCEnable"] == 0
       ret.cruiseState.enabled = cruise_enabled
       ret.cruiseState.standstill = False
       ret.cruiseState.nonAdaptive = False
-      if 0 < cruise_set_speed < 255:
+      if cruise_has_set_speed:
         ret.cruiseState.speed = cruise_set_speed * speed_conv
     else:
       ret.cruiseState.available = cp_cruise.vl["SCC11"]["MainMode_ACC"] == 1
@@ -202,7 +204,8 @@ class CarState(CarStateBase):
       aeb_src = "FCA11" if self.CP.flags & HyundaiFlags.USE_FCA.value else "SCC12"
       aeb_sig = "FCA_CmdAct" if self.CP.flags & HyundaiFlags.USE_FCA.value else "AEB_CmdAct"
       aeb_warning = cp_cruise.vl[aeb_src]["CF_VSM_Warn"] != 0
-      scc_warning = cp_cruise.vl["SCC12"]["TakeOverReq"] == 1  # sometimes only SCC system shows an FCW
+      # Regular-cruise Forte trims don't publish SCC12; avoid poisoning parser validity on no-SCC cars.
+      scc_warning = False if no_scc else cp_cruise.vl["SCC12"]["TakeOverReq"] == 1
       aeb_braking = cp_cruise.vl[aeb_src]["CF_VSM_DecCmdAct"] != 0 or cp_cruise.vl[aeb_src][aeb_sig] != 0
       ret.stockFcw = (aeb_warning or scc_warning) and not aeb_braking
       ret.stockAeb = aeb_warning and aeb_braking
@@ -377,7 +380,11 @@ class CarState(CarStateBase):
     if CP.flags & HyundaiFlags.CANFD:
       return self.get_can_parsers_canfd(CP)
 
+    msgs = []
+    if CP.flags & HyundaiFlags.NON_SCC and CP.flags & HyundaiFlags.USE_FCA.value:
+      msgs.append(("FCA11", 0))  # no-SCC Forte trims can stop publishing FCA11; don't let it poison canValid
+
     return {
-      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 0),
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], msgs, 0),
       Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 2),
     }
