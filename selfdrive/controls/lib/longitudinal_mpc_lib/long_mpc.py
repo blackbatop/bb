@@ -494,7 +494,7 @@ class LongitudinalMpc:
     model_v = getattr(model_lead, "v", ())
 
     if tracking_lead and radar_lead is not None and radar_lead.status:
-      if model_prob > 0.5 and len(model_x) and len(model_v):
+      if bool(getattr(radar_lead, "radar", False)) and model_prob > 0.5 and len(model_x) and len(model_v):
         x_lead_traj = float(radar_lead.dRel) + (np.asarray(model_x, dtype=np.float64) - float(model_x[0]))
         v_lead_traj = float(radar_lead.vLead) + (np.asarray(model_v, dtype=np.float64) - float(model_v[0]))
 

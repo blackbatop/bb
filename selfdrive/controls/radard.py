@@ -22,6 +22,9 @@ _LEAD_ACCEL_TAU = 0.6
 # Compare model v against dRel motion over a short window to correct sustained over-prediction.
 _BIAS_FD_WINDOW_S = 2.0
 _BIAS_EMA_TAU = 0.5
+_BIAS_MAX_ABS = 8.0
+_BIAS_MIN_PROB = 0.5
+_BIAS_RESET_JUMP = 10.0
 
 # radar tracks
 SPEED, ACCEL = 0, 1     # Kalman filter states enum
@@ -241,7 +244,7 @@ class RadarD:
 
     self._bias_fd_k = int(round(_BIAS_FD_WINDOW_S / DT_MDL))
     self.lead_drel_hists = [deque(maxlen=self._bias_fd_k + 1) for _ in range(2)]
-    self.vego_hist_bias = deque(maxlen=self._bias_fd_k + 1)
+    self.vego_hists_bias = [deque(maxlen=self._bias_fd_k + 1) for _ in range(2)]
     self.bias_ema_filters = [FirstOrderFilter(0.0, _BIAS_EMA_TAU, DT_MDL) for _ in range(2)]
 
     self.v_ego = 0.0
@@ -255,6 +258,35 @@ class RadarD:
 
     self.starpilot_radar_state = custom.StarPilotRadarState.new_message()
     self.starpilot_toggles = get_starpilot_toggles()
+
+  def _reset_lead_bias(self, idx: int) -> None:
+    self.lead_drel_hists[idx].clear()
+    self.vego_hists_bias[idx].clear()
+    self.bias_ema_filters[idx].x = 0.0
+
+  def _update_lead_bias(self, idx: int, lead_msg: capnp._DynamicStructReader) -> float:
+    # A newly-acquired or hopped lead does not have enough history for finite-difference biasing.
+    if len(lead_msg.x) == 0 or len(lead_msg.v) == 0 or float(lead_msg.prob) <= _BIAS_MIN_PROB:
+      self._reset_lead_bias(idx)
+      return 0.0
+
+    lead_x = float(lead_msg.x[0])
+    if len(self.lead_drel_hists[idx]) and abs(lead_x - self.lead_drel_hists[idx][-1]) > _BIAS_RESET_JUMP:
+      self._reset_lead_bias(idx)
+
+    self.lead_drel_hists[idx].append(lead_x)
+    self.vego_hists_bias[idx].append(self.v_ego)
+
+    if len(self.lead_drel_hists[idx]) == self._bias_fd_k + 1 and len(self.vego_hists_bias[idx]) == self._bias_fd_k + 1:
+      dt_win = _BIAS_FD_WINDOW_S
+      v_ego_hist = self.vego_hists_bias[idx]
+      v_ego_avg = sum(v_ego_hist) / len(v_ego_hist)
+      a_ego_win = (v_ego_hist[-1] - v_ego_hist[0]) / dt_win
+      fd_vlead = v_ego_avg + (self.lead_drel_hists[idx][-1] - self.lead_drel_hists[idx][0]) / dt_win + a_ego_win * dt_win / 2
+      bias_raw = np.clip(float(lead_msg.v[0]) - fd_vlead, -_BIAS_MAX_ABS, _BIAS_MAX_ABS)
+      self.bias_ema_filters[idx].update(bias_raw)
+
+    return float(np.clip(self.bias_ema_filters[idx].x, -_BIAS_MAX_ABS, _BIAS_MAX_ABS))
 
   def update(self, sm: messaging.SubMaster, rr: car.RadarData):
     self.ready = sm.seen['modelV2']
@@ -299,20 +331,7 @@ class RadarD:
     leads_v3 = sm['modelV2'].leadsV3
     if len(leads_v3) > 1:
       lead_probs = [self.lead_prob_filters[i].update(leads_v3[i].prob) for i in range(2)]
-
-      self.vego_hist_bias.append(self.v_ego)
-      lead_biases = [0.0, 0.0]
-      for i in range(2):
-        lead_x = float(leads_v3[i].x[0]) if len(leads_v3[i].x) else 0.0
-        self.lead_drel_hists[i].append(lead_x)
-        if len(self.lead_drel_hists[i]) == self._bias_fd_k + 1 and len(self.vego_hist_bias) == self._bias_fd_k + 1:
-          dt_win = _BIAS_FD_WINDOW_S
-          v_ego_avg = sum(self.vego_hist_bias) / len(self.vego_hist_bias)
-          a_ego_win = (self.vego_hist_bias[-1] - self.vego_hist_bias[0]) / dt_win
-          fd_vlead = v_ego_avg + (self.lead_drel_hists[i][-1] - self.lead_drel_hists[i][0]) / dt_win + a_ego_win * dt_win / 2
-          bias_raw = float(leads_v3[i].v[0]) - fd_vlead
-          self.bias_ema_filters[i].update(bias_raw)
-        lead_biases[i] = self.bias_ema_filters[i].x
+      lead_biases = [self._update_lead_bias(i, leads_v3[i]) for i in range(2)]
 
       self.radar_state.leadOne = get_lead(self.v_ego, self.ready, self.tracks, leads_v3[0], model_v_ego, lead_probs[0],
                                           sm['modelV2'], sm['carState'].standstill, sm['starpilotPlan'],
@@ -320,6 +339,9 @@ class RadarD:
       self.radar_state.leadTwo = get_lead(self.v_ego, self.ready, self.tracks, leads_v3[1], model_v_ego, lead_probs[1],
                                           sm['modelV2'], sm['carState'].standstill, sm['starpilotPlan'],
                                           self.starpilot_toggles, lead_bias=lead_biases[1], low_speed_override=False)
+    else:
+      for i in range(2):
+        self._reset_lead_bias(i)
 
     if self.ready and (self.starpilot_toggles.adjacent_lead_tracking or self.starpilot_toggles.human_lane_changes):
       self.starpilot_radar_state.leadLeft = get_adjacent_lead(self.tracks, sm['carState'].standstill, sm['modelV2'], left=True)

@@ -141,6 +141,9 @@ class CarInterface(CarInterfaceBase):
       # see https://github.com/commaai/opendbc/pull/1137/
       ret.dashcamOnly = True
 
+    if ret.flags & HyundaiFlags.NON_SCC:
+      ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.NON_SCC.value
+
     # Common longitudinal control setup
 
     ret.radarUnavailable = RADAR_START_ADDR not in fingerprint[1] or Bus.radar not in DBC[ret.carFingerprint]
