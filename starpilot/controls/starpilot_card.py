@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import cereal.messaging as messaging
+
 from opendbc.safety import ALTERNATIVE_EXPERIENCE
 from openpilot.common.params import Params
 from openpilot.selfdrive.car.cruise import CRUISE_LONG_PRESS, ButtonType
@@ -18,6 +20,7 @@ class StarPilotCard:
 
     self.params = Params(return_defaults=True)
     self.params_memory = Params(memory=True)
+    self.pm = messaging.PubMaster(["userBookmark"])
 
     self.accel_pressed = False
     self.always_on_lateral_allowed = False
@@ -47,6 +50,8 @@ class StarPilotCard:
   def handle_button_event(self, key, sm, starpilot_toggles):
     if sm["carControl"].longActive and getattr(starpilot_toggles, f"experimental_mode_via_{key}"):
       self.handle_experimental_mode(sm, starpilot_toggles)
+    elif getattr(starpilot_toggles, f"bookmark_via_{key}"):
+      self.handle_bookmark()
     elif getattr(starpilot_toggles, f"force_coast_via_{key}"):
       self.force_coast = not self.force_coast
     elif getattr(starpilot_toggles, f"pause_lateral_via_{key}"):
@@ -58,6 +63,10 @@ class StarPilotCard:
       self.params_memory.put_bool("SwitchbackModeEnabled", self.switchback_mode_enabled)
     elif sm["carControl"].longActive and getattr(starpilot_toggles, f"traffic_mode_via_{key}"):
       self.traffic_mode_enabled = not self.traffic_mode_enabled
+
+  def handle_bookmark(self):
+    msg = messaging.new_message("userBookmark", valid=True)
+    self.pm.send("userBookmark", msg)
 
   def handle_experimental_mode(self, sm, starpilot_toggles):
     if getattr(starpilot_toggles, "safe_mode", False):

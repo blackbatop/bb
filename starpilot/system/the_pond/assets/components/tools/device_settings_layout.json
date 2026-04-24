@@ -2258,6 +2258,10 @@
           {
             "value": 7,
             "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
           }
         ]
       },
@@ -2299,6 +2303,10 @@
           {
             "value": 7,
             "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
           }
         ]
       },
@@ -2340,6 +2348,10 @@
           {
             "value": 7,
             "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
           }
         ]
       },
@@ -2381,6 +2393,280 @@
           {
             "value": 7,
             "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
+          }
+        ]
+      },
+      {
+        "key": "ModeButtonControl",
+        "label": "Mode Button (Short Press)",
+        "description": "Action performed when the \"Mode\" button is pressed. Hyundai CAN-FD only.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
+          }
+        ]
+      },
+      {
+        "key": "LongModeButtonControl",
+        "label": "Mode Button (Long Press)",
+        "description": "Action performed when the \"Mode\" button is pressed for more than 0.5 seconds. Hyundai CAN-FD only.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
+          }
+        ]
+      },
+      {
+        "key": "VeryLongModeButtonControl",
+        "label": "Mode Button (Extra Long Press)",
+        "description": "Action performed when the \"Mode\" button is pressed for more than 2.5 seconds. Hyundai CAN-FD only.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
+          }
+        ]
+      },
+      {
+        "key": "StarButtonControl",
+        "label": "Star Button (Short Press)",
+        "description": "Action performed when the \"Star\" button is pressed. Hyundai CAN-FD only.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
+          }
+        ]
+      },
+      {
+        "key": "LongStarButtonControl",
+        "label": "Star Button (Long Press)",
+        "description": "Action performed when the \"Star\" button is pressed for more than 0.5 seconds. Hyundai CAN-FD only.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
+          }
+        ]
+      },
+      {
+        "key": "VeryLongStarButtonControl",
+        "label": "Star Button (Extra Long Press)",
+        "description": "Action performed when the \"Star\" button is pressed for more than 2.5 seconds. Hyundai CAN-FD only.",
+        "data_type": "int",
+        "ui_type": "dropdown",
+        "options": [
+          {
+            "value": 0,
+            "label": "No Action"
+          },
+          {
+            "value": 1,
+            "label": "Change Personality"
+          },
+          {
+            "value": 2,
+            "label": "Force Coast"
+          },
+          {
+            "value": 3,
+            "label": "Pause Steering"
+          },
+          {
+            "value": 4,
+            "label": "Pause Accel/Brake"
+          },
+          {
+            "value": 5,
+            "label": "Toggle Experimental"
+          },
+          {
+            "value": 6,
+            "label": "Toggle Traffic"
+          },
+          {
+            "value": 7,
+            "label": "Toggle Switchback"
+          },
+          {
+            "value": 8,
+            "label": "Create Bookmark"
           }
         ]
       }

@@ -15,6 +15,7 @@ ACTION_OPTIONS = [
   {"id": 5, "name": "Toggle Experimental", "requires_longitudinal": True},
   {"id": 6, "name": "Toggle Traffic", "requires_longitudinal": True},
   {"id": 7, "name": "Toggle Switchback"},
+  {"id": 8, "name": "Create Bookmark"},
 ]
 ACTION_NAMES = [option["name"] for option in ACTION_OPTIONS]
 ACTION_IDS = {option["name"]: option["id"] for option in ACTION_OPTIONS}

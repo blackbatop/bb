@@ -7,6 +7,7 @@ QMap<int, QString> getWheelFunctionsMap() {
     {0, QObject::tr("No Action")},
     {3, QObject::tr("Pause Steering")},
     {7, QObject::tr("Toggle \"Switchback Mode\" On/Off")},
+    {8, QObject::tr("Create Bookmark")},
   };
 }
 
