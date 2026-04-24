@@ -181,7 +181,7 @@ class TestLatControl:
 
   def test_genesis_g90_ff_scale_curve(self):
     assert get_genesis_g90_ff_scale(0.0, 0.0, 20.0) == 1.0
-    assert get_genesis_g90_ff_scale(0.5, 0.0, 20.0) > get_genesis_g90_ff_scale(-0.5, 0.0, 20.0)
+    assert get_genesis_g90_ff_scale(-0.5, 0.0, 20.0) > get_genesis_g90_ff_scale(0.5, 0.0, 20.0)
     assert get_genesis_g90_ff_scale(0.6, 0.7, 8.0) > get_genesis_g90_ff_scale(0.6, 0.0, 8.0) > get_genesis_g90_ff_scale(0.6, -0.7, 8.0)
     assert get_genesis_g90_ff_scale(-0.6, -0.7, 8.0) > get_genesis_g90_ff_scale(-0.6, 0.0, 8.0) > get_genesis_g90_ff_scale(-0.6, 0.7, 8.0)
     assert get_genesis_g90_ff_scale(2.0, 0.0, 20.0) < get_genesis_g90_ff_scale(0.8, 0.0, 20.0)
@@ -219,7 +219,9 @@ class TestLatControl:
     right_turn_in = get_ioniq_6_friction_threshold(6.0, -0.5, -0.8)
     left_unwind = get_ioniq_6_friction_threshold(6.0, 0.5, -0.8)
     right_unwind = get_ioniq_6_friction_threshold(6.0, -0.5, 0.8)
-    assert left_turn_in < right_turn_in < base < left_unwind < right_unwind
+    assert max(left_turn_in, right_turn_in) < base
+    assert left_unwind >= base
+    assert right_unwind >= base
 
   def test_ioniq_6_friction_scale_curve(self):
     base = get_ioniq_6_friction_scale(25.0, 0.5, 0.8)

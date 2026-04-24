@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import IntFlag
 
 from opendbc.car import ACCELERATION_DUE_TO_GRAVITY, Bus, CarSpecs, DbcDict, PlatformConfig, Platforms, uds
@@ -29,6 +29,7 @@ class CarControllerParams:
   ANGLE_ACTIVE_TORQUE_REDUCTION_GAIN = 0.6
 
   def __init__(self, CP, vEgoRaw=100.):
+    self.ANGLE_LIMITS = self.ANGLE_LIMITS
     self.STEER_DELTA_UP = 3
     self.STEER_DELTA_DOWN = 7
     self.STEER_DRIVER_ALLOWANCE = 50
@@ -51,6 +52,13 @@ class CarControllerParams:
 
     if CP.flags & HyundaiFlags.CANFD_ANGLE_STEERING:
       self.STEER_THRESHOLD = 175
+
+      # The Sportage angle port is rough at low speed on the higher global jerk limit.
+      # Keep the branch-wide higher limit for other cars, but restore the older calmer
+      # jerk ceiling on this port only.
+      if CP.carFingerprint == CAR.KIA_SPORTAGE_HEV_2026:
+        self.ANGLE_LIMITS = replace(self.ANGLE_LIMITS,
+                                    MAX_LATERAL_JERK=3.0 + (ACCELERATION_DUE_TO_GRAVITY * AVERAGE_ROAD_ROLL))
 
     # To determine the limit for your car, find the maximum value that the stock LKAS will request.
     # If the max stock LKAS request is <384, add your car to this list.

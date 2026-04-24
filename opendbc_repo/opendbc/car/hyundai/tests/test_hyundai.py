@@ -2,17 +2,19 @@ from hypothesis import settings, given, strategies as st
 
 import pytest
 
-from opendbc.car import gen_empty_fingerprint
+from opendbc.can import CANPacker
+from opendbc.car import Bus, gen_empty_fingerprint
 from opendbc.car.structs import CarParams
 from opendbc.car.fw_versions import build_fw_dict
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.interface import CarInterface
+from opendbc.car.hyundai import hyundaicanfd
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.radar_interface import RADAR_START_ADDR
 from opendbc.car.hyundai.values import CAMERA_SCC_CAR, CANFD_CAR, CAN_GEARS, CAR, CHECKSUM, DATE_FW_ECUS, \
                                          HYBRID_CAR, EV_CAR, FW_QUERY_CONFIG, LEGACY_SAFETY_MODE_CAR, CANFD_FUZZY_WHITELIST, \
                                          UNSUPPORTED_LONGITUDINAL_CAR, PLATFORM_CODE_ECUS, HYUNDAI_VERSION_REQUEST_LONG, \
-                                         HyundaiFlags, get_platform_codes, HyundaiSafetyFlags
+                                         CarControllerParams, DBC, HyundaiFlags, get_platform_codes, HyundaiSafetyFlags
 from opendbc.car.hyundai.fingerprints import FW_VERSIONS
 
 Ecu = CarParams.Ecu
@@ -119,6 +121,39 @@ class TestHyundaiFingerprint:
     assert CarState.get_canfd_blinker_sig_names(CAR.KIA_SPORTAGE_HEV_2026, True) == ("LEFT_LAMP_ALT", "RIGHT_LAMP_ALT")
     assert CarState.get_canfd_blinker_sig_names(CAR.HYUNDAI_KONA_EV_2ND_GEN, False) == ("LEFT_LAMP_ALT", "RIGHT_LAMP_ALT")
     assert CarState.get_canfd_blinker_sig_names(CAR.KIA_EV6, False) == ("LEFT_LAMP", "RIGHT_LAMP")
+
+  def test_sportage_angle_steering_uses_adas_cmd_with_send_lfa(self):
+    fingerprint = gen_empty_fingerprint()
+    cam_can = CanBus(None, fingerprint).CAM
+    fingerprint[cam_can][0xCB] = 24
+    CP = CarInterface.get_params(CAR.KIA_SPORTAGE_HEV_2026, fingerprint, [], False, False, False, None)
+
+    assert CP.flags & HyundaiFlags.SEND_LFA
+    assert CP.flags & HyundaiFlags.CANFD_ANGLE_STEERING
+
+    packer = CANPacker(DBC[CP.carFingerprint][Bus.pt])
+    msgs = hyundaicanfd.create_steering_messages(packer, CP, CanBus(CP), True, True, 1.0, 12.3)
+    assert [(addr, bus) for addr, _, bus in msgs] == [(0xCB, CanBus(CP).ECAN)]
+
+  def test_sportage_angle_jerk_override_is_scoped(self):
+    sportage = CarParams.new_message()
+    sportage.carFingerprint = CAR.KIA_SPORTAGE_HEV_2026
+    sportage.flags = int(HyundaiFlags.CANFD | HyundaiFlags.CANFD_ANGLE_STEERING)
+
+    comparison_angle = CarParams.new_message()
+    comparison_angle.carFingerprint = CAR.KIA_EV6
+    comparison_angle.flags = int(HyundaiFlags.CANFD | HyundaiFlags.CANFD_ANGLE_STEERING)
+
+    ioniq6 = CarParams.new_message()
+    ioniq6.carFingerprint = CAR.HYUNDAI_IONIQ_6
+    ioniq6.flags = int(HyundaiFlags.CANFD | HyundaiFlags.CANFD_LKA_STEERING | HyundaiFlags.CANFD_LKA_STEERING_ALT)
+
+    sportage_params = CarControllerParams(sportage)
+    comparison_params = CarControllerParams(comparison_angle)
+    ioniq6_params = CarControllerParams(ioniq6)
+
+    assert sportage_params.ANGLE_LIMITS.MAX_LATERAL_JERK < comparison_params.ANGLE_LIMITS.MAX_LATERAL_JERK
+    assert comparison_params.ANGLE_LIMITS.MAX_LATERAL_JERK == ioniq6_params.ANGLE_LIMITS.MAX_LATERAL_JERK
 
   def test_blacklisted_parts(self, subtests):
     # Asserts no ECUs known to be shared across platforms exist in the database.
