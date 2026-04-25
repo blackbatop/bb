@@ -238,8 +238,9 @@ class CarController(CarControllerBase):
     else:
       # button presses
       if (self.frame - self.last_button_frame) * DT_CTRL > 0.25:
-        # cruise cancel
-        if CC.cruiseControl.cancel:
+        # cruise cancel - suppress when stock ACC is the fallback (ECU disable failed),
+        # so openpilot doesn't fight/cancel the user's stock cruise
+        if CC.cruiseControl.cancel and not self.ecu_disable_failed:
           if self.CP.flags & HyundaiFlags.CANFD_ALT_BUTTONS:
             can_sends.append(hyundaicanfd.create_acc_cancel(self.packer, self.CP, self.CAN, CS.cruise_info))
             self.last_button_frame = self.frame
