@@ -53,6 +53,7 @@ LEGACY_FORCED_CANDIDATE_MAP = {
 GM_CANDIDATE_PREFIXES = ("CHEVROLET_", "GMC_", "CADILLAC_", "BUICK_", "HOLDEN_")
 GM_CORE_FINGERPRINT_MSGS = frozenset((190, 201, 209, 211, 241))
 GM_CAMERA_BUS = 2
+GM_CAMERA_DIAGNOSTIC_MSG = 0x24B
 GM_VOLT_CAMERA_MSG = 0x320
 
 
@@ -111,11 +112,14 @@ def _normalize_gm_bolt_candidate(candidate: str | None, fingerprints: dict[int, 
 def _normalize_gm_volt_candidate(candidate: str | None, fingerprints: dict[int, dict]) -> str | None:
   cam = fingerprints.get(GM_CAMERA_BUS, {})
   has_live_camera_msg = GM_VOLT_CAMERA_MSG in cam
+  has_camera_diag_msg = GM_CAMERA_DIAGNOSTIC_MSG in cam
+  has_forwarded_pt_core_msgs = len(GM_CORE_FINGERPRINT_MSGS.intersection(cam.keys())) >= 4
+  has_camera_harness_shape = has_live_camera_msg or has_camera_diag_msg or has_forwarded_pt_core_msgs
 
-  if candidate == "CHEVROLET_VOLT_CAMERA" and not has_live_camera_msg:
+  if candidate == "CHEVROLET_VOLT_CAMERA" and not has_camera_harness_shape:
     return "CHEVROLET_VOLT"
 
-  if candidate == "CHEVROLET_VOLT" and has_live_camera_msg:
+  if candidate == "CHEVROLET_VOLT" and has_camera_harness_shape:
     return "CHEVROLET_VOLT_CAMERA"
 
   return candidate
