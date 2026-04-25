@@ -1,3 +1,4 @@
+import sys
 from hypothesis import settings, given, strategies as st
 from types import SimpleNamespace
 
@@ -7,6 +8,7 @@ from opendbc.can import CANPacker
 from opendbc.car import Bus, ButtonType, gen_empty_fingerprint
 from opendbc.car.structs import CarParams
 from opendbc.car.fw_versions import build_fw_dict, match_fw_to_car
+import opendbc.car.hyundai.interface as hyundai_interface
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.interface import CarInterface
 from opendbc.car.hyundai import hyundaicanfd
@@ -276,6 +278,60 @@ class TestHyundaiFingerprint:
         parser.update([(t, required_msgs)])
 
     assert all(parser.can_valid for parser in can_parsers.values())
+
+  def test_ioniq_6_ready_mode_skips_ecu_disable(self, monkeypatch):
+    class FakeParams:
+      def __init__(self):
+        self.bools = {}
+
+      def put_bool(self, key, value):
+        self.bools[key] = value
+
+    class Packet:
+      def __init__(self, src, address):
+        self.src = src
+        self.address = address
+
+    toggles = get_test_toggles()
+    fingerprint = gen_empty_fingerprint()
+    cam_can = CanBus(None, fingerprint).CAM
+    fingerprint[cam_can][0x50] = 8
+    fingerprint[cam_can][0x110] = 8
+    CP = CarInterface.get_params(CAR.HYUNDAI_IONIQ_6, fingerprint, [], True, False, False, toggles)
+    assert CP.openpilotLongitudinalControl
+    assert CP.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.LONG
+
+    fake_params = FakeParams()
+    monkeypatch.setitem(sys.modules, "openpilot.common.params", SimpleNamespace(Params=lambda: fake_params))
+
+    calls = {"disable_ecu": 0}
+
+    def fake_disable_ecu(*args, **kwargs):
+      calls["disable_ecu"] += 1
+      return True
+
+    time_state = {"value": -0.25}
+    def fake_monotonic():
+      time_state["value"] += 0.25
+      return time_state["value"]
+
+    monkeypatch.setattr(hyundai_interface, "disable_ecu", fake_disable_ecu)
+    monkeypatch.setattr(hyundai_interface.time, "monotonic", fake_monotonic)
+
+    ready_msgs = [
+      Packet(CanBus(CP).ECAN, 0x255),
+      Packet(CanBus(CP).ECAN, 0x2e5),
+      Packet(CanBus(CP).ECAN, 0x3a0),
+    ]
+
+    def fake_can_recv(wait_for_one=True):
+      return [ready_msgs]
+
+    CarInterface.init(CP, fake_can_recv, lambda *args, **kwargs: None)
+
+    assert calls["disable_ecu"] == 0
+    assert fake_params.bools["EcuDisableFailed"] is True
+    assert not (CP.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.LONG)
 
   def test_blacklisted_parts(self, subtests):
     # Asserts no ECUs known to be shared across platforms exist in the database.
