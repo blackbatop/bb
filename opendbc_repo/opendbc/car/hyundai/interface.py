@@ -20,8 +20,6 @@ ENABLE_BUTTONS = (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.can
 
 # Track when ECU disable happened - used to permanently suppress CAN errors from disabled ECU
 ECU_DISABLE_TIMESTAMP = 0.0
-READY_ONLY_MSGS = {0x255, 0x2e5, 0x3a0, 0x3b0, 0x3b1, 0x3b5, 0x3f0, 0x3f5}
-READY_MSG_THRESHOLD = 3
 
 
 class CarInterface(CarInterfaceBase):
@@ -206,37 +204,25 @@ class CarInterface(CarInterfaceBase):
       if CP.flags & HyundaiFlags.CANFD_LKA_STEERING.value:
         addr, bus = 0x730, CanBus(CP).ECAN
 
+      # Try ECU disable. If it succeeds (IGN-ON mode), enable longitudinal.
+      # If it fails (READY mode returns NRC 0x22, or timeout), strip LONG safety flag
+      # so panda forwards stock SCC messages normally (lateral-only mode).
+      ecu_log(f"=== ECU DISABLE attempt: addr=0x{addr:x}, bus={bus} ===")
+      ecu_disabled = disable_ecu(can_recv, can_send, bus=bus, addr=addr, com_cont_req=communication_control)
+
       if CP.carFingerprint == CAR.HYUNDAI_IONIQ_6:
-        ecu_log(f"=== Checking for READY mode: addr=0x{addr:x}, bus={bus} ===")
-        ready_detected = CarInterface._ready_mode_detected(can_recv, bus)
-
-        if ready_detected:
-          params.put_bool("EcuDisableFailed", True)
-          CP.safetyConfigs[-1].safetyParam &= ~HyundaiSafetyFlags.LONG.value
-          ecu_log(f"=== READY mode detected - safetyParam stripped to {CP.safetyConfigs[-1].safetyParam}, lateral-only mode ===")
-          ecu_disabled = False
-        else:
-          # Try ECU disable. If it succeeds (IGN-ON mode), enable longitudinal.
-          # If it fails (READY mode returns NRC 0x22, or timeout), strip LONG safety flag
-          # so panda forwards stock SCC messages normally (lateral-only mode).
-          ecu_log(f"=== ECU DISABLE attempt: addr=0x{addr:x}, bus={bus} ===")
-          ecu_disabled = disable_ecu(can_recv, can_send, bus=bus, addr=addr, com_cont_req=communication_control)
-
         # Ioniq 6: track success/failure to auto-switch between openpilot long and stock ACC
         if ecu_disabled:
           ECU_DISABLE_TIMESTAMP = time.monotonic()
           params.put_bool("EcuDisableFailed", False)
           params.put_bool("ExperimentalMode", True)
           ecu_log("=== ECU DISABLE SUCCESS - Longitudinal + Experimental ENABLED ===")
-        elif not ready_detected:
+        else:
           params.put_bool("EcuDisableFailed", True)
           CP.safetyConfigs[-1].safetyParam &= ~HyundaiSafetyFlags.LONG.value
           ecu_log(f"=== ECU DISABLE FAILED - safetyParam stripped to {CP.safetyConfigs[-1].safetyParam}, lateral-only mode ===")
       else:
         # Other cars: just log, don't change safety params or params store
-        # Try ECU disable. If it succeeds (IGN-ON mode), enable longitudinal.
-        ecu_log(f"=== ECU DISABLE attempt: addr=0x{addr:x}, bus={bus} ===")
-        ecu_disabled = disable_ecu(can_recv, can_send, bus=bus, addr=addr, com_cont_req=communication_control)
         if ecu_disabled:
           ecu_log("=== ECU DISABLE SUCCESS ===")
         else:
@@ -250,28 +236,6 @@ class CarInterface(CarInterfaceBase):
   def deinit(CP, can_recv, can_send):
     communication_control = bytes([uds.SERVICE_TYPE.COMMUNICATION_CONTROL, 0x80 | uds.CONTROL_TYPE.ENABLE_RX_ENABLE_TX, uds.MESSAGE_TYPE.NORMAL])
     CarInterface.init(CP, can_recv, can_send, communication_control)
-
-  @staticmethod
-  def _ready_mode_detected(can_recv, bus, timeout_s=1.0):
-    ready_msgs_seen = set()
-    all_msgs_seen = set()
-    start_time = time.monotonic()
-
-    while time.monotonic() - start_time < timeout_s:
-      for can_packets in can_recv(wait_for_one=True):
-        for packet in can_packets:
-          if packet.src == bus:
-            all_msgs_seen.add(packet.address)
-            if packet.address in READY_ONLY_MSGS:
-              ready_msgs_seen.add(packet.address)
-
-      if len(ready_msgs_seen) >= READY_MSG_THRESHOLD:
-        break
-
-    elapsed = time.monotonic() - start_time
-    ready_detected = len(ready_msgs_seen) >= READY_MSG_THRESHOLD
-    ecu_log(f"=== READY scan: ready_msgs={[hex(m) for m in ready_msgs_seen]}, total_bus_msgs={len(all_msgs_seen)}, elapsed={elapsed:.2f}s ===")
-    return ready_detected
 
   def update(self, can_packets, starpilot_toggles):
     ret, fp_ret = super().update(can_packets, starpilot_toggles)
