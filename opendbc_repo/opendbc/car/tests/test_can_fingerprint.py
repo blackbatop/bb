@@ -84,14 +84,14 @@ class TestCanFingerprint:
 
     assert candidate == "CHEVROLET_VOLT_CAMERA"
 
-  def test_gm_stored_candidate_fallback_keeps_volt_camera_when_camera_diag_msg_present(self):
+  def test_gm_stored_candidate_fallback_demotes_volt_camera_with_only_camera_diag_msg(self):
     fingerprints = {0: {190: 6, 201: 8, 209: 7, 211: 2, 241: 6}, 2: {0x24B: 8}}
 
     candidate = _get_gm_stored_candidate_fallback(fingerprints, "CHEVROLET_VOLT_CAMERA", None)
 
-    assert candidate == "CHEVROLET_VOLT_CAMERA"
+    assert candidate == "CHEVROLET_VOLT"
 
-  def test_gm_stored_candidate_fallback_promotes_volt_when_bus2_has_forwarded_pt_core_msgs(self):
+  def test_gm_stored_candidate_fallback_keeps_volt_when_bus2_only_has_forwarded_pt_core_msgs(self):
     fingerprints = {
       0: {190: 6, 201: 8, 209: 7, 211: 2, 241: 6},
       2: {201: 8, 209: 7, 211: 2, 241: 6},
@@ -99,7 +99,7 @@ class TestCanFingerprint:
 
     candidate = _get_gm_stored_candidate_fallback(fingerprints, "CHEVROLET_VOLT", None)
 
-    assert candidate == "CHEVROLET_VOLT_CAMERA"
+    assert candidate == "CHEVROLET_VOLT"
 
   def test_gm_stored_candidate_fallback_ignores_non_gm_fingerprint(self):
     fingerprints = {0: {1: 1, 2: 2, 3: 3, 4: 4}}

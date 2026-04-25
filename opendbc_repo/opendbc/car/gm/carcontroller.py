@@ -34,10 +34,17 @@ def get_lka_steering_cmd_counter(counter, CS):
 
 
 def get_stock_cc_active_for_cancel(CP, CS):
+  if CS.out.accFaulted:
+    return False
+
   stock_cc_active = CS.out.cruiseState.enabled or CS.pcm_acc_status != AccState.OFF
   if CP.carFingerprint == CAR.CHEVROLET_BOLT_ACC_2022_2023_PEDAL:
     return CS.out.cruiseState.enabled
   return stock_cc_active
+
+
+def should_send_stock_long_cancel(cancel_counter, CS):
+  return cancel_counter > CAMERA_CANCEL_DELAY_FRAMES and not CS.out.accFaulted
 
 
 def use_interceptor_sng_launch(CP, CS, maneuver_mode=False):
@@ -646,10 +653,10 @@ class CarController(CarControllerBase):
       self.cancel_counter = self.cancel_counter + 1 if CC.cruiseControl.cancel else 0
 
       # Stock longitudinal, integrated at camera
-      if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC and self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
+      if self.CP.carFingerprint == CAR.CHEVROLET_MALIBU_HYBRID_CC and should_send_stock_long_cancel(self.cancel_counter, CS):
         malibu_cancel_requested = True
       elif (self.frame - self.last_button_frame) * DT_CTRL > 0.04:
-        if self.cancel_counter > CAMERA_CANCEL_DELAY_FRAMES:
+        if should_send_stock_long_cancel(self.cancel_counter, CS):
           self.last_button_frame = self.frame
           sdgm_stock_cancel_pt = (
             self.CP.carFingerprint in SDGM_CAR and
