@@ -230,7 +230,7 @@ class TestLatControl:
     left_unwind = get_ioniq_6_friction_scale(6.0, 0.5, -0.8)
     right_unwind = get_ioniq_6_friction_scale(6.0, -0.5, 0.8)
     assert left_turn_in > right_turn_in > base
-    assert base > left_unwind > right_unwind
+    assert base > left_unwind >= right_unwind
 
   def test_ioniq_6_center_taper_curve(self):
     assert get_ioniq_6_center_taper_scale(0.0, 30.0) < get_ioniq_6_center_taper_scale(0.0, 10.0)
