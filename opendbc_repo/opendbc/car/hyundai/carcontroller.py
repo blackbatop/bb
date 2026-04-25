@@ -18,6 +18,7 @@ LongCtrlState = structs.CarControl.Actuators.LongControlState
 MAX_ANGLE = 85
 MAX_ANGLE_FRAMES = 89
 MAX_ANGLE_CONSECUTIVE_FRAMES = 2
+CANFD_BLINDSPOT_STATUS_STALE_NS = 200_000_000
 
 
 def process_hud_alert(enabled, fingerprint, hud_control):
@@ -138,7 +139,7 @@ class CarController(CarControllerBase):
 
     # *** CAN/CAN FD specific ***
     if self.CP.flags & HyundaiFlags.CANFD:
-      can_sends.extend(self.create_canfd_msgs(apply_steer_req, apply_torque, apply_angle, set_speed_in_units, accel,
+      can_sends.extend(self.create_canfd_msgs(now_nanos, apply_steer_req, apply_torque, apply_angle, set_speed_in_units, accel,
                                               stopping, hud_control, CS, CC))
     else:
       can_sends.extend(self.create_can_msgs(apply_steer_req, apply_torque, torque_fault, set_speed_in_units, accel,
@@ -203,7 +204,7 @@ class CarController(CarControllerBase):
 
     return can_sends
 
-  def create_canfd_msgs(self, apply_steer_req, apply_torque, apply_angle, set_speed_in_units, accel, stopping, hud_control, CS, CC):
+  def create_canfd_msgs(self, now_nanos, apply_steer_req, apply_torque, apply_angle, set_speed_in_units, accel, stopping, hud_control, CS, CC):
     can_sends = []
 
     lka_steering = self.CP.flags & HyundaiFlags.CANFD_LKA_STEERING
@@ -231,6 +232,13 @@ class CarController(CarControllerBase):
         can_sends.extend(hyundaicanfd.create_adrv_messages(self.packer, self.CAN, self.frame))
       else:
         can_sends.extend(hyundaicanfd.create_fca_warning_light(self.packer, self.CAN, self.frame))
+      if self.CP.carFingerprint == CAR.HYUNDAI_IONIQ_6 and self.frame % 5 == 0:
+        rear_stale = now_nanos - CS.blindspots_rear_corners_ts > CANFD_BLINDSPOT_STATUS_STALE_NS
+        front_stale = now_nanos - CS.blindspots_front_corner_1_ts > CANFD_BLINDSPOT_STATUS_STALE_NS
+        if CS.blindspots_rear_corners_ts > 0 and CS.blindspots_front_corner_1_ts > 0 and rear_stale and front_stale:
+          can_sends.extend(hyundaicanfd.create_blindspot_status_messages(self.packer, self.CAN,
+                                                                         CS.blindspots_rear_corners,
+                                                                         CS.blindspots_front_corner_1))
       if self.frame % 2 == 0:
         can_sends.append(hyundaicanfd.create_acc_control(self.packer, self.CAN, CC.enabled, self.accel_last, accel, stopping, CC.cruiseControl.override,
                                                          set_speed_in_units, hud_control))

@@ -196,6 +196,19 @@ def create_lfahda_cluster(packer, CAN, enabled):
   return packer.make_can_msg("LFAHDA_CLUSTER", CAN.ECAN, values)
 
 
+def create_blindspot_status_messages(packer, CAN, rear_values, front_corner_values):
+  # Reuse the last known-good payload but regenerate the rolling counter/checksum.
+  rear = {k: v for k, v in rear_values.items() if k not in ("CHECKSUM", "COUNTER")}
+  front = {k: v for k, v in front_corner_values.items() if k not in ("CHECKSUM", "COUNTER")}
+  if "NEW_SIGNAL_3" not in front:
+    front["NEW_SIGNAL_3"] = 1
+
+  return [
+    packer.make_can_msg("BLINDSPOTS_REAR_CORNERS", CAN.ECAN, rear),
+    packer.make_can_msg("BLINDSPOTS_FRONT_CORNER_1", CAN.ECAN, front),
+  ]
+
+
 def create_acc_control(packer, CAN, enabled, accel_last, accel, stopping, gas_override, set_speed, hud_control):
   jerk = 5
   jn = jerk / 50

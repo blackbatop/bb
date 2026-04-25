@@ -78,6 +78,10 @@ class CarState(CarStateBase):
     self.buttons_counter = 0
 
     self.cruise_info = {}
+    self.blindspots_rear_corners = {}
+    self.blindspots_front_corner_1 = {}
+    self.blindspots_rear_corners_ts = 0
+    self.blindspots_front_corner_1_ts = 0
 
     # On some cars, CLU15->CF_Clu_VehicleSpeed can oscillate faster than the dash updates. Sample at 5 Hz
     self.cluster_speed = 0
@@ -293,6 +297,12 @@ class CarState(CarStateBase):
       else:
         ret.leftBlindspot = cp.vl["BLINDSPOTS_REAR_CORNERS"]["FL_INDICATOR"] != 0
         ret.rightBlindspot = cp.vl["BLINDSPOTS_REAR_CORNERS"]["FR_INDICATOR"] != 0
+
+    if self.CP.carFingerprint == CAR.HYUNDAI_IONIQ_6:
+      self.blindspots_rear_corners = copy.copy(cp.vl["BLINDSPOTS_REAR_CORNERS"])
+      self.blindspots_front_corner_1 = copy.copy(cp.vl["BLINDSPOTS_FRONT_CORNER_1"])
+      self.blindspots_rear_corners_ts = cp.ts_nanos["BLINDSPOTS_REAR_CORNERS"]["CHECKSUM"]
+      self.blindspots_front_corner_1_ts = cp.ts_nanos["BLINDSPOTS_FRONT_CORNER_1"]["CHECKSUM"]
 
     # cruise state
     # CAN FD cars enable on main button press, set available if no TCS faults preventing engagement

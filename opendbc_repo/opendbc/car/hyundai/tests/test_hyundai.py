@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from opendbc.can import CANPacker
+from opendbc.can import CANPacker, CANParser
 from opendbc.car import Bus, ButtonType, gen_empty_fingerprint
 from opendbc.car.structs import CarParams
 from opendbc.car.fw_versions import build_fw_dict, match_fw_to_car
@@ -231,6 +231,52 @@ class TestHyundaiFingerprint:
     packer = CANPacker(DBC[CP.carFingerprint][Bus.pt])
     msgs = hyundaicanfd.create_steering_messages(packer, CP, CanBus(CP), True, True, 1.0, 12.3)
     assert [(addr, bus) for addr, _, bus in msgs] == [(0xCB, CanBus(CP).ECAN)]
+
+  def test_ioniq_6_blindspot_status_helper_regenerates_counter_checksum(self):
+    CP = CarParams.new_message()
+    CP.carFingerprint = CAR.HYUNDAI_IONIQ_6
+    CP.flags = int(HyundaiFlags.CANFD | HyundaiFlags.CANFD_LKA_STEERING)
+
+    packer = CANPacker(DBC[CP.carFingerprint][Bus.pt])
+    can_bus = CanBus(CP)
+    parser = CANParser(DBC[CP.carFingerprint][Bus.pt], [("BLINDSPOTS_REAR_CORNERS", 0), ("BLINDSPOTS_FRONT_CORNER_1", 0)], can_bus.ECAN)
+
+    rear = {
+      "CHECKSUM": 1111,
+      "COUNTER": 77,
+      "LEFT_BLOCKED": 0,
+      "LEFT_MB": 0,
+      "MORE_LEFT_PROB": 0,
+      "FL_INDICATOR": 0,
+      "FR_INDICATOR": 0,
+      "RIGHT_BLOCKED": 0,
+      "COLLISION_AVOIDANCE_ACTIVE": 0,
+      "NEW_SIGNAL_2": 0,
+      "FL_INDICATOR_ALT": 0,
+      "FR_INDICATOR_ALT": 0,
+    }
+    front = {
+      "CHECKSUM": 2222,
+      "COUNTER": 88,
+      "REVERSING": 0,
+      "NEW_SIGNAL_5": 0,
+      "NEW_SIGNAL_7": 0,
+      "NEW_SIGNAL_8": 0,
+      "NEW_SIGNAL_9": 0,
+      "NEW_SIGNAL_4": 0,
+      "NEW_SIGNAL_3": 1,
+      "NEW_SIGNAL_2": 0,
+      "NEW_SIGNAL_1": 0,
+    }
+
+    msgs = hyundaicanfd.create_blindspot_status_messages(packer, can_bus, rear, front)
+    parser.update([(1, msgs)])
+
+    assert parser.can_valid
+    assert parser.vl["BLINDSPOTS_REAR_CORNERS"]["COUNTER"] == 0
+    assert parser.vl["BLINDSPOTS_FRONT_CORNER_1"]["COUNTER"] == 0
+    assert parser.vl["BLINDSPOTS_REAR_CORNERS"]["LEFT_BLOCKED"] == 0
+    assert parser.vl["BLINDSPOTS_FRONT_CORNER_1"]["NEW_SIGNAL_3"] == 1
 
   def test_sportage_angle_jerk_override_is_scoped(self):
     sportage = CarParams.new_message()
