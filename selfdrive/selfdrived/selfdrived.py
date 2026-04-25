@@ -240,6 +240,12 @@ class SelfdriveD:
           self.last_below_steer_speed_alert_time = now
       self.events.add_from_msg(car_events)
 
+      if (getattr(self.starpilot_toggles, "nostalgia_mode", False) and
+          self.CP.openpilotLongitudinalControl and
+          self.sm['carControl'].longActive and
+          any(be.type == ButtonType.altButton2 for be in CS.buttonEvents)):
+        self.events.add(EventName.buttonCancel)
+
       if self.CP.notCar:
         # wait for everything to init first
         if self.sm.frame > int(5. / DT_CTRL) and self.initialized:
