@@ -523,7 +523,7 @@ class LongitudinalMpc:
     v_ego = self.x0[1]
     lead_one = radarstate.leadOne
     lead_two = radarstate.leadTwo
-    self.status = (lead_one.status and tracking_lead) or lead_two.status
+    self.status = tracking_lead and (lead_one.status or lead_two.status)
 
     lead_xv_0 = self.process_lead(lead_one, tracking_lead)
     lead_xv_1 = self.process_lead(lead_two, tracking_lead)

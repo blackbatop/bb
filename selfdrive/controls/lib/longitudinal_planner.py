@@ -338,8 +338,9 @@ class LongitudinalPlanner:
     # StarPilot trackingLead is debounce/model-length based. Keep a raw close-lead
     # safety path so ACC/chill does not ignore a visible lead during that debounce.
     lead_control_active = tracking_lead or raw_close_lead_control
+    lead_one_active = bool(self.lead_one.status and lead_control_active)
 
-    lead_dist = self.lead_one.dRel if self.lead_one.status else 50.0
+    lead_dist = self.lead_one.dRel if lead_one_active else 50.0
 
     # Smooth lead distance (EMA) to avoid chatter in thresholds
     alpha = max(0.02, min(0.15, 0.05 + 0.002 * v_ego))
@@ -351,7 +352,7 @@ class LongitudinalPlanner:
     # Lead stability estimation and recent-brake timer
     now_t = time.monotonic()
     # relative speed (ego - lead) positive when closing
-    v_rel = (v_ego - self.lead_one.vLead) if self.lead_one.status else 0.0
+    v_rel = (v_ego - self.lead_one.vLead) if lead_one_active else 0.0
     if self.prev_lead_dist is None:
       d_rel_dot = 0.0
     else:
@@ -365,7 +366,7 @@ class LongitudinalPlanner:
     # Stable lead heuristic (short window, cheap to compute)
     recently_braked = (now_t - self.last_big_brake_t) < 0.7
     self.stable_lead = (
-      self.lead_one.status and
+      lead_one_active and
       abs(v_rel) < 0.5 and
       abs(d_rel_dot) < 0.5 and
       not recently_braked
@@ -427,13 +428,13 @@ class LongitudinalPlanner:
     self._uncert_last = uncertainty
     self._uncert_last_t = now_t
 
-    closing_fast = (self.lead_one.status and (v_ego - self.lead_one.vLead) > 0.5)
+    closing_fast = lead_one_active and (v_ego - self.lead_one.vLead) > 0.5
     # Trigger if either slope is high or magnitude is high; require a valid lead and closing
     panic_bypass = closing_fast and (uncert_slope > UNCERT_SLOPE_TRIG or uncertainty >= UNCERT_MAG_TRIG)
 
     if panic_bypass:
       try:
-        cloudlog.error(f"LON_SLOPE; slope={uncert_slope:.3f}/s; uncertainty={uncertainty:.3f}; v_ego={v_ego:.2f}; v_rel={(v_ego - self.lead_one.vLead) if self.lead_one.status else 0.0:.2f}; lead_dist={self.lead_dist_f if self.lead_dist_f is not None else -1:.2f}; trigger=True")
+        cloudlog.error(f"LON_SLOPE; slope={uncert_slope:.3f}/s; uncertainty={uncertainty:.3f}; v_ego={v_ego:.2f}; v_rel={(v_ego - self.lead_one.vLead) if lead_one_active else 0.0:.2f}; lead_dist={self.lead_dist_f if self.lead_dist_f is not None else -1:.2f}; trigger=True")
       except Exception:
         pass
 
@@ -445,7 +446,7 @@ class LongitudinalPlanner:
                          prev_accel_constraint,
                          personality=personality,
                          v_ego=v_ego,
-                         lead_dist=self.lead_dist_f if self.lead_dist_f is not None else lead_dist,
+                         lead_dist=self.lead_dist_f if lead_one_active and self.lead_dist_f is not None else 50.0,
                          uncertainty=uncertainty,
                          panic_bypass=panic_bypass)
     self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
@@ -482,7 +483,7 @@ class LongitudinalPlanner:
     self.v_desired_filter.x = self.v_desired_filter.x + self.dt * (self.a_desired + a_prev) / 2.0
 
     # Anticipatory pre-brake to avoid "coming in hot" when closing on a lead
-    if self.lead_one.status:
+    if lead_one_active:
       rel_v = max(0.0, v_ego - self.lead_one.vLead)
       # dynamic time headway adds a small buffer when uncertainty is elevated
       base_th = 1.6

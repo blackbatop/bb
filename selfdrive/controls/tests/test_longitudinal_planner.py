@@ -13,7 +13,8 @@ from openpilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPl
 from openpilot.selfdrive.modeld.constants import ModelConstants, Plan
 
 
-def make_lead(*, status: bool, d_rel: float = 200.0, v_lead: float = 0.0, a_lead: float = 0.0):
+def make_lead(*, status: bool, d_rel: float = 200.0, v_lead: float = 0.0, a_lead: float = 0.0,
+              radar: bool = False, model_prob: float = 0.0):
   lead = log.RadarState.LeadData.new_message()
   lead.status = status
   lead.dRel = d_rel
@@ -22,7 +23,8 @@ def make_lead(*, status: bool, d_rel: float = 200.0, v_lead: float = 0.0, a_lead
   lead.aLeadK = a_lead
   lead.vRel = 0.0
   lead.aRel = 0.0
-  lead.modelProb = 0.0
+  lead.modelProb = model_prob
+  lead.radar = radar
   return lead
 
 
@@ -146,6 +148,44 @@ def test_acc_mode_uses_close_raw_lead_when_tracking_lead_is_debounced(model_vers
   assert planner.output_a_target == pytest.approx(
     planner.get_close_lead_brake_cap(sm["radarState"].leadOne, v_ego, sm["starpilotPlan"].minAcceleration)
   )
+
+
+@pytest.mark.parametrize("model_version", ["v11", "v12"])
+def test_acc_mode_matches_no_lead_baseline_for_far_vision_only_lead_without_tracking(model_version):
+  v_ego = 29.0
+
+  CP = CarInterface.get_non_essential_params(CAR.HONDA_CIVIC)
+  planner_no_lead = LongitudinalPlanner(CP, init_v=v_ego)
+  planner_far_vision = LongitudinalPlanner(CP, init_v=v_ego)
+  sm_no_lead = make_sm(
+    v_ego,
+    desired_accel=0.2,
+    min_accel=-1.0,
+    experimental_mode=False,
+    tracking_lead=False,
+  )
+  sm_far_vision = make_sm(
+    v_ego,
+    desired_accel=0.2,
+    min_accel=-1.0,
+    experimental_mode=False,
+    tracking_lead=False,
+    lead_one=make_lead(status=True, d_rel=82.0, v_lead=25.0, radar=False, model_prob=0.9),
+  )
+  sm_no_lead["starpilotPlan"].vCruise = v_ego + 2.0
+  sm_far_vision["starpilotPlan"].vCruise = v_ego + 2.0
+
+  no_lead_outputs = []
+  far_vision_outputs = []
+  for _ in range(8):
+    planner_no_lead.update(sm_no_lead, make_toggles(model_version))
+    planner_far_vision.update(sm_far_vision, make_toggles(model_version))
+    no_lead_outputs.append(planner_no_lead.output_a_target)
+    far_vision_outputs.append(planner_far_vision.output_a_target)
+
+  assert planner_far_vision.mode == "acc"
+  assert not planner_far_vision.raw_close_lead_needs_control(sm_far_vision["radarState"].leadOne, v_ego)
+  np.testing.assert_allclose(far_vision_outputs, no_lead_outputs, atol=1e-6)
 
 
 def test_modeld_action_passes_tomb_raider_longitudinal_params(monkeypatch):
