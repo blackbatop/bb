@@ -13,7 +13,6 @@ from openpilot.selfdrive.ui.layouts.settings.starpilot.driving_model import Star
 from openpilot.selfdrive.ui.layouts.settings.starpilot.longitudinal import StarPilotLongitudinalLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.lateral import StarPilotLateralLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.maps import StarPilotMapsLayout
-from openpilot.selfdrive.ui.layouts.settings.starpilot.navigation import StarPilotNavigationLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.system_settings import StarPilotSystemLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.visuals import StarPilotVisualsLayout
 from openpilot.selfdrive.ui.layouts.settings.starpilot.themes import StarPilotThemesLayout
@@ -39,9 +38,9 @@ class StarPilotLayout(Widget):
       "color": "#3B82F6",
     },
     {
-      "title": "Maps & Navigation",
+      "title": "Map Data",
       "icon": "icon_navigate.png",
-      "buttons": [("MAP DATA", "MAPS", 0), ("NAVIGATION", "NAVIGATION", 0)],
+      "buttons": [("MAP DATA", "MAPS", 0)],
       "color": "#10B981",
     },
     {
@@ -84,7 +83,6 @@ class StarPilotLayout(Widget):
       StarPilotPanelType.LONGITUDINAL: StarPilotPanelInfo(tr_noop("Gas / Brake"), StarPilotLongitudinalLayout()),
       StarPilotPanelType.LATERAL: StarPilotPanelInfo(tr_noop("Steering"), StarPilotLateralLayout()),
       StarPilotPanelType.MAPS: StarPilotPanelInfo(tr_noop("Map Data"), StarPilotMapsLayout()),
-      StarPilotPanelType.NAVIGATION: StarPilotPanelInfo(tr_noop("Navigation"), StarPilotNavigationLayout()),
       StarPilotPanelType.VISUALS: StarPilotPanelInfo(tr_noop("Appearance"), StarPilotVisualsLayout()),
       StarPilotPanelType.THEMES: StarPilotPanelInfo(tr_noop("Themes"), StarPilotThemesLayout()),
       StarPilotPanelType.VEHICLE: StarPilotPanelInfo(tr_noop("Vehicle Settings"), StarPilotVehicleSettingsLayout()),
@@ -96,7 +94,6 @@ class StarPilotLayout(Widget):
       StarPilotPanelType.SOUNDS,
       StarPilotPanelType.SYSTEM,
       StarPilotPanelType.LATERAL,
-      StarPilotPanelType.NAVIGATION,
       StarPilotPanelType.MAPS,
       StarPilotPanelType.VISUALS,
       StarPilotPanelType.THEMES,
@@ -188,7 +185,6 @@ class StarPilotLayout(Widget):
       "LONGITUDINAL": StarPilotPanelType.LONGITUDINAL,
       "LATERAL": StarPilotPanelType.LATERAL,
       "MAPS": StarPilotPanelType.MAPS,
-      "NAVIGATION": StarPilotPanelType.NAVIGATION,
       "VISUALS": StarPilotPanelType.VISUALS,
       "THEMES": StarPilotPanelType.THEMES,
       "VEHICLE": StarPilotPanelType.VEHICLE,
