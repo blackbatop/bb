@@ -298,7 +298,7 @@ def patch_setup_branding_script(original: bytes, entry_name: str) -> bytes:
   text = text.replace(
     'OPENPILOT_URL = "https://openpilot.comma.ai"',
     'NETWORK_CHECK_URL = "https://openpilot.comma.ai"\n'
-    'DEFAULT_INSTALLER_URL = "https://installer.comma.ai/firestar5683/StarPilot"\n'
+    'DEFAULT_INSTALLER_URL = "https://installer.comma.ai/blackbatop/StarPilot"\n'
     f'# {SETUP_BRANDING_PATCH_MARKER}',
   )
   text = text.replace("urllib.request.Request(OPENPILOT_URL, method=\"HEAD\")",
@@ -879,7 +879,7 @@ def setup_zipapp_has_expected_content(data: bytes) -> bool:
         setup_script = z.read(entry)
         if SETUP_BRANDING_PATCH_MARKER.encode() not in setup_script:
           return False
-        if b"installer.comma.ai/firestar5683/StarPilot" not in setup_script:
+        if b"installer.comma.ai/blackbatop/StarPilot" not in setup_script:
           return False
     except KeyError:
       return False

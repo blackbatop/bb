@@ -178,7 +178,7 @@ def update_branch_commits(now):
   points = []
   branch = get_build_metadata().channel  # Current running branch
   try:
-    response = requests.get(f"https://api.github.com/repos/firestar5683/StarPilot/commits/{branch}")
+    response = requests.get(f"https://api.github.com/repos/blackbatop/StarPilot/commits/{branch}")
     response.raise_for_status()
     sha = response.json()["sha"]
     points.append(Point("branch_commits").field("commit", sha).tag("branch", branch).time(now))

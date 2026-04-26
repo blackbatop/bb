@@ -77,7 +77,7 @@ LEGACY_STARPILOT_STATS_KEY_RENAMES = {
   "FrogPilotSeconds": "StarPilotSeconds",
 }
 
-RESOURCES_REPO = os.getenv("STARPILOT_RESOURCES_REPO", "firestar5683/StarPilot-Resources")
+RESOURCES_REPO = os.getenv("STARPILOT_RESOURCES_REPO", "blackbatop/StarPilot-Resources")
 
 ACTIVE_THEME_PATH = Path(BASEDIR) / "starpilot/assets/active_theme"
 METADATAS_PATH = Path(BASEDIR) / "starpilot/assets/model_metadata"

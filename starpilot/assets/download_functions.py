@@ -8,7 +8,7 @@ from pathlib import Path
 
 from openpilot.starpilot.common.starpilot_utilities import delete_file, is_url_pingable
 
-RESOURCES_REPO = os.getenv("STARPILOT_RESOURCES_REPO", "firestar5683/StarPilot-Resources")
+RESOURCES_REPO = os.getenv("STARPILOT_RESOURCES_REPO", "blackbatop/StarPilot-Resources")
 GITHUB_URL = f"https://raw.githubusercontent.com/{RESOURCES_REPO}"
 GITLAB_URL = f"https://gitlab.com/{RESOURCES_REPO}/-/raw"
 
