@@ -67,19 +67,13 @@
   },
   {
     "name": "system",
-    "url": "https://downloadquick.fast.io/api/current/quickshare/agssnuebkfdxy57zslelavj67eyg3/storage/read?error=html",
-    "hash": "51a84c3b63db2a23a3cbf87065a8684c78720c42e5938cf25a71bc16b4c8254f",
-    "hash_raw": "51a84c3b63db2a23a3cbf87065a8684c78720c42e5938cf25a71bc16b4c8254f",
-    "size": 4718592000,
+    "url": "https://files.077769.xyz/api/public/dl/2SJ9IBC_/StarPilot/system2.img.xz",
+    "hash": "06641f9fb602e6b046d1a619cc43dbaa724ff5c3700a32f1ef6677e40146359e",
+    "hash_raw": "06641f9fb602e6b046d1a619cc43dbaa724ff5c3700a32f1ef6677e40146359e",
+    "size": 5368709120,
     "sparse": false,
     "full_check": false,
     "has_ab": true,
-    "ondevice_hash": "242aa5adad1c04e1398e00e2440d1babf962022eb12b89adf2e60ee3068946e7",
-    "alt": {
-      "url": "https://commadist.azureedge.net/agnosupdate/system-e0007afa5d1026671c1943d44bb7f7ad26259f673392dd00a03073a2870df087.img.xz",
-      "hash": "1468d50b7ad0fda0f04074755d21e786e3b1b6ca5dd5b17eb2608202025e6126",
-      "hash_raw": "e0007afa5d1026671c1943d44bb7f7ad26259f673392dd00a03073a2870df087",
-      "size": 5368709120
-    }
+    "ondevice_hash": "242aa5adad1c04e1398e00e2440d1babf962022eb12b89adf2e60ee3068946e7"
   }
 ]
